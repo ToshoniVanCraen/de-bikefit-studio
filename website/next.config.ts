@@ -2,6 +2,16 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   /**
+   * The image optimizer overwrites middleware's `no-store` with a public cache
+   * policy. Staging must serve images directly through the gate instead.
+   * Production and feature-branch builds keep their existing optimization.
+   */
+  images: {
+    unoptimized:
+      process.env.VERCEL_ENV === 'preview' && process.env.VERCEL_GIT_COMMIT_REF === 'staging',
+  },
+
+  /**
    * PGlite ships a WASM build of Postgres and must never be traced or bundled
    * by Turbopack — it is loaded with a runtime `import()` in `src/db/cms.ts`
    * and only ever runs in the Node.js server runtime. Listing it here keeps it

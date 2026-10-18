@@ -5,8 +5,8 @@ import { z } from 'zod';
  * app reads is declared in `envSchema` below and listed in `.env.example`; no
  * other module in `src/` reads `process.env` (CLAUDE.md §3). Documented
  * exceptions, each commented where it happens:
- *  - `src/middleware.ts` runs on the edge runtime, where only literal
- *    `process.env.X` reads are wired up at build time;
+ *  - `src/middleware.ts` keeps literal `process.env.X` reads for its
+ *    request-path decisions and to preserve the pre-existing proxy convention;
  *  - `'use client'` code must use literal `process.env.NEXT_PUBLIC_…` so Next
  *    inlines the value (none today: client components get such values as
  *    props from a server component).
@@ -46,6 +46,25 @@ const envSchema = z.object({
   VERCEL_ENV: z.enum(['production', 'preview', 'development']).optional(),
   /** Deployment host name without scheme, e.g. `bikefit-abc123.vercel.app`. */
   VERCEL_URL: z.string().optional(),
+  /** Git branch of the deployment (`staging`, `main`, `feat/…`); the staging gate's branch marker. */
+  VERCEL_GIT_COMMIT_REF: z.string().optional(),
+
+  // --- Staging access gate (`docs/staging-gate.md`; Preview, branch `staging` only) ---
+
+  /**
+   * HMAC key of the gate's session cookie (≥ 32 characters, `openssl rand
+   * -base64 48`). Only read on `staging.debikefitstudio.be`; there, missing
+   * or short means every request answers 503. Rotating it signs every gate
+   * session out. Length is checked only after the exact-host match so a bad
+   * staging value cannot change other preview/production hosts.
+   */
+  STAGING_GATE_SECRET: z.string().optional(),
+  /**
+   * Machine token for Arend's `site-health` (`x-staging-gate-token` header,
+   * GET/HEAD only; ≥ 32 characters, never equal to the secret). Same scope and
+   * fail-closed rule as the secret.
+   */
+  STAGING_GATE_HEALTH_TOKEN: z.string().optional(),
 
   // --- CMS / Bikefit Studio site ---
 

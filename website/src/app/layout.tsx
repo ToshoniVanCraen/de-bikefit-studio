@@ -3,6 +3,7 @@ import { Inter, Barlow_Condensed } from 'next/font/google';
 import { ClerkProvider } from '@clerk/nextjs';
 import './globals.css';
 import { features, siteUrl } from '@/lib/env';
+import { StagingGateBanner } from '@/components/staging-gate/banner';
 
 /**
  * Root document shell.
@@ -72,7 +73,11 @@ function RootShell({ children }: { children: React.ReactNode }) {
       className={`${inter.variable} ${barlow.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {/* Staging host only, client-side; renders nothing anywhere else (docs/staging-gate.md §3). */}
+        <StagingGateBanner />
+        {children}
+      </body>
     </html>
   );
 }

@@ -9,6 +9,7 @@ import * as cmsSchema from './cms-schema';
 import * as cmsMfaSchema from './cms-mfa-schema';
 import * as cmsRateLimitSchema from './cms-rate-limit-schema';
 import * as cmsOfferingSchema from './cms-offering-schema';
+import * as cmsStagingGateSchema from './cms-staging-gate-schema';
 
 /**
  * CMS database client.
@@ -37,6 +38,7 @@ export const schema = {
   ...cmsMfaSchema,
   ...cmsRateLimitSchema,
   ...cmsOfferingSchema,
+  ...cmsStagingGateSchema,
 };
 export type CmsSchema = typeof schema;
 

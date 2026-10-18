@@ -14,14 +14,15 @@ const url = process.env.DATABASE_URL ?? 'postgres://drizzle-kit:generate-only@12
 
 export default defineConfig({
   // Webshop schema (unchanged) + CMS schema (+ its MFA tables and the public
-  // rate-limit counters and the offering settings). All must be listed so the snapshot stays complete and
-  // generated migrations stay additive.
+  // rate-limit counters, the offering settings and the staging gate). All must be listed so the
+  // snapshot stays complete and generated migrations stay additive.
   schema: [
     './src/db/schema.ts',
     './src/db/cms-schema.ts',
     './src/db/cms-mfa-schema.ts',
     './src/db/cms-rate-limit-schema.ts',
     './src/db/cms-offering-schema.ts',
+    './src/db/cms-staging-gate-schema.ts',
   ],
   out: './drizzle',
   dialect: 'postgresql',

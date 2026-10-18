@@ -106,6 +106,11 @@
  *      key sealed and never in status, settings, audit or logs, admin config
  *      end to end, provider failure, env wins per field, rotated secret,
  *      missing table, key removal (`scripts/selftest/email-service.mts`)
+ *  20. staging access gate (issue #18): migration 0013 twice, named accounts
+ *      through the `staging:access` core (add, list, reset-password, revoke),
+ *      one generic sign-in failure, identifier and IP limits, the edge store's
+ *      raw SQL on PGlite (8 h absolute, 30 min idle, touch rule, revocation),
+ *      logout, forged cookies, health decisions (`scripts/selftest/staging-gate.mts`)
  *
  * Counts failures and exits non-zero at the end when any check failed.
  *
@@ -592,6 +597,9 @@ async function main() {
     section,
     cookieJar,
   });
+
+  const { stagingGateSection } = await import('./selftest/staging-gate.mjs');
+  await stagingGateSection({ db, check, section });
 }
 
 // ===========================================================================

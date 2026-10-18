@@ -122,6 +122,7 @@ Run inside `website/`. Scripts that touch a database use PGlite unless `DATABASE
 | `npm run cms:selftest` | Integration checks on a throwaway PGlite in `.pglite-selftest/` |
 | `npm run cms:retention` | GDPR retention purge, dry run; `-- --apply` deletes, `-- --json` for a report |
 | `npm run cms:mfa-reset -- --email <address>` | Break-glass: remove a user's two-step verification when no other admin can; dry run by default, `-- --apply --expect-host <host>`. See `docs/staging-runbook.md` §14 |
+| `npm run staging:access` | Named staging reviewers for the staging access gate: `-- --add --identifier <id> [--note "<who / approval>"]`, `-- --list`, `-- --reset-password --identifier <id>`, `-- --revoke --identifier <id>`; writes to Neon need `--expect-host <host>`; a generated password is printed once. See `docs/staging-runbook.md` §20 |
 
 ## Testing
 
@@ -159,6 +160,7 @@ is never merged. Branch flow: `feat/<topic>` → `staging` → `main`.
 | [`docs/staging-runbook.md`](docs/staging-runbook.md) | Staging deploy procedure, rollouts per release (security release: §16), rollback, production checklist |
 | [`docs/booking-runbook.md`](docs/booking-runbook.md) | Google Cloud, GA4, Resend setup; GDPR and retention (§11); gift voucher orders (§12) |
 | [`docs/admin-csp.md`](docs/admin-csp.md) | The admin Content-Security-Policy: how it works, staging browser check, switch to enforce |
+| [`docs/staging-gate.md`](docs/staging-gate.md) | The staging access gate (issue #18): exact-host activation, sessions, accounts, health token; rollout in the runbook §20 |
 | [`docs/security-baseline-2026-10.md`](docs/security-baseline-2026-10.md) | Dependency audit status and the security changes of October 2026 |
 | [`docs/content-placeholders.md`](docs/content-placeholders.md) | Register (NL) of every temporary price, duration, bio, image and booking link |
 | [`docs/editorial-images.md`](docs/editorial-images.md) | Provenance and import of the temporary AI images |

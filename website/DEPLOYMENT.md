@@ -122,6 +122,8 @@ its variables are missing. Names and purpose only; values never appear here.
 | `EMAIL_FROM` | Sender on a domain verified in Resend. Also required for gift voucher orders. Overrides the sender in `/admin/email`. | no | optional |
 | `EMAIL_REPLY_TO` | Reply-To for customer mails (not used for gift voucher orders: their Reply-To is the visitor). Overrides `/admin/email`. | no | optional |
 | `GIFT_VOUCHER_RECIPIENT` | Inbox for gift voucher orders and offer enquiries (one plain address; the name stays for compatibility). Overrides `/admin/email` → *Ontvanger bestellingen en aanvragen*. Never falls back to the public contact e-mail; unset in both places, or invalid, means every order and enquiry shows "niet verstuurd". | no | optional |
+| `STAGING_GATE_SECRET` | HMAC key of the staging access gate's session cookie (`docs/staging-gate.md`). At least 32 characters (`openssl rand -base64 48`), different from the health token. Rotating it signs every gate session out. On the staging host a missing or short value answers 503 `gate_misconfigured` to everything. | yes | Preview with branch `staging` only, Sensitive; empty everywhere else and locally |
+| `STAGING_GATE_HEALTH_TOKEN` | Machine token for Arend's `site-health` (header `x-staging-gate-token`, GET/HEAD only). At least 32 characters (`openssl rand -base64 48`), must differ from the secret. A copy lives in Arend's secret store for `site-health`. | yes | Preview with branch `staging` only, Sensitive; empty everywhere else and locally |
 | `CMS_PGLITE_DIR` | Local PGlite directory (default `.pglite`). | no | local only |
 | `CMS_PGLITE_AUTO_MIGRATE` | `"false"` stops PGlite auto-migrating on first use. | no | local only |
 | `NEXT_PUBLIC_APP_URL` | Webshop origin; second fallback for the canonical origin. | no | legacy webshop |
@@ -136,6 +138,14 @@ Script-only, never in Vercel: `CMS_BREAK_GLASS_PASSWORD` (optional, inline for `
 (`scripts/reset-staging.sh`).
 
 How to obtain the Google, GA4 and Resend values: [`docs/booking-runbook.md`](docs/booking-runbook.md) §1–7.
+
+**Staging access gate (issue #18).** `VERCEL_GIT_COMMIT_REF` (set by Vercel) must be exposed
+(project setting *Automatically expose System Environment Variables*). The gate activates
+**only** on the exact host `staging.debikefitstudio.be` of a Preview deployment of branch
+`staging` (`VERCEL_ENV=preview`, `VERCEL_GIT_COMMIT_REF=staging`). Every other preview URL,
+every immutable deployment URL (also of branch `staging`) and production are unchanged and stay
+behind Vercel Authentication. Arend owns the staging environment variables. Rollout, account
+provisioning and rollback: [`docs/staging-runbook.md`](docs/staging-runbook.md) §20.
 
 ## 6. Webshop services: test vs live (legacy)
 

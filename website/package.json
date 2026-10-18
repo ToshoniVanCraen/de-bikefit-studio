@@ -30,6 +30,7 @@
     "cms:selftest": "tsx scripts/cms-selftest.mts",
     "cms:retention": "tsx scripts/cms-retention.mts",
     "cms:mfa-reset": "tsx scripts/cms-mfa-reset.mts",
+    "staging:access": "tsx scripts/staging-access.mts",
     "images:import": "tsx scripts/import-editorial-image.mts"
   },
   "dependencies": {

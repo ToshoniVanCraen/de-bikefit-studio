@@ -1116,3 +1116,128 @@ there is no `--restore`). The schema change is additive and can stay.
 
 **Production** (after Toshoni's go): the same steps against Neon `production`, right after
 `main` is deployed.
+
+## 20. Staging access gate (issue #18, migration 0013, 18 Oct 2026)
+
+What changes: the exact host `staging.debikefitstudio.be` (Preview deployment of branch
+`staging`) gets a first-party login for named reviewers, so it can later leave Vercel
+Authentication; every other preview URL, every immutable deployment URL and production keep
+Vercel Authentication and today's behaviour (`staging-gate.md`, variables in
+`../DEPLOYMENT.md` §5). There is no production rollout of this feature.
+
+Owners:
+
+- **Arend:** the staging environment variables, migration 0013, provisioning and revoking
+  accounts, the deployment and the `site-health` integration.
+- **Toshoni:** approves each named reviewer, and separately approves the Vercel Deployment
+  Protection Exception.
+- **Max:** the functional review of the exact build against his brief (2026-10-18).
+- **Niels:** the commit and the pass/fail evidence.
+
+Staged rollout, in this order:
+
+1. **Neon snapshot** of `Staging` (e.g. `staging-pre-staging-gate-2026-10-18`).
+2. **Migrate before the deploy** (0013 creates `cms_staging_gate_accounts` and
+   `cms_staging_gate_sessions`; guarded, re-runnable, additive, no data change):
+
+   ```bash
+   DATABASE_URL='<staging pooled url>' npm run db:migrate
+   ```
+
+   Until the tables exist the gate on the staging host fails closed (503 `gate_unavailable`).
+3. **Variables:** set `STAGING_GATE_SECRET` and `STAGING_GATE_HEALTH_TOKEN` in Vercel →
+   Preview, branch `staging` only, Sensitive (each `openssl rand -base64 48`, two different
+   values; the health token also goes into Arend's secret store). Check that the system
+   variables are exposed (`VERCEL_GIT_COMMIT_REF`).
+4. **Deploy** the staging branch commit while Vercel Authentication (SSO) stays **on**.
+5. **Provision named accounts**, one per reviewer Toshoni approved:
+
+   ```bash
+   DATABASE_URL='<staging pooled url>' npm run staging:access -- --add --identifier <identifier> --note "<who / approval>" --expect-host <neon host>
+   DATABASE_URL='<staging pooled url>' npm run staging:access -- --list
+   ```
+
+   `--expect-host` is an operator cross-check that the `DATABASE_URL` host is the one you
+   intend; it is **not** proof that the URL is the staging database (the same wrong host in
+   both places passes), so check the host against the Neon `Staging` branch record first. The
+   generated password is printed **once** to the terminal: deliver it privately (1Password
+   share or equivalent), never in chat, transcripts or issue comments. Record identifier, grant
+   date and approver in the operational register. A forgotten password:
+   `-- --reset-password --identifier <identifier> --expect-host <neon host>` (new password, its
+   sessions end).
+6. **Exact-build verification behind SSO:** Niels's evidence and Max's acceptance against
+   Max's issue #18 functional brief (18 Oct 2026).
+   Keep Vercel Authentication enabled; use an approved Vercel automation bypass or protected
+   preview access to reach this *same SHA*, never a project-wide protection change. Machine
+   check, with the token from an environment variable (never a literal on the
+   command line):
+
+   ```bash
+   curl -sS -o /dev/null -w '%{http_code}' -H "x-staging-gate-token: $STAGING_GATE_HEALTH_TOKEN" https://<host>/api/staging-gate/health
+   ```
+
+   Expected: **200** (`{"status":"ok"}`) with a valid token; **401** `{"code":"gate_auth_failed"}`
+   with a wrong or missing token; **503** `{"code":"app_unhealthy"}` when the database is
+   unreachable; **503** `{"code":"gate_misconfigured"}` when the configuration is incomplete. A
+   200 login page is **not** green. Site-health must then fetch a protected page with the
+   machine token and assert the intended page content (not login HTML), plus test a wrong
+   token on that path (401). The health endpoint only proves the gate tables are queryable.
+
+   On that exact build also record:
+   - anonymous GET page, API, media UUID deny; `/_next/image` is 404 even with credentials;
+     GET/HEAD login shell and
+     its minimum assets load; POST to the public login page with an unrelated Server Action
+     ID is denied (302/401), and POST to `/api/staging-gate/login` with `Next-Action`, missing,
+     cross-origin or non-default-port `Origin` is rejected;
+   - two Toshoni-approved named reviewers can sign in, wrong/unknown/revoked credentials use
+     generic copy, a safe deep path+query resumes, unsafe `next` falls back to `/`, logout
+     and browser back/refresh cannot reveal protected content, and idle/absolute expiry both
+     require re-authentication (fixture time changes, not real-hour waits);
+   - authorized CMS media and direct `/images/` responses carry `Cache-Control: no-store`;
+     staging HTML uses direct image URLs, not `/_next/image`. Request the **same** direct URL
+     without credentials after warming any CDN/browser cache and confirm it is denied.
+     Also try a previously known optimized-image URL (Vercel may have cached it before
+     the new build): it must be 404 even after the hostname exception; if an old public
+     cached response survives, keep Vercel SSO on until Arend invalidates or outlasts it;
+   - CMS admin and Google flows still apply their own auth after the gate, no redirect loop;
+     the exact staging response is `noindex` and robots says `Disallow: /`.
+7. **Only after Toshoni's separate written go:** Arend adds a Vercel Deployment Protection
+   Exception for `staging.debikefitstudio.be` **only**, then validates:
+   - the exact host is gated: anonymous page → 302 to `/staging-toegang`, `/api/…` → 401
+     `{"code":"gate_session_required"}`, `/robots.txt` → `Disallow: /`, `X-Robots-Tag: noindex,
+     nofollow` on every response;
+   - a feature preview URL and the immutable deployment URL still prompt Vercel SSO;
+   - production is unchanged;
+   - `site-health` is green with the token.
+
+Session policy (Max's defaults): 30 minutes idle or 8 hours absolute, whichever comes first.
+After expiry the login shows "Je sessie is verlopen. Log opnieuw in om verder te gaan." and
+returns to the requested same-origin path after sign-in, otherwise to `/`. The visible
+"Uitloggen" ends the session and shows "Je bent uitgelogd."
+
+Revocation is effective on the next request (the session is checked in the database per
+request):
+
+```bash
+DATABASE_URL='<staging pooled url>' npm run staging:access -- --revoke --identifier <identifier> --expect-host <neon host>
+```
+
+Stable response codes: `gate_misconfigured` (503), `gate_auth_failed` (401), `app_unhealthy`
+(503). None carries a secret.
+
+What Arend records (operational register, never a secret or password):
+
+- per reviewer: identifier, grant date, approver; on revocation the revocation date;
+- the Neon snapshot name and the date 0013 was applied;
+- the deployed staging commit and the health check result (status codes only);
+- the date of Toshoni's go and of the hostname exception (and of its removal on rollback).
+
+**Rollback**, in this order:
+
+1. **Remove the hostname exception first**: Vercel Authentication covers the host again.
+2. Redeploy the previous staging commit if needed.
+3. Unset the two variables, or leave them. Remove the exception **before** unsetting them: a
+   half-configured staging host (host matches, variables incomplete) answers 503
+   `gate_misconfigured` to every request.
+4. Migration 0013 is additive and stays in place. If the feature is abandoned, revoke every
+   account with `--revoke`.

@@ -1,8 +1,20 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+import type { NextFetchEvent, NextRequest } from 'next/server';
 
 import { nextWithAdminCsp, withAdminCspHeader } from '@/lib/security/admin-csp-response';
+import { resolveStagingGate } from '@/lib/staging-gate/config';
+import {
+  gateRequest,
+  misconfiguredResponse,
+  runsLegacyMiddleware,
+  stampGateHeaders,
+} from '@/lib/staging-gate/middleware';
+import {
+  createNeonExecutor,
+  findGateSession,
+  touchGateSession,
+} from '@/lib/staging-gate/store-edge';
 
 /**
  * Auth middleware.
@@ -31,19 +43,28 @@ import { nextWithAdminCsp, withAdminCspHeader } from '@/lib/security/admin-csp-r
  *     `src/lib/security/admin-csp.ts` and `docs/admin-csp.md`. Every other
  *     path is passed through exactly as before, with no CSP.
  *
- * Deliberately no database access: middleware runs on the edge runtime, where
- * neither the Neon HTTP client's connection reuse nor PGlite's WASM/filesystem
- * access belongs.
+ *  4. **Staging access gate** (`docs/staging-gate.md`). Only on the exact host
+ *     `staging.debikefitstudio.be`: misconfigured → 503 everywhere; active →
+ *     `gateRequest()` first (one Neon HTTP query per gated request, raw SQL in
+ *     `src/lib/staging-gate/store-edge.ts`), then concerns 1–3, and every
+ *     response stamped `no-store` + `noindex`. On every other host the gate
+ *     is inactive and concerns 1–3 run exactly as before, on exactly the
+ *     paths the old matcher selected (`runsLegacyMiddleware()`).
+ *
+ * No other database access: this retained `middleware.ts` runs in the Edge
+ * runtime on Next 16 (confirmed by the production build's edge output), so
+ * PGlite's WASM/filesystem client is unsuitable for request gating.
+ * The gate uses a stateless Neon HTTP query on staging only.
  */
 
 const isProtectedRoute = createRouteMatcher(['/account(.*)', '/checkout(.*)']);
 
 /**
  * Same test as `features.clerk` in `src/lib/env.ts`, but read literally on
- * purpose: middleware runs on the edge runtime, where Next wires up only the
- * variables it finds as literal `process.env.X` reads at build time. The
- * whole-object read in `env.ts` would see nothing there. This file is the one
- * documented exception to "env only through `src/lib/env.ts`".
+ * purpose: preserve the pre-existing middleware convention and keep the
+ * request-path decision independent of the whole-object `env.ts` parser.
+ * This file is the documented exception to "env only through `src/lib/env.ts`";
+ * the staging gate's inputs in `stagingGateFor()` below are read literally too.
  */
 const hasClerk = Boolean(
   process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY && process.env.CLERK_SECRET_KEY,
@@ -97,7 +118,7 @@ const clerk = clerkMiddleware(async (auth, req) => {
   return nextWithAdminCsp(req, ADMIN_CSP);
 });
 
-export default hasClerk
+const legacyMiddleware = hasClerk
   ? clerk
   : function middleware(req: NextRequest) {
       const adminRedirect = guardAdmin(req);
@@ -105,11 +126,59 @@ export default hasClerk
       return nextWithAdminCsp(req, ADMIN_CSP) ?? NextResponse.next();
     };
 
+/** The gate's decision for this request's host; literal env reads (see `hasClerk`). */
+function stagingGateFor(req: NextRequest) {
+  return resolveStagingGate({
+    // In Next 16's local production server `nextUrl.hostname` is `localhost`
+    // even when Host is the requested custom domain. Host is also the source
+    // used by the Node sign-in/health handlers. Prefer it so both layers make
+    // the same exact-host decision; fall back only when the header is absent.
+    hostname: req.headers.get('host') ?? req.nextUrl.hostname,
+    vercelEnv: process.env.VERCEL_ENV,
+    gitRef: process.env.VERCEL_GIT_COMMIT_REF,
+    secret: process.env.STAGING_GATE_SECRET,
+    healthToken: process.env.STAGING_GATE_HEALTH_TOKEN,
+    databaseUrl: process.env.DATABASE_URL,
+  });
+}
+
+/** Stamps a response that may have immutable headers (e.g. `Response.redirect`). */
+function stampAny(response: Response): Response {
+  try {
+    return stampGateHeaders(response);
+  } catch {
+    return stampGateHeaders(new Response(response.body, response));
+  }
+}
+
+export default async function middleware(req: NextRequest, event: NextFetchEvent) {
+  const gate = stagingGateFor(req);
+
+  if (gate.kind === 'inactive') {
+    // Paths the old matcher never selected pass through untouched.
+    if (!runsLegacyMiddleware(req.nextUrl.pathname)) return NextResponse.next();
+    return legacyMiddleware(req, event);
+  }
+  if (gate.kind === 'misconfigured') return misconfiguredResponse(gate.reasons);
+
+  const exec = createNeonExecutor(gate.config.databaseUrl);
+  const outcome = await gateRequest(req, {
+    config: gate.config,
+    findSession: (tokenHash) => findGateSession(exec, tokenHash),
+    touchSession: (id, now) => touchGateSession(exec, id, now),
+  });
+  if (outcome.kind === 'respond') return stampGateHeaders(outcome.response);
+
+  const response = await legacyMiddleware(req, event);
+  return stampAny(response ?? NextResponse.next());
+}
+
 export const config = {
   matcher: [
-    // Skip Next internals and static files, run on everything else.
-    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
-    // Always run on API routes.
-    '/(api|trpc)(.*)',
+    // Everything except Next's hashed build assets: on the staging host the gate
+    // must also cover `/_next/image`, public files and API routes. Other hosts
+    // keep the old path set through `runsLegacyMiddleware()`, which reproduces
+    // the previous two matcher entries exactly.
+    '/((?!_next/static/).*)',
   ],
 };
