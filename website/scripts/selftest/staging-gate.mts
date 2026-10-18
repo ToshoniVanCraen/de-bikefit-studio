@@ -18,7 +18,10 @@
  *  D. edge store: lookup + policy valid, account revoke ends the session,
  *     8 h absolute and 30 min idle end on back-dated rows, the touch rule;
  *  E. logout ends exactly one session; forged cookies never reach the store;
- *  F. health: token check, probe answers, the database probe.
+ *  F. health: token check, probe answers, the database probe;
+ *  G. vault-first passwords (`--password-stdin`): the core and the real CLI
+ *     (`./staging-gate-stdin.mts`, own identifiers and IPs, checked last; its
+ *     child processes start before A).
  *
  * Time is moved by back-dating columns or passing `now`, never by sleeping.
  */
@@ -46,6 +49,9 @@ export async function stagingGateSection(ctx: {
 }) {
   const { db, check, section } = ctx;
   section('20. staging access gate (issue #18): accounts, sign-in, sessions, health');
+  // Part G's CLI child processes share nothing with this process: they run while A–F do.
+  const partG = await import('./staging-gate-stdin.mjs');
+  const cliRuns = partG.startCliRuns();
 
   const { and, eq, isNull, sql } = await import('drizzle-orm');
   const { cmsStagingGateAccounts: accounts, cmsStagingGateSessions: sessions } =
@@ -507,4 +513,6 @@ export async function stagingGateSection(ctx: {
     'end state: only the untouched second session of reviewer one is still open',
     leftover.length === 1 && leftover[0].id === other.id,
   );
+
+  await partG.stagingGateStdinChecks({ db, check, secret: SECRET, cliRuns });
 }

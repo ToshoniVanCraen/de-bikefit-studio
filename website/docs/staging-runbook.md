@@ -1150,21 +1150,50 @@ Staged rollout, in this order:
    values; the health token also goes into Arend's secret store). Check that the system
    variables are exposed (`VERCEL_GIT_COMMIT_REF`).
 4. **Deploy** the staging branch commit while Vercel Authentication (SSO) stays **on**.
-5. **Provision named accounts**, one per reviewer Toshoni approved:
+5. **Provision named accounts, vault-first**, one per reviewer Toshoni approved. The
+   reviewer's vault item is the source of truth and is what you share with the reviewer; the
+   password never passes through argv, an environment variable, shell history, the terminal
+   or a transcript (`staging-gate.md` §3):
 
    ```bash
-   DATABASE_URL='<staging pooled url>' npm run staging:access -- --add --identifier <identifier> --note "<who / approval>" --expect-host <neon host>
-   DATABASE_URL='<staging pooled url>' npm run staging:access -- --list
+   # 1. Create the reviewer's vault item and let the vault generate the password
+   #    (the CLI refuses what the CMS strength rules refuse: 12–200 characters with
+   #    a lower-case letter, an upper-case letter and a digit; aim for ≥ 20).
+   # 2. Pipe it; it never appears in argv, env, history or output.
+   op read 'op://<vault>/<item>/password' | DATABASE_URL="$(op read 'op://<vault>/<neon staging item>/pooled-url')" npm run staging:access -- --add --identifier <identifier> --note "<who / approval>" --expect-host <neon host> --password-stdin
+   DATABASE_URL="$(op read 'op://<vault>/<neon staging item>/pooled-url')" npm run staging:access -- --list
    ```
+
+   - `op read` stands for the secret store's CLI: anything that writes the value to stdout.
+     Its trailing newline is fine (exactly one is stripped; nothing else is trimmed). A
+     literal password via `echo`/`printf`, a `--password`/`-p` style argument (refused, and
+     npm echoes the command line), an environment variable (never read) or a temporary file
+     are forbidden.
+   - The CLI refuses a terminal on stdin, more than 802 bytes, more than one line, control
+     characters and a weak password, each with a fixed message and before any database work.
+     A failed `op read` leaves stdin empty, which is refused too.
+   - Success prints `✓ account <identifier> created (password from stdin)` and no password.
+     Share the vault item with the reviewer (1Password share or equivalent), never the
+     password itself in chat, transcripts or issue comments.
+   - If a command fails, fix the cause and pipe the same vault value again, so the database
+     matches the vault item. If `--add` answers that the identifier already exists, use
+     `--reset-password` with the same vault value.
 
    `--expect-host` is an operator cross-check that the `DATABASE_URL` host is the one you
    intend; it is **not** proof that the URL is the staging database (the same wrong host in
-   both places passes), so check the host against the Neon `Staging` branch record first. The
-   generated password is printed **once** to the terminal: deliver it privately (1Password
-   share or equivalent), never in chat, transcripts or issue comments. Record identifier, grant
-   date and approver in the operational register. A forgotten password:
-   `-- --reset-password --identifier <identifier> --expect-host <neon host>` (new password, its
-   sessions end).
+   both places passes), so check the host against the Neon `Staging` branch record first.
+   Record identifier, grant date and approver in the operational register.
+
+   A forgotten or compromised password: rotate it in the vault item first, then pipe the new
+   value (the new hash is stored first, then every session of the account ends):
+
+   ```bash
+   op read 'op://<vault>/<item>/password' | DATABASE_URL="$(op read 'op://<vault>/<neon staging item>/pooled-url')" npm run staging:access -- --reset-password --identifier <identifier> --expect-host <neon host> --password-stdin
+   ```
+
+   Fallback only, not the staging handoff (no vault item yet, local PGlite): without
+   `--password-stdin`, `--add` and `--reset-password` generate a password and print it **once**
+   to the terminal; it then has to be put in a vault item by hand.
 6. **Exact-build verification behind SSO:** Niels's evidence and Max's acceptance against
    Max's issue #18 functional brief (18 Oct 2026).
    Keep Vercel Authentication enabled; use an approved Vercel automation bypass or protected

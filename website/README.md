@@ -122,7 +122,7 @@ Run inside `website/`. Scripts that touch a database use PGlite unless `DATABASE
 | `npm run cms:selftest` | Integration checks on a throwaway PGlite in `.pglite-selftest/` |
 | `npm run cms:retention` | GDPR retention purge, dry run; `-- --apply` deletes, `-- --json` for a report |
 | `npm run cms:mfa-reset -- --email <address>` | Break-glass: remove a user's two-step verification when no other admin can; dry run by default, `-- --apply --expect-host <host>`. See `docs/staging-runbook.md` §14 |
-| `npm run staging:access` | Named staging reviewers for the staging access gate: `-- --add --identifier <id> [--note "<who / approval>"]`, `-- --list`, `-- --reset-password --identifier <id>`, `-- --revoke --identifier <id>`; writes to Neon need `--expect-host <host>`; a generated password is printed once. See `docs/staging-runbook.md` §20 |
+| `npm run staging:access` | Named staging reviewers for the staging access gate: `-- --add --identifier <id> [--note "<who / approval>"]`, `-- --list`, `-- --reset-password --identifier <id>`, `-- --revoke --identifier <id>`; writes to Neon need `--expect-host <host>`; vault-first: pipe the password from the secret store with `--password-stdin` (never printed); without it a generated password is printed once (fallback). See `docs/staging-runbook.md` §20 |
 
 ## Testing
 

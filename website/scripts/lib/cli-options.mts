@@ -1,6 +1,12 @@
 /**
- * Option parsing and the write-target guard shared by the content CLIs that
- * write to an existing database (`cms:rollout-aanbod`, `cms:patch-booking-cta`).
+ * Option parsing and the write-target guard shared by the CLIs that write to
+ * an existing database (`cms:rollout-aanbod`, `cms:patch-booking-cta`,
+ * `cms:patch-page-cleanup`, `cms:migrate-aanbod`, `cms:mfa-reset`,
+ * `staging:access`). Unit tests: `./cli-options.test.ts`.
+ *
+ * The guards never repeat an unknown argument or an argument's value in an
+ * error: either may be a secret pasted in the wrong place. An unknown option
+ * is identified only by its position.
  */
 
 /** Value of `--flag value` or `--flag=value`; null when the flag is absent. */
@@ -17,10 +23,46 @@ export function valueOf(args: string[], flag: string): string | null {
   return null;
 }
 
+/** `--flag` and `--flag=value` both give `--flag`. */
+function optionName(arg: string): string {
+  const equals = arg.indexOf('=');
+  return equals === -1 ? arg : arg.slice(0, equals);
+}
+
+/** Refuses any `--option` not in `known`; no part of it is ever shown. */
 export function rejectUnknownOptions(args: string[], known: readonly string[]): void {
+  args.forEach((arg, index) => {
+    if (!arg.startsWith('--')) return;
+    const name = optionName(arg);
+    if (known.includes(name)) return;
+    throw new Error(`unknown option #${index + 1} (name and value not shown)`);
+  });
+}
+
+/** Refuses `--flag=value` for the options in `flags`, which take no value (the value is never shown). */
+export function rejectBooleanFlagValues(args: string[], flags: readonly string[]): void {
   for (const arg of args) {
-    const flag = arg.split('=')[0];
-    if (arg.startsWith('--') && !known.includes(flag)) throw new Error(`unknown option ${arg}`);
+    const name = optionName(arg);
+    if (arg.startsWith('--') && name !== arg && flags.includes(name)) {
+      throw new Error(`${name} takes no value (value not shown)`);
+    }
+  }
+}
+
+/**
+ * Refuses an argument that is neither an option nor the value of one of
+ * `valueFlags` (`--flag value`; `--flag=value` carries its own and consumes
+ * nothing; a value never starts with `--`, as in {@link valueOf}). Reported
+ * by position only: a stray word may be a secret pasted in the wrong place.
+ */
+export function rejectPositionals(args: string[], valueFlags: readonly string[]): void {
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (!arg.startsWith('--')) {
+      throw new Error(`unexpected argument #${index + 1} (value not shown)`);
+    }
+    const next = args[index + 1];
+    if (valueFlags.includes(arg) && next !== undefined && !next.startsWith('--')) index += 1;
   }
 }
 
@@ -51,6 +93,6 @@ export function assertWriteTarget(
     );
   }
   if (expectHost !== host) {
-    throw new Error(`--expect-host ${expectHost} does not match DATABASE_URL host ${host}`);
+    throw new Error('--expect-host does not match DATABASE_URL host; nothing changed');
   }
 }

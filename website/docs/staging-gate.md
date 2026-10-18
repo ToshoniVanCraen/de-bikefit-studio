@@ -119,11 +119,39 @@ guarded like the others):
 
 Rules (Max's defaults): individual named accounts for humans only, approved by Toshoni,
 provisioned and revoked by Arend with `npm run staging:access` (`--add`, `--list`,
-`--reset-password`, `--revoke`; writes to Neon need `--expect-host`). The generated password
-is printed once and handed over privately. No shared login, no self-signup, and **no link to
-CMS users**: a CMS password never works here and the gate never reads `cms_users`. Revoking
-an account sets `revoked_at` and revokes its sessions; because the middleware checks both
-columns per request, every browser of that person is out on its next request.
+`--reset-password`, `--revoke`; writes to Neon need `--expect-host`). No shared login, no
+self-signup, and **no link to CMS users**: a CMS password never works here and the gate never
+reads `cms_users`. Revoking an account sets `revoked_at` and revokes its sessions; because the
+middleware checks both columns per request, every browser of that person is out on its next
+request.
+
+Passwords are **vault-first** for the live staging handoff: Arend first creates (or rotates)
+the password in the reviewer's vault item, which stays the source of truth and is what gets
+shared with the reviewer, and then pipes it into `--add` or `--reset-password` with
+`--password-stdin` (runbook §20 step 5). In that mode the CLI
+(`scripts/staging-access.mts`, rules in `src/lib/staging-gate/password-stdin.ts`):
+
+- never takes a password from its arguments or an environment variable; an unknown option
+  (`--password=…`), `--password-stdin=…` and any stray argument are refused without repeating
+  the value (`scripts/lib/cli-options.mts`);
+- refuses to read from a terminal (`process.stdin.isTTY`): the password comes from the secret
+  store, not the keyboard;
+- reads at most 802 bytes (`PASSWORD_STDIN_MAX_BYTES`: 200 characters of 4-byte UTF-8 plus a
+  `\r\n`) and stops reading at the first chunk past that bound;
+- requires strict UTF-8 and strips exactly one trailing `\n` or `\r\n` (what `op read` adds)
+  and nothing else, so spaces stay part of the password; a second line, control characters
+  (C0 and C1) and a byte order mark are refused;
+- applies the CMS strength rules (`validatePasswordStrength()`: 12–200 characters with a
+  lower-case letter, an upper-case letter and a digit), in the CLI and again in the account
+  core before any query;
+- stores only the scrypt hash and never prints, logs or returns the password: the core's
+  result has no `password` key in this mode. Every refusal is a fixed message without input,
+  and a failing write of the hash reports only its SQLSTATE, because Drizzle's error text
+  repeats the query parameters.
+
+Without `--password-stdin` the CLI keeps its earlier behaviour: it generates a password and
+prints it once. That mode stays for compatibility and local use; it is not the staging
+handoff.
 
 Login (`src/lib/staging-gate/auth.ts`, dedicated Route Handler
 `src/app/api/staging-gate/login/route.ts`):
@@ -176,8 +204,10 @@ path and continues after signing in.
 | `STAGING_GATE_HEALTH_TOKEN` | Preview, branch `staging`, Sensitive; a copy in Arend's secret store | Machine token for `site-health` (≥ 32 characters, `openssl rand -base64 48`, different from the secret). Grants staging-wide GET/HEAD gate access; no POST, no browser session. |
 | `VERCEL_GIT_COMMIT_REF` | set by Vercel (system variables exposed) | Branch marker; the gate refuses to activate without `staging`. |
 
-Secrets never appear in code, URLs, logs or responses. The CLI prints a generated password
-once and never a hash.
+Secrets never appear in code, URLs, logs or responses. Reviewer passwords live in the vault
+first and reach the CLI only on stdin (`--password-stdin`, §3): never in argv (npm echoes the
+command line and the shell keeps history), never in an environment variable, never printed.
+Only the fallback mode prints a password (a generated one, once); the CLI never prints a hash.
 
 ## 5. Tests
 
@@ -187,10 +217,22 @@ once and never a hash.
   invalid, wrong method), cookie forgery without a query, revoked/expired/idle sessions,
   activity touch, return-path validation (open redirects, backslashes, loops), header
   stamping, `/api/` 401 shape, the old matcher's exclusions reproduced exactly.
+  Vault-first input (`password-stdin.test.ts`): the bounded read stops at the first chunk past
+  802 bytes, one trailing newline stripped (a second is multi-line), embedded `\n`/`\r`,
+  empty, control characters, byte order mark, malformed UTF-8, the strength reasons, a strong
+  Unicode password accepted as given, no input in any refusal, the terminal rule. The shared
+  option guards (`scripts/lib/cli-options.test.ts`): unknown options, `--flag=value` on a
+  flag and stray arguments are refused without repeating the value.
 - Integration (`cms:selftest` section 20, `scripts/selftest/staging-gate.mts`): migration
   0013 twice, account CLI operations, login core (unknown/wrong/revoked identical, rate limit,
   success), the edge store against PGlite (lookup, touch, revoke → invalid on the next
-  lookup, absolute and idle expiry), logout, prune.
+  lookup, absolute and idle expiry), logout, prune. Part G (`staging-gate-stdin.mts`): a
+  provided password through the core (stored as a verifying hash, no `password` key in the
+  result, nothing in the log; weak, empty, multi-line and control characters refused before
+  any query with nothing changed; reset ends every session; a failing write shows only the
+  SQLSTATE; sign-in with the provided password, not the old one) and the real CLI in child
+  processes (piped password never printed, the generated fallback still printed once, refused
+  input exits 1 before any database work without repeating it).
 - Smoke (Arend, after deploy): see the runbook.
 
 ## 6. Rollout and rollback

@@ -2,8 +2,10 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 
 /**
- * Unit tests for pure modules (CLAUDE.md §5): `src/**\/*.test.ts` next to the
- * module, Node environment, no DOM, no database, no network.
+ * Unit tests for pure modules (CLAUDE.md §5): `*.test.ts` next to the module,
+ * under `src/**` and, for the pure CLI helpers of the scripts, `scripts/lib/**`
+ * (those import their siblings as `./x.mjs`, which resolves to `./x.mts`).
+ * Node environment, no DOM, no database, no network.
  *
  * `server-only` is aliased to an empty stub so a server module can be imported
  * when only its pure helpers are under test. Import `describe`/`it`/`expect`
@@ -17,7 +19,7 @@ export default defineConfig({
     },
   },
   test: {
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'scripts/lib/**/*.test.ts'],
     environment: 'node',
   },
 });
