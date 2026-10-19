@@ -28,7 +28,8 @@ export type SeedNavigationItem = {
   children: { label: string; href: string; external: boolean }[];
 };
 
-export const PHONE_LABEL = '0473 95 26 33';
+/** International form on every surface (Toshoni, 19 Oct 2026); the link was always +32. */
+export const PHONE_LABEL = '+32 473 95 26 33';
 export const PHONE_HREF = 'tel:+32473952633';
 /** Public e-mail address, confirmed by Toshoni on 13 Oct 2026 (register G-01). */
 export const CONTACT_EMAIL = 'info@debikefitstudio.be';
@@ -58,7 +59,12 @@ export const INSPECTION_CARDS = [
   },
 ];
 
-/** "Hoe verloopt een bikefit?" — prototype/index.html #werkwijze. */
+/**
+ * "Hoe verloopt een bikefit?" — prototype/index.html #werkwijze; steps 03 and
+ * 04 rewritten on Toshoni's review of 19 Oct 2026: what you take home (the
+ * analysis and advice on paper, the measurements for a new bike) and that an
+ * existing bike is adjusted on the spot.
+ */
 export const PROCESS_STEPS = [
   {
     number: '01',
@@ -73,12 +79,12 @@ export const PROCESS_STEPS = [
   {
     number: '03',
     title: 'Aanpassen',
-    body: 'We passen stap voor stap aan, met feedback na elke aanpassing, tot alles klopt.',
+    body: 'Heb je je fiets al, dan passen we ze ter plaatse aan: stap voor stap, met feedback na elke aanpassing, tot alles klopt.',
   },
   {
     number: '04',
-    title: 'Begrijpen',
-    body: 'Je vertrekt met begrip waarom jouw fiets staat zoals ze staat.',
+    title: 'Naar huis',
+    body: 'Je vertrekt met je analyse en advies op papier. Koop je een nieuwe fiets, dan weet je precies welke maten en afstelling bij jou passen. Heb je de fiets al, dan rij je naar huis op een fiets die bij jouw lichaam past — en begrijp je waarom ze staat zoals ze staat.',
   },
 ];
 

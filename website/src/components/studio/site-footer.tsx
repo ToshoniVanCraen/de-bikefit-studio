@@ -1,3 +1,4 @@
+import { Cookie } from 'lucide-react';
 import type { NavigationItem } from '@/lib/cms/blocks';
 import { LEGAL_LINKS } from '@/lib/studio/legal';
 import type { StudioChrome } from '@/lib/studio/site';
@@ -19,12 +20,15 @@ import { StudioLogo } from './logo';
  * empty (no street address or e-mail is on record yet).
  *
  * The legal row under the bottom bar is not a menu either, so it exists on
- * every deployment whatever the menu rows say:
- *  - hard links to the privacy statement and the terms, skipped when the
- *    footer menu already links the same path (the seed's "Juridisch" group);
- *  - "Cookies", which reopens the consent banner — only where analytics can
- *    load at all (same guard as the banner), otherwise there is no choice.
- * The row is left out when it would be empty.
+ * every deployment whatever the menu rows say: hard links to the privacy
+ * statement and the terms, skipped when the footer menu already links the
+ * same path (the seed's "Juridisch" group). The row is left out when empty.
+ *
+ * The bottom bar (19 Oct 2026) carries two icons on the right, vertically
+ * centred: Instagram, when the organisation's `sameAs` profiles hold an
+ * instagram.com URL (Instellingen → Organisatie), and the cookie control,
+ * which reopens the consent banner — only where analytics can load at all
+ * (same guard as the banner), otherwise there is no choice to make.
  *
  * The company identity line (Qarakter BV, registered office, BTW, RPR) and
  * the "city · hours" note in the bottom bar were removed at Toshoni's request
@@ -48,6 +52,7 @@ export function StudioSiteFooter({ chrome }: { chrome: StudioChrome }) {
     { label: 'Algemene voorwaarden', href: LEGAL_LINKS.terms },
   ].filter((link) => !menuHrefs.has(pathKey(link.href)));
   const showCookies = studioMeasurementId(settings) !== null;
+  const instagramUrl = instagramProfile(settings.organization.sameAs);
 
   return (
     <footer className="studio-footer">
@@ -101,9 +106,30 @@ export function StudioSiteFooter({ chrome }: { chrome: StudioChrome }) {
         <span>
           &copy; {year} {site.name}
         </span>
+        {instagramUrl || showCookies ? (
+          <span className="studio-footer__icons">
+            {instagramUrl ? (
+              <a
+                href={instagramUrl}
+                className="studio-footer__icon"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`${site.name} op Instagram (opent in een nieuw tabblad)`}
+              >
+                <InstagramGlyph />
+              </a>
+            ) : null}
+            {showCookies ? (
+              <ConsentSettingsLink className="studio-footer__icon studio-footer__cookies">
+                <Cookie aria-hidden="true" />
+                <span className="sr-only">Cookie-instellingen</span>
+              </ConsentSettingsLink>
+            ) : null}
+          </span>
+        ) : null}
       </div>
 
-      {legalLinks.length > 0 || showCookies ? (
+      {legalLinks.length > 0 ? (
         <div className="studio-footer__bottom studio-footer__legal">
           <ul className="studio-footer__legal-links">
             {legalLinks.map((link) => (
@@ -111,16 +137,44 @@ export function StudioSiteFooter({ chrome }: { chrome: StudioChrome }) {
                 <StudioLink href={link.href}>{link.label}</StudioLink>
               </li>
             ))}
-            {showCookies ? (
-              <li>
-                <ConsentSettingsLink className="studio-footer__cookies" />
-              </li>
-            ) : null}
           </ul>
         </div>
       ) : null}
     </footer>
   );
+}
+
+/** Lucide carries no brand icons any more; the glyph is the usual rounded square, lens and dot. */
+function InstagramGlyph() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+      <circle cx="12" cy="12" r="4" />
+      <circle cx="17.5" cy="6.5" r="0.75" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+/** The first instagram.com profile among the organisation's `sameAs` URLs, or null. */
+export function instagramProfile(sameAs: readonly string[]): string | null {
+  for (const raw of sameAs) {
+    const value = raw.trim();
+    try {
+      const url = new URL(value);
+      if (url.protocol === 'https:' && /(^|\.)instagram\.com$/i.test(url.hostname)) return value;
+    } catch {
+      // Not a URL: ignored, as the JSON-LD does.
+    }
+  }
+  return null;
 }
 
 /** `/privacy/` and `/privacy` count as the same destination. */

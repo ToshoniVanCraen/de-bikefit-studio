@@ -13,7 +13,7 @@ import {
   retargetContactLinks,
   type CleanupBlock,
 } from './page-cleanup';
-import { CONTACT_EMAIL } from './shared';
+import { CONTACT_EMAIL, PHONE_LABEL } from './shared';
 
 /**
  * `page-cleanup.fixture.json` is the seed definition of the touched pages and
@@ -24,6 +24,16 @@ import { CONTACT_EMAIL } from './shared';
  */
 
 const TARGETS = [...AANBOD_PAGES, AFSPRAAK_PAGE];
+
+/**
+ * The review of 19 Oct 2026 changed only the phone label on the pages this
+ * patch touches (`0473 95 26 33` → `+32 473 95 26 33`); the patch itself is
+ * the 13 Oct state, so the comparison reads the fixture with today's number.
+ */
+const OLD_PHONE_LABEL = '0473 95 26 33';
+function withTodaysPhone<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value).split(OLD_PHONE_LABEL).join(PHONE_LABEL)) as T;
+}
 
 function oldPage(slug: string) {
   const page = before.pages.find((entry) => entry.slug === slug);
@@ -82,13 +92,15 @@ describe('page cleanup patch (review 13 Oct 2026)', () => {
                 : block,
             )
           : result.next;
-      expect(next).toEqual(stored(targetPage(spec.slug).blocks));
+      expect(withTodaysPhone(next)).toEqual(stored(targetPage(spec.slug).blocks));
       expect(pageCleanupProblems(spec.slug, stored(old.blocks)).length).toBeGreaterThan(0);
       expect(pageCleanupProblems(spec.slug, result.next)).toEqual([]);
 
       const meta = spec.metaDescription;
       expect(meta?.from ?? old.metaDescription).toBe(old.metaDescription);
-      expect(meta?.to ?? old.metaDescription).toBe(targetPage(spec.slug).metaDescription);
+      expect(withTodaysPhone(meta?.to ?? old.metaDescription)).toBe(
+        targetPage(spec.slug).metaDescription,
+      );
 
       const again = cleanupBlocks(spec, result.next);
       expect(again.changes).toEqual([]);
@@ -156,12 +168,39 @@ describe('page cleanup patch (review 13 Oct 2026)', () => {
   });
 });
 
+/** The seed menus as the 13 Oct review left them (before the 19 Oct review moved the FAQ up and emptied the footer). */
+const MENUS_13_OCT = {
+  main: [
+    ['Aanbod', '/aanbod', ''],
+    ['Voor wie', '/voor-wie', ''],
+    ['Bikefit', '/bikefit', ''],
+    ['Ons team', '/ons-team', ''],
+    ['Contact', '/afspraak', ''],
+  ],
+  footer: [
+    ['Aanbod', '/aanbod', 'Studio'],
+    ['Voor wie', '/voor-wie', 'Studio'],
+    ['Bikefit', '/bikefit', 'Studio'],
+    ['Ons team', '/ons-team', 'Studio'],
+    ['Contact', '/afspraak', 'Studio'],
+    ['Afspraak maken', '/afspraak', 'Praktisch'],
+    ['Werkwijze', '/bikefit#werkwijze', 'Praktisch'],
+    ['Veelgestelde vragen', '/veelgestelde-vragen', 'Praktisch'],
+    ['Privacyverklaring', '/privacy', 'Juridisch'],
+    ['Algemene voorwaarden', '/algemene-voorwaarden', 'Juridisch'],
+  ],
+};
+
 describe('menus: Contact → /afspraak', () => {
-  it('turns the staging menus into today’s seed menus, once', () => {
+  it('turns the staging menus into the 13 Oct seed menus, once', () => {
     const main = retargetContactLinks(before.menus.main);
     const footer = retargetContactLinks(before.menus.footer);
-    expect(main.items).toEqual(MAIN_MENU);
-    expect(footer.items).toEqual(FOOTER_MENU);
+    const shape = (items: { label: string; href: string; group: string }[]) =>
+      items.map((item) => [item.label, item.href, item.group]);
+    expect(shape(main.items)).toEqual(MENUS_13_OCT.main);
+    expect(shape(footer.items)).toEqual(MENUS_13_OCT.footer);
+    // Today's seed is further along (19 Oct 2026) but still has no /contact link.
+    expect(retargetContactLinks(FOOTER_MENU).changed).toEqual([]);
     expect([...main.changed, ...footer.changed]).toEqual([
       '"Contact" /contact → /afspraak',
       '"Contact" /contact → /afspraak',

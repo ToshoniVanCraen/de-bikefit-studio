@@ -1270,3 +1270,29 @@ What Arend records (operational register, never a secret or password):
    `gate_misconfigured` to every request.
 4. Migration 0013 is additive and stays in place. If the feature is abandoned, revoke every
    account with `--revoke`.
+
+## 21. Content review of 19 Oct 2026 (no migration)
+
+Toshoni's review: "Ninove" no longer follows the name in the home hero; the hero subtitle lost
+"dichtbij"; "Wat we voor je doen" opens on "Eén vertrekpunt: jij en je fiets."; the phone number
+reads `+32 473 95 26 33` everywhere; `/bikefit` opens on "Waarom een bikefit" (its page head with the
+dead "Bekijk de bikefitdiensten" button is gone), the process says what you take home (analysis
+and advice on paper, the measurements for a new bike; an existing bike adjusted on the spot) and
+"Meten om beter te kijken" names the custom 3D-printed insoles and the saddles to test; the footer
+keeps only the legal column, the FAQ sits in the main menu before Contact, and the bottom bar has
+an Instagram icon and the cookie icon on the right. The seeds and block defaults hold the target;
+on an existing database (after the staging gate of §20, which is unrelated):
+
+1. `cms:rollout-aanbod` (dry run, then `--apply --expect-host <host>`; §9): re-applies the five pages
+   (home, /aanbod, /voor-wie, /bikefit, /ons-team) and both menus from the seeds, backup first,
+   refusing a page with unpublished draft edits. It leaves every other page, the settings and the
+   booking tables alone.
+2. `cms:seed -- --refresh-slug afspraak`: the phone number in "Voor je komt" and the meta
+   description.
+3. In `/admin` → **Instellingen** → Contact: *Telefoon (label)* `+32 473 95 26 33` (the link stays
+   `tel:+32473952633`); → Organisatie: the Instagram profile URL under *sameAs* (the footer icon
+   appears once it is there; it also lands in the JSON-LD).
+4. Checks: home hero kicker "De Bikefit Studio", subtitle without "dichtbij"; `/bikefit` starts at
+   "Waarom is een bikefit belangrijk?" and step 04 reads "Naar huis"; header menu has
+   *Veelgestelde vragen* before *Contact*; footer: Juridisch + Contact columns, © line with the two
+   icons on the right; `+32 473 95 26 33` in the footer and on `/afspraak`.

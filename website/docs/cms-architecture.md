@@ -997,8 +997,11 @@ becomes a single `UPDATE`.
 ]
 ```
 
-`group` exists for the footer's labelled columns (Studio / Bikefits / Contact
-in the prototype). Validate with `validateNavigationItems(items)`.
+`group` exists for the footer's labelled columns. Since 19 Oct 2026 the seed footer menu holds
+only the "Juridisch" group (the header carries the site links; the FAQ moved into the main
+menu); the footer's Contact column, the Instagram icon (the first instagram.com URL under
+Instellingen → Organisatie → sameAs) and the cookie control are rendered by `site-footer.tsx`,
+not by a menu. Validate with `validateNavigationItems(items)`.
 
 ### Site settings keys
 
@@ -1481,8 +1484,9 @@ components:
 - `ConsentBanner` (`src/components/studio/consent-banner.tsx`) asks once and
   stores the choice in the `cms_consent` cookie (`granted` | `denied`, 365
   days; §4 *Cookies*). *Weigeren* is as prominent as *Accepteren* and also
-  removes any `_ga*` cookies left from an earlier acceptance. The footer link
-  *Cookies* reopens the banner; the banner links to `/privacy` once published.
+  removes any `_ga*` cookies left from an earlier acceptance. The cookie icon on
+  the right of the footer's bottom bar (accessible name "Cookie-instellingen")
+  reopens the banner; the banner links to `/privacy` once published.
 - `Ga4Tag` (`src/lib/analytics/ga4-tag.tsx`) loads `gtag/js` only after
   `granted` and sends a `page_view` on every route change. The page fields
   come from `analyticsPageView()` (`src/lib/analytics/page-view.ts`), never
@@ -1497,7 +1501,7 @@ components:
 
 Before consent there is no analytics script, no request to Google and no
 analytics cookie. When the guard fails there is no banner either and no
-footer *Cookies* link (there is no choice to make).
+cookie icon in the footer (there is no choice to make).
 
 **Admin panel.** `src/components/admin/analytics-panel.tsx` on the dashboard,
 visible only with `analytics.read` (admins). It reads the GA4 Data API through

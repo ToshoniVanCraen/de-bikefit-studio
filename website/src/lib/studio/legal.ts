@@ -30,7 +30,7 @@ export const LEGAL_IDENTITY = {
   kbo: 'BE 1036.912.281',
   /** Rechtspersonenregister: court division of the registered office. */
   rpr: 'Brussel, Nederlandstalige afdeling',
-  phoneLabel: '0473 95 26 33',
+  phoneLabel: '+32 473 95 26 33',
   phoneHref: 'tel:+32473952633',
 } as const;
 

@@ -1,6 +1,7 @@
 /**
  * Verbatim copy of the 13 Oct 2026 redesign, supplied by Toshoni via Winston
  * (work block 2026-10-13-aanbod-staging-brief.md), and the team profiles.
+ * Review of 19 Oct 2026 (Toshoni): the hero subtitle lost "dichtbij".
  * The junior text follows Toshoni's site review of the same day: "jeugd"
  * instead of "junioren", and the four youth categories named.
  * Only Rutger has a source-backed bio (content/about.html §1); Robin and Goran
@@ -8,7 +9,7 @@
  */
 
 export const HERO_SUBTITLE =
-  'Van een fiets die beter past tot begeleiding die met je meegroeit. We luisteren naar jouw verhaal en helpen je op weg, in de studio, dichtbij of bij jou thuis.';
+  'Van een fiets die beter past tot begeleiding die met je meegroeit. We luisteren naar jouw verhaal en helpen je op weg, in de studio of bij jou thuis.';
 
 export const AANBOD_INTRO =
   'Elke fietser is anders. Daarom werkt De Bikefit Studio uitsluitend met ervaren, gediplomeerde professionals. Samen zoeken we wat bij jou past: van je eerste kilometers tot een nieuw sportief doel. Persoonlijke fietsbegeleiding, dichtbij — in de studio, op locatie of, waar mogelijk, bij jou thuis.';
@@ -18,6 +19,10 @@ export const JUNIOR_TEXT =
 
 export const MOTION_ANALYSIS_TEXT =
   'We gebruiken de nieuwste 3D-bewegingsanalyse om je houding en trapbeweging vanuit verschillende hoeken te bekijken. Die inzichten combineren we met jouw ervaring en de blik van onze fitter. Technologie helpt ons meten; jij blijft het vertrekpunt.';
+
+/** The studio's own means, named by Toshoni on 19 Oct 2026 (register E-03, E-04). */
+export const STUDIO_EXTRAS_TEXT =
+  'In de studio maken we ook 3D-geprinte schoenzolen op maat, en je kunt er een ruime keuze aan zadels uittesten. Zo krijgen ook je voeten en je zitvlak hun juiste plaats.';
 
 export const TEAM_INTRO =
   'Goede begeleiding begint bij de juiste mensen. We kiezen ons team op ervaring, vakkennis en de nodige diploma’s, maar ook op de manier waarop iemand luistert. Je krijgt een aanpak die bij jou past, met heldere uitleg en aandacht voor jouw doelen.';
