@@ -183,7 +183,7 @@ export function SettingsForms({
             name="allowIndexing"
             label="Indexeren toestaan"
             defaultChecked={settings.seo.allowIndexing}
-            hint="Uit op staging: robots.txt blokkeert dan alles."
+            hint="Aan: robots.txt laat zoekmachines toe (behalve /admin, /api en de oude webshop), elke gepubliceerde pagina en elk getoond aanbod krijgt index/follow en de sitemap wordt opgehaald. Uit (staging, altijd): robots.txt blokkeert alles en elke pagina staat op noindex. Werkt meteen na opslaan, zonder deploy."
           />
         </div>
       </SettingForm>

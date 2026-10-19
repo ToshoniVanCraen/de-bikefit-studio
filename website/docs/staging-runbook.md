@@ -337,8 +337,10 @@ production step (database, env vars, DNS, deploy) needs an explicit go; Arend ex
 
 - [ ] **DNS**: add the domain in Vercel, let it issue the certificate, then switch the
       record; `NEXT_PUBLIC_SITE_URL` must equal that domain.
-- [ ] **Flip `seo.allowIndexing` to `true`** on the production database only; verify
-      `/robots.txt` switches to `Allow: /` and pages lose `noindex`.
+- [ ] **Flip `seo.allowIndexing` to `true`** on the production database only (Instellingen →
+      SEO → *Indexeren toestaan*; no deploy needed); verify `/robots.txt` switches to `Allow: /`
+      with `/admin`, `/api` and the legacy webshop paths disallowed, the studio pages lose
+      `noindex`, and `/shop` keeps it (`cms-architecture.md` §5, "allowIndexing").
 - [ ] **`/sitemap.xml`** lists exactly the pages to index; submit it in Google Search
       Console.
 - [ ] **End-to-end check** on production as in `booking-runbook.md` §9 (free/busy, event,

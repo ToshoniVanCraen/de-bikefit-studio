@@ -1054,8 +1054,18 @@ and sending uses the env variables alone.
 `getSiteSettings()` always returns every key with schema defaults filled in, so
 it never throws and never returns `undefined` fields.
 
-**`seo.allowIndexing` defaults to `false`.** Worker C: `robots.ts` must emit
-`Disallow: /` while it is false. Staging must not be indexed.
+**`seo.allowIndexing` defaults to `false`.** It is the one switch (Instellingen → SEO →
+*Indexeren toestaan*) and it does everything at once, without a deploy: `/robots.txt`
+(`src/app/robots.ts`, rendered per request; the rules are the pure `lib/studio/robots-rules.ts`,
+tested) answers `Disallow: /` while it is off and, when on, allows the studio site and keeps
+`/admin`, `/api` and the whole legacy webshop out (`NEVER_CRAWLED`); every published page and
+every shown offering gets `index, follow` in its metadata when on (`shouldIndex()` in
+`lib/studio/seo.ts`, AND-ed with the page's own `noIndex`) and `noindex, nofollow` when off;
+`/sitemap.xml` lists the indexable pages in both states (it is only fetched when robots allow
+it). The legacy webshop routes carry `noindex` in their own metadata whatever the switch says
+(`webshopMetadata`, 19 Oct 2026). The settings reader is tag-cached and busted on save, and the
+studio pages render per request, so the flip is live at once. Staging must never be indexed
+(the staging gate adds `X-Robots-Tag: noindex` on its host on top).
 
 ---
 
