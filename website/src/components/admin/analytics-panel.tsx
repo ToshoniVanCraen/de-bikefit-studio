@@ -1,8 +1,12 @@
 import Link from 'next/link';
 
-import { Badge } from '@/components/ui/badge';
+import { GoogleAnalyticsLink } from '@/components/admin/charts/google-analytics-link';
 import { badgeTone, FLASH_TONES } from '@/components/admin/tones';
+import { Badge } from '@/components/ui/badge';
+import { buttonVariants } from '@/components/ui/button';
 import { resolveMeasurementId } from '@/lib/analytics/consent';
+import { formatClock, formatDayRange } from '@/lib/analytics/dates';
+import { sourceLabel } from '@/lib/analytics/deep-dive-labels';
 import {
   getAnalyticsOverview,
   normalizePropertyId,
@@ -20,7 +24,9 @@ import { env } from '@/lib/env';
  * Dashboard panel with GA4 insights (Worker B places it first on `/admin`).
  *
  * Async server component. Renders nothing for users without `analytics.read`.
- * Connected: three KPI tiles and two compact tables for the last 28 days.
+ * Connected: three KPI tiles and two compact tables for the last 28 days,
+ * a "Details" button to the deep dive (`/admin/analytics`) and an icon
+ * button that opens the property in Google Analytics.
  * Not connected: the three setup steps, each marked done or to do.
  *
  * The numbers come from `getAnalyticsOverview()` (cached one hour, never
@@ -31,34 +37,6 @@ import { env } from '@/lib/env';
 const CARD = 'border border-border bg-card p-5 sm:p-6';
 
 const numberFormat = new Intl.NumberFormat('nl-BE');
-const dayFormat = new Intl.DateTimeFormat('nl-BE', {
-  day: 'numeric',
-  month: 'short',
-  timeZone: 'UTC',
-});
-const dayYearFormat = new Intl.DateTimeFormat('nl-BE', {
-  day: 'numeric',
-  month: 'short',
-  year: 'numeric',
-  timeZone: 'UTC',
-});
-const timeFormat = new Intl.DateTimeFormat('nl-BE', {
-  hour: '2-digit',
-  minute: '2-digit',
-  timeZone: 'Europe/Brussels',
-});
-
-function formatRange(start: string, end: string): string {
-  const from = new Date(`${start}T00:00:00Z`);
-  const to = new Date(`${end}T00:00:00Z`);
-  return `${dayFormat.format(from)} – ${dayYearFormat.format(to)}`;
-}
-
-function sourceLabel(source: string): string {
-  if (source === '(direct)') return 'Direct';
-  if (!source || source === '(not set)') return 'Onbekend';
-  return source;
-}
 
 export async function AnalyticsPanel() {
   const user = await getCurrentCmsUser();
@@ -103,22 +81,21 @@ function ConnectedPanel({
             Google Analytics
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Laatste 28 dagen · {formatRange(overview.range.start, overview.range.end)} · bijgewerkt
-            om {timeFormat.format(new Date(overview.fetchedAt))}
+            Laatste 28 dagen · {formatDayRange(overview.range.start, overview.range.end)} ·
+            bijgewerkt om {formatClock(overview.fetchedAt)}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <Badge variant="success" className={badgeTone('success')}>
             Verbonden
           </Badge>
-          <a
-            href={`https://analytics.google.com/analytics/web/#/p${overview.propertyId}/reports/intelligenthome`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm underline underline-offset-4 hover:text-primary"
+          <Link
+            href="/admin/analytics"
+            className={buttonVariants({ variant: 'outline', size: 'sm' })}
           >
-            Open in Google Analytics
-          </a>
+            Details
+          </Link>
+          <GoogleAnalyticsLink propertyId={overview.propertyId} />
         </div>
       </div>
 

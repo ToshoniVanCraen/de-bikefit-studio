@@ -27,13 +27,17 @@ import { toGa4ReadError } from './ga4-errors';
  * with a Dutch message that is safe to show to an admin. For a failed read
  * that is fixed text from `ga4-errors.ts`, never Google's; the server log gets
  * `[analytics] ga4_request_failed` and at most the HTTP status.
+ *
+ * The deep-dive page (`/admin/analytics`, `ga4-deep-dive.ts`, 19 Oct 2026)
+ * reuses the pieces exported below: the configuration check, the access
+ * token, `runReport()` and the row helpers.
  */
 
 export const ANALYTICS_CACHE_TAG = 'analytics';
 
 const SCOPE = 'https://www.googleapis.com/auth/analytics.readonly';
 const API = 'https://analyticsdata.googleapis.com/v1beta';
-const CACHE_SECONDS = 3600;
+export const CACHE_SECONDS = 3600;
 const RANGE_DAYS = 28;
 const REQUEST_TIMEOUT_MS = 10_000;
 const TIMEZONE = 'Europe/Brussels';
@@ -58,7 +62,7 @@ export type AnalyticsOverview =
 
 export type AnalyticsNotConnected = Extract<AnalyticsOverview, { connected: false }>;
 
-type ServiceAccount = { clientEmail: string; privateKey: string; privateKeyId?: string };
+export type ServiceAccount = { clientEmail: string; privateKey: string; privateKeyId?: string };
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -113,7 +117,7 @@ async function resolvePropertyId(): Promise<{ id: string | null; raw: string }> 
 // Dates (Brussels calendar)
 // ---------------------------------------------------------------------------
 
-function brusselsToday(now = new Date()): string {
+export function brusselsToday(now = new Date()): string {
   // en-CA formats as YYYY-MM-DD.
   return new Intl.DateTimeFormat('en-CA', {
     timeZone: TIMEZONE,
@@ -123,7 +127,7 @@ function brusselsToday(now = new Date()): string {
   }).format(now);
 }
 
-function addDays(ymd: string, days: number): string {
+export function addDays(ymd: string, days: number): string {
   const date = new Date(`${ymd}T00:00:00Z`);
   date.setUTCDate(date.getUTCDate() + days);
   return date.toISOString().slice(0, 10);
@@ -139,12 +143,12 @@ export function lastFullDays(days = RANGE_DAYS, now = new Date()): { start: stri
 // Data API
 // ---------------------------------------------------------------------------
 
-type RunReportResponse = {
-  rows?: Array<{
-    dimensionValues?: Array<{ value?: string }>;
-    metricValues?: Array<{ value?: string }>;
-  }>;
+export type RunReportRow = {
+  dimensionValues?: Array<{ value?: string }>;
+  metricValues?: Array<{ value?: string }>;
 };
+
+export type RunReportResponse = { rows?: RunReportRow[] };
 
 /**
  * A non-2xx Data API response. The message is Google's text: only tested in
@@ -162,7 +166,7 @@ class Ga4ApiError extends Error {
   }
 }
 
-async function runReport(
+export async function runReport(
   accessToken: string,
   propertyId: string,
   body: Record<string, unknown>,
@@ -191,22 +195,17 @@ async function runReport(
   return (await response.json()) as RunReportResponse;
 }
 
-function metric(
-  row: NonNullable<RunReportResponse['rows']>[number] | undefined,
-  index: number,
-): number {
+export function metric(row: RunReportRow | undefined, index: number): number {
   const value = Number(row?.metricValues?.[index]?.value ?? 0);
   return Number.isFinite(value) ? value : 0;
 }
 
-function dimension(row: NonNullable<RunReportResponse['rows']>[number], index: number): string {
+export function dimension(row: RunReportRow, index: number): string {
   return row.dimensionValues?.[index]?.value ?? '';
 }
 
-async function fetchOverview(
-  propertyId: string,
-  account: ServiceAccount,
-): Promise<Extract<AnalyticsOverview, { connected: true }>> {
+/** A short-lived access token for the service account (scope analytics.readonly). */
+export async function getAccessToken(account: ServiceAccount): Promise<string> {
   const client = new JWT({
     email: account.clientEmail,
     key: account.privateKey,
@@ -215,6 +214,14 @@ async function fetchOverview(
   });
   const { token } = await client.getAccessToken();
   if (!token) throw new Error('Geen toegangstoken ontvangen van Google.');
+  return token;
+}
+
+async function fetchOverview(
+  propertyId: string,
+  account: ServiceAccount,
+): Promise<Extract<AnalyticsOverview, { connected: true }>> {
+  const token = await getAccessToken(account);
 
   const range = lastFullDays();
   const dateRanges = [{ startDate: range.start, endDate: range.end }];
@@ -282,19 +289,18 @@ async function loadOverview(
  * effect at once. A hash rather than the e-mail: Next prints the key when a
  * background refresh fails.
  */
-function accountFingerprint(account: ServiceAccount): string {
+export function accountFingerprint(account: ServiceAccount): string {
   return createHash('sha256').update(account.clientEmail).digest('hex').slice(0, 16);
 }
 
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
-
 /**
- * Users, sessions and page views for the last 28 days plus the top 10 pages
- * and top 5 sources. Cached for an hour (tag `analytics`). Never throws.
+ * The property and the service account, or why there is no connection. Shared
+ * by the overview and the deep dive, so both say the same thing.
  */
-export async function getAnalyticsOverview(): Promise<AnalyticsOverview> {
+export async function analyticsConfig(): Promise<
+  | { ok: true; propertyId: string; account: ServiceAccount }
+  | ({ ok: false } & AnalyticsNotConnected)
+> {
   const account = features.ga4Data ? parseServiceAccountJson(env.GA4_SERVICE_ACCOUNT_JSON) : null;
 
   let property: { id: string | null; raw: string };
@@ -306,6 +312,7 @@ export async function getAnalyticsOverview(): Promise<AnalyticsOverview> {
 
   if (!property.id) {
     return {
+      ok: false,
       connected: false,
       reason: 'missing_property',
       message: property.raw
@@ -316,6 +323,7 @@ export async function getAnalyticsOverview(): Promise<AnalyticsOverview> {
 
   if (!account) {
     return {
+      ok: false,
       connected: false,
       reason: 'missing_credentials',
       message: env.GA4_SERVICE_ACCOUNT_JSON?.trim()
@@ -324,7 +332,33 @@ export async function getAnalyticsOverview(): Promise<AnalyticsOverview> {
     };
   }
 
-  const propertyId = property.id;
+  return { ok: true, propertyId: property.id, account };
+}
+
+/** The `{ connected: false, reason: 'error' }` answer for a failed read, logged as a fixed code. */
+export function readFailure(error: unknown, propertyId: string): AnalyticsNotConnected {
+  const failure = toGa4ReadError(error, propertyId);
+  // A fixed code and at most the HTTP status (400–599), never the error:
+  // it can hold Google's text or the service account (CLAUDE.md §4).
+  if (failure.status === null) console.error('[analytics] ga4_request_failed');
+  else console.error('[analytics] ga4_request_failed', failure.status);
+  return { connected: false, reason: 'error', message: failure.description };
+}
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
+/**
+ * Users, sessions and page views for the last 28 days plus the top 10 pages
+ * and top 5 sources. Cached for an hour (tag `analytics`). Never throws.
+ */
+export async function getAnalyticsOverview(): Promise<AnalyticsOverview> {
+  const config = await analyticsConfig();
+  if (!config.ok) {
+    return { connected: false, reason: config.reason, message: config.message };
+  }
+  const { propertyId, account } = config;
   const range = lastFullDays();
 
   try {
@@ -338,11 +372,6 @@ export async function getAnalyticsOverview(): Promise<AnalyticsOverview> {
     return await load();
   } catch (error) {
     // A Ga4ReadError from loadOverview(), or an error of the cache itself.
-    const failure = toGa4ReadError(error, propertyId);
-    // A fixed code and at most the HTTP status (400–599), never the error:
-    // it can hold Google's text or the service account (CLAUDE.md §4).
-    if (failure.status === null) console.error('[analytics] ga4_request_failed');
-    else console.error('[analytics] ga4_request_failed', failure.status);
-    return { connected: false, reason: 'error', message: failure.description };
+    return readFailure(error, propertyId);
   }
 }

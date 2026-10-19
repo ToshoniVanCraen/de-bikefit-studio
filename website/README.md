@@ -45,7 +45,7 @@ website/
 │   │   │                    actions/ (server actions, sanitiser)
 │   │   ├── booking/         availability engine, time zones, repo, public booking, Google Calendar
 │   │   ├── email/           Resend client, settings (env or /admin/email), ICS builder, Dutch templates
-│   │   ├── analytics/       consent cookie, GA4 tag, GA4 Data API
+│   │   ├── analytics/       consent cookie, GA4 tag, GA4 Data API (panel + deep dive)
 │   │   ├── studio/          locale, SEO, JSON-LD, OG images, legal identity
 │   │   └── env.ts           zod-validated env vars + `features` flags
 │   └── middleware.ts        Clerk pass-through + /admin cookie redirect (no database)

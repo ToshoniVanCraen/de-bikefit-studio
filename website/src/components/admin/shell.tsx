@@ -32,6 +32,7 @@ const NAV: Array<
   AdminNavItem & { permission?: CmsPermission; anyOf?: CmsPermission[]; notFor?: CmsRole[] }
 > = [
   { href: '/admin', label: 'Overzicht' },
+  { href: '/admin/analytics', label: 'Analytics', permission: 'analytics.read' },
   { href: '/admin/bookings', label: 'Afspraken', anyOf: ['booking.read', 'booking.read.own'] },
   { href: '/admin/agenda', label: 'Mijn agenda', permission: 'provider.self' },
   // The offer: copy, shown or not, variants with their booking services and
