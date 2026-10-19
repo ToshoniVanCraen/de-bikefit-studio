@@ -9,8 +9,9 @@ to them too. Repository-wide conventions: [`../../CLAUDE.md`](../../CLAUDE.md).
 
 **Status:** implemented — schema and migrations, dual-driver DB client,
 auth/roles/sessions, block registry, read and write APIs, the admin UI at
-`/admin`, the public Dutch site, booking, the consent-gated GA4 tag and the
-admin analytics panel. Rollout per environment: `staging-runbook.md`.
+`/admin`, the public Dutch site, booking, the consent-gated GA4 tag, the
+admin analytics panel and the analytics deep dive (`/admin/analytics`).
+Rollout per environment: `staging-runbook.md`.
 
 **Hard rule that never changes:** the Qarakter webshop (`users`, `products`,
 `orders`, `order_items`, `/shop`, `/checkout`, `/account`, Clerk, Stripe)
@@ -33,7 +34,7 @@ File ownership during parallel work comes from the work-block file (see
 | Admin | `src/app/admin/**`, `src/components/admin/**`, `src/lib/cms/actions/**` (server actions + `sanitize.ts`), `src/app/api/cms/media/**` |
 | Public site | `src/app/(studio)/**`, `src/components/studio/**`, `src/lib/studio/**`, `src/app/sitemap.ts`, `src/app/robots.ts` |
 | Booking | `src/lib/booking/**`, `src/lib/email/**`, `src/app/api/google/oauth/**` — see `booking-architecture.md` |
-| Analytics | `src/lib/analytics/{consent,ga4-tag,page-view,ga4,ga4-errors}.ts(x)`, `src/components/studio/{analytics,consent-banner}.tsx`, `src/components/admin/analytics-panel.tsx` |
+| Analytics | `src/lib/analytics/{consent,ga4-tag,page-view,ga4,ga4-errors}.ts(x)`, `src/components/studio/{analytics,consent-banner}.tsx`, `src/components/admin/analytics-panel.tsx`; the deep dive: `src/lib/analytics/{ga4-deep-dive,deep-dive-shape,deep-dive-labels,dates}.ts`, `src/components/admin/charts/*`, `src/app/admin/(dashboard)/analytics/` |
 | Scripts | `scripts/{db-migrate,cms-bootstrap,cms-seed,cms-seed-booking,cms-rollout-aanbod,cms-patch-booking-cta,cms-patch-page-cleanup,cms-patch-cadeaubon,cms-mfa-reset,cms-selftest,cms-retention,import-editorial-image}.mts`, shared helpers in `scripts/lib/`, self-test sections 5b–5f and 15–19 in `scripts/selftest/` |
 | Shared | `src/middleware.ts`, `src/lib/env.ts`, `.env.example`, `next.config.ts`, `package.json`, `src/app/layout.tsx` |
 
@@ -813,7 +814,7 @@ navigation, redirects or settings**.
 | View all providers | `provider.read` | ❌ | ✅ | ✅ |
 | Manage providers | `provider.manage` | ❌ | ❌ | ✅ |
 | Own profile, hours, exceptions, Google | `provider.self` | ✅ | ❌ | ✅ |
-| GA4 dashboard panel | `analytics.read` | ❌ | ❌ | ✅ |
+| GA4 dashboard panel and the `/admin/analytics` deep dive | `analytics.read` | ❌ | ❌ | ✅ |
 
 The provider set is exactly `booking.read.own`, `booking.manage.own`,
 `service.read`, `service.subscribe.own`, `location.read`, `provider.self` (the
@@ -1260,7 +1261,7 @@ The full contract (every variable, per environment, secret or not) is in
 | `CMS_BOOTSTRAP_PASSWORD` | bootstrap only | Pass inline to `npm run cms:bootstrap`. Never store it in `.env.local` or in Vercel. |
 | `NEXT_PUBLIC_SITE_URL` | deployed envs | Canonical origin for canonicals, sitemap, OG, e-mail links and the Google OAuth redirect URI. `siteUrl()` in `src/lib/env.ts` falls back to `NEXT_PUBLIC_APP_URL`, then `VERCEL_URL`, then localhost; the Google OAuth redirect URI does not use those fallbacks outside development (`booking-architecture.md` §7). |
 | `NEXT_PUBLIC_GA4_MEASUREMENT_ID` | no | GA4 tag id. Loaded only when valid, `analytics.enabled` is true and the visitor consented (§12.7). Build-time. |
-| `GA4_PROPERTY_ID`, `GA4_SERVICE_ACCOUNT_JSON` | no | Admin analytics panel (GA4 Data API). |
+| `GA4_PROPERTY_ID`, `GA4_SERVICE_ACCOUNT_JSON` | no | Admin analytics panel and deep dive (GA4 Data API). |
 | `CMS_PGLITE_DIR` | no | Override the local PGlite directory. |
 | `CMS_PGLITE_AUTO_MIGRATE` | no | `"false"` disables auto-migration on first PGlite use. |
 
@@ -1517,7 +1518,41 @@ cookie icon in the footer (there is no choice to make).
 visible only with `analytics.read` (admins). It reads the GA4 Data API through
 `src/lib/analytics/ga4.ts` with a service account (`GA4_SERVICE_ACCOUNT_JSON`;
 property id from `GA4_PROPERTY_ID` or the `analytics.ga4PropertyId` setting),
-cached for one hour, and shows setup steps when not connected.
+cached for one hour, and shows setup steps when not connected. Connected, it
+carries a **Details** button to the deep dive and an icon button that opens
+the property in Google Analytics.
+
+**Deep dive** (`/admin/analytics`, nav entry *Analytics*, `analytics.read`;
+19 Oct 2026). One page, `?periode=7|28|90` full days (Brussels calendar,
+default 28), every figure compared with the period of the same length right
+before it:
+
+- six KPI tiles (visitors, new visitors, sessions, page views, engagement
+  rate, average session duration) with the change against the previous
+  period and, for the first three, a sparkline of the daily values;
+- a line chart of sessions per day, current period over the previous one,
+  with a crosshair tooltip (mouse and arrow keys), a legend and a table view;
+- ranked bar lists: top 12 pages (views, with visitors), channels
+  (`sessionDefaultChannelGroup`), sources, devices and cities, each with the
+  number and its share;
+- the booking funnel: visitors of `/afspraak` against visitors of
+  `/afspraak/bevestigd`, with the conversion of the previous period.
+
+Data: `src/lib/analytics/ga4-deep-dive.ts` (`getAnalyticsDeepDive(period)`)
+runs eight `runReport` calls in parallel through the pieces `ga4.ts` exports
+for it (`analyticsConfig()`, `getAccessToken()`, `runReport()`,
+`readFailure()`), two of them with two `dateRanges` (GA4 then tags every row
+with `date_range_0` / `date_range_1`). Cached one hour per period
+(`unstable_cache`, tag `analytics`, key with the property, the period, the
+end date and the account fingerprint); a failure is not cached and shows the
+same fixed Dutch text as the panel. The shaping (day series with gaps filled,
+deltas, nl-BE formats, axis and path geometry) is pure in
+`deep-dive-shape.ts`, the Dutch labels for Google's dimension values in
+`deep-dive-labels.ts`, both unit-tested. Charts are inline SVG and HTML under
+`src/components/admin/charts/`, server components except `line-chart.tsx`
+(the hover layer and the table toggle). Colours are tokens only: the current
+period in burgundy-700, the previous period in ink-500 and dashed, so the two
+are never told apart by colour alone.
 
 **What a failed read shows and logs** (14 Oct 2026). Only fixed Dutch text from
 `src/lib/analytics/ga4-errors.ts` (`toGa4ReadError()`), never Google's message,

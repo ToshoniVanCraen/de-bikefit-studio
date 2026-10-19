@@ -11,7 +11,7 @@ What this switches on:
 | **Google Calendar** (per provider, OAuth) | Availability = business hours minus existing bookings. No Google events. | Busy times in the provider's Google Calendar block slots; every booking becomes an event (without guests) in that calendar. |
 | **Resend** (e-mail) | Booking mails are written to the server log and skipped. | Customer gets a confirmation with an `.ics` file and a cancel link; the provider gets a notification. |
 | **GA4 tag** (public site) | No analytics at all, no cookie banner. | Cookie banner; GA4 loads **only after "Accepteren"**. |
-| **GA4 Data API** (admin dashboard) | Dashboard panel shows "Google Analytics: niet verbonden" with the setup steps. | Dashboard opens with users, sessions, page views, top pages and top sources for the last 28 days. |
+| **GA4 Data API** (admin dashboard) | Dashboard panel shows "Google Analytics: niet verbonden" with the setup steps. | Dashboard opens with users, sessions, page views, top pages and top sources for the last 28 days; **Details** opens `/admin/analytics` with graphs for 7, 28 or 90 days against the previous period. |
 
 Everything degrades gracefully: the booking flow works with none of these set.
 
@@ -19,7 +19,7 @@ Everything degrades gracefully: the booking flow works with none of these set.
 > `src/app/api/google/oauth/{start,callback}/route.ts` (connect flow),
 > `src/lib/email/**` (Resend), `src/components/studio/{analytics,consent-banner}.tsx`
 > (tag + banner), `src/lib/analytics/{ga4-tag,page-view}.ts(x)` (what the tag sends, §9.5),
-> `src/lib/analytics/ga4.ts` (Data API), architecture in `docs/booking-architecture.md`.
+> `src/lib/analytics/{ga4,ga4-deep-dive}.ts` (Data API), architecture in `docs/booking-architecture.md`.
 
 ---
 
@@ -539,9 +539,13 @@ Do this on staging after every change to the integrations.
    A Google request with `kanarie` in it, or a `dl`/`dr` with a query key
    other than `utm_*` or a `#`, is a failure: untick *Analytics
    ingeschakeld* (§5.3) and keep GA4 off in production until it is fixed.
-6. **Dashboard.** `/admin` as admin: the Google Analytics panel shows numbers.
-   A new property needs 24–48 h before the Data API returns data (realtime is
-   not included), and the panel caches for one hour.
+6. **Dashboard.** `/admin` as admin: the Google Analytics panel shows numbers,
+   and **Details** opens `/admin/analytics` (the deep dive: KPI tiles with the
+   change against the previous period, sessions per day, pages, channels,
+   sources, devices, cities and the funnel from `/afspraak` to
+   `/afspraak/bevestigd`). A new property needs 24–48 h before the Data API
+   returns data (realtime is not included); the panel and the deep dive cache
+   for one hour.
 
 ## 10. Troubleshooting
 
@@ -648,7 +652,8 @@ The panel names the problem:
   `[analytics] ga4_request_failed` and, for a Data API error, the HTTP status.
   Retry after a few minutes; if it persists, check the service account and key
   in Cloud console (§5.2).
-- All zeros → new property: wait 24–48 h. The panel refreshes at most hourly.
+- All zeros → new property: wait 24–48 h. The panel and the deep dive refresh
+  at most hourly (the deep dive per period).
 
 ### No cookie banner on the public site
 
