@@ -24,11 +24,12 @@ import { StudioLogo } from './logo';
  * statement and the terms, skipped when the footer menu already links the
  * same path (the seed's "Juridisch" group). The row is left out when empty.
  *
- * The bottom bar (19 Oct 2026) carries two icons on the right, vertically
- * centred: Instagram, when the organisation's `sameAs` profiles hold an
- * instagram.com URL (Instellingen → Organisatie), and the cookie control,
- * which reopens the consent banner — only where analytics can load at all
- * (same guard as the banner), otherwise there is no choice to make.
+ * "Volg ons" (19 Oct 2026) is a footer column above the line, shown when the
+ * organisation's `sameAs` profiles hold an instagram.com URL (Instellingen →
+ * Organisatie): the Instagram glyph with its name. The bottom bar carries the
+ * cookie control on the right, vertically centred: it reopens the consent
+ * banner — only where analytics can load at all (same guard as the banner),
+ * otherwise there is no choice to make.
  *
  * The company identity line (Qarakter BV, registered office, BTW, RPR) and
  * the "city · hours" note in the bottom bar were removed at Toshoni's request
@@ -100,31 +101,38 @@ export function StudioSiteFooter({ chrome }: { chrome: StudioChrome }) {
             {contact.hours ? <li>{contact.hours}</li> : null}
           </ul>
         </div>
+
+        {instagramUrl ? (
+          <div className="studio-footer__col studio-footer__social">
+            <h2>Volg ons</h2>
+            <ul>
+              <li>
+                <a
+                  href={instagramUrl}
+                  className="studio-footer__social-link"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <InstagramGlyph />
+                  <span>Instagram</span>
+                  <span className="sr-only"> (opent in een nieuw tabblad)</span>
+                </a>
+              </li>
+            </ul>
+          </div>
+        ) : null}
       </div>
 
       <div className="studio-footer__bottom">
         <span>
           &copy; {year} {site.name}
         </span>
-        {instagramUrl || showCookies ? (
+        {showCookies ? (
           <span className="studio-footer__icons">
-            {instagramUrl ? (
-              <a
-                href={instagramUrl}
-                className="studio-footer__icon"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={`${site.name} op Instagram (opent in een nieuw tabblad)`}
-              >
-                <InstagramGlyph />
-              </a>
-            ) : null}
-            {showCookies ? (
-              <ConsentSettingsLink className="studio-footer__icon studio-footer__cookies">
-                <Cookie aria-hidden="true" />
-                <span className="sr-only">Cookie-instellingen</span>
-              </ConsentSettingsLink>
-            ) : null}
+            <ConsentSettingsLink className="studio-footer__icon studio-footer__cookies">
+              <Cookie aria-hidden="true" />
+              <span className="sr-only">Cookie-instellingen</span>
+            </ConsentSettingsLink>
           </span>
         ) : null}
       </div>
