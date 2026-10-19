@@ -37,8 +37,7 @@ export const AFSPRAAK_PAGE: SeedPage = {
   source:
     'content/booking.html + booking block + content/about.html answers; review 13 Oct 2026 ("Kies je moment" first, "Andere vraag?")',
   metaTitle: 'Een afspraak maken',
-  metaDescription:
-    'Boek je bikefit in Ninove online: kies je fit, een dag en een uur. Liever bellen? 0473 95 26 33. Breng je fiets, schoenen en fietskleding mee.',
+  metaDescription: `Boek je bikefit in Ninove online: kies je fit, een dag en een uur. Liever bellen? ${PHONE_LABEL}. Breng je fiets, schoenen en fietskleding mee.`,
   structuredDataType: 'WebPage',
   blocks: [
     {

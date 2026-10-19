@@ -1958,6 +1958,30 @@
     margin-top: var(--ds-space-xs);
     align-items: baseline;
   }
+  /* Instagram + cookie control: icons on the right of the bottom bar, centred on its line. */
+  .studio-footer__icons {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ds-space-sm);
+    margin-inline-start: auto;
+  }
+  .studio-footer__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    margin: -0.75rem 0;
+    color: var(--ds-color-fg-inverse-muted);
+  }
+  .studio-footer__icon svg {
+    width: 1.375rem;
+    height: 1.375rem;
+  }
+  .studio-footer__icon:hover,
+  .studio-footer__icon:focus-visible {
+    color: var(--ds-color-fg-inverse);
+  }
   .studio-footer__legal-links {
     display: flex;
     flex-wrap: wrap;
@@ -1967,7 +1991,6 @@
     font: inherit;
     letter-spacing: inherit;
     text-transform: inherit;
-    color: inherit;
     background: none;
     border: 0;
     padding: 0;

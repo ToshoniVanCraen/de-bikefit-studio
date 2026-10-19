@@ -159,26 +159,27 @@ describe('aanbod rollout pages', () => {
 });
 
 describe('aanbod navigation', () => {
-  it('main menu: Aanbod, Voor wie, Bikefit, Ons team, Contact (→ /afspraak) — no Home', () => {
+  it('main menu: Aanbod, Voor wie, Bikefit, Ons team, FAQ, Contact (→ /afspraak) — no Home', () => {
     expect(validateNavigationItems(MAIN_MENU).ok).toBe(true);
     expect(MAIN_MENU.map((item) => [item.label, item.href])).toEqual([
       ['Aanbod', '/aanbod'],
       ['Voor wie', '/voor-wie'],
       ['Bikefit', '/bikefit'],
       ['Ons team', '/ons-team'],
+      ['Veelgestelde vragen', '/veelgestelde-vragen'],
       ['Contact', '/afspraak'],
     ]);
   });
 
-  it('footer keeps FAQ, booking and both legal pages; no link to the retired page', () => {
+  it('footer menu is the legal column only (19 Oct 2026); no link to the retired page', () => {
     expect(validateNavigationItems(FOOTER_MENU).ok).toBe(true);
+    expect(FOOTER_MENU.map((item) => [item.group, item.href])).toEqual([
+      ['Juridisch', '/privacy'],
+      ['Juridisch', '/algemene-voorwaarden'],
+    ]);
     const hrefs = FOOTER_MENU.map((item) => item.href);
-    for (const href of ['/veelgestelde-vragen', '/afspraak', '/privacy', '/algemene-voorwaarden']) {
-      expect(hrefs).toContain(href);
-    }
     expect(hrefs).not.toContain('/over-ons');
     expect(hrefs).not.toContain('/contact');
-    expect(hrefs).not.toContain('/');
   });
 
   it('redirects /over-ons to /ons-team and the old voucher path to /cadeaubon, permanently', () => {

@@ -59,7 +59,7 @@ const DEFAULT_SETTINGS = {
     logoMediaId: null,
   },
   contact: {
-    phoneLabel: '0473 95 26 33',
+    phoneLabel: '+32 473 95 26 33',
     phoneHref: 'tel:+32473952633',
     // Confirmed by Toshoni on 13 Oct 2026 (register G-01).
     email: 'info@debikefitstudio.be',

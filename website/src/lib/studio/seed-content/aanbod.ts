@@ -6,6 +6,7 @@ import {
   AANBOD_INTRO,
   JUNIOR_TEXT,
   MOTION_ANALYSIS_TEXT,
+  STUDIO_EXTRAS_TEXT,
   TEAM_INTRO,
   TEAM_MEMBERS,
 } from './copy';
@@ -95,14 +96,15 @@ const HOME: SeedPage = {
   source: 'work block 2026-10-13 (hero, aanbod) + prototype/index.html + content/about.html',
   metaTitle: 'De Bikefit Studio — Meer plezier. Op jouw fiets.',
   metaDescription:
-    'Bikefit, voet- en zadelanalyse, schoenplaatjes, lactaattest en coaching in Ninove. Persoonlijke fietsbegeleiding, in de studio, dichtbij of bij jou thuis.',
+    'Bikefit, voet- en zadelanalyse, schoenplaatjes, lactaattest en coaching in Ninove. Persoonlijke fietsbegeleiding, in de studio of bij jou thuis.',
   structuredDataType: 'WebPage',
   blocks: [
     {
       type: 'hero',
       data: {
         variant: 'full',
-        eyebrow: 'De Bikefit Studio · Ninove',
+        // "Ninove" left out after the name (Toshoni, 19 Oct 2026); the city stays in the meta description.
+        eyebrow: 'De Bikefit Studio',
         title: 'Meer plezier.',
         titleEmphasis: 'Op jouw fiets.',
         subtitle: HERO_SUBTITLE,
@@ -117,7 +119,7 @@ const HOME: SeedPage = {
         variant: 'default',
         eyebrow: 'Aanbod',
         title: 'Wat we voor je doen',
-        lede: 'Twee soorten hulp, één vertrekpunt: jij en je fiets.',
+        lede: 'Eén vertrekpunt: jij en je fiets.',
         groups: OFFER_GROUPS,
         // Prices only on /aanbod and the offer pages (Toshoni, 13 Oct 2026).
         showPrices: false,
@@ -312,25 +314,15 @@ const BIKEFIT: SeedPage = {
   slug: 'bikefit',
   title: 'De bikefit',
   translationGroup: 'bikefit',
-  source: 'prototype/bikefit.html + work block 2026-10-13 (3D text, offer structure)',
+  source:
+    'prototype/bikefit.html + work block 2026-10-13 (3D text, offer structure); review 19 Oct 2026 (no page head, what you take home, insoles and saddles)',
   metaTitle: 'De bikefit — hoe het werkt',
   metaDescription:
     'Wat een bikefit is, hoe hij verloopt en hoe we 3D-bewegingsanalyse gebruiken. Bikefit bij aankoop of op je huidige fiets, voet- en zadelanalyse en schoenplaatjes, in Ninove.',
   structuredDataType: 'WebPage',
+  // No page head: the page opens on "Waarom een bikefit" (Toshoni, 19 Oct 2026; the head's
+  // button pointed at an anchor that no longer exists). Like /afspraak since 13 Oct.
   blocks: [
-    {
-      type: 'hero',
-      data: {
-        variant: 'pageHead',
-        eyebrow: 'Bikefit · Ninove',
-        title: 'De bikefit',
-        titleEmphasis: '',
-        subtitle:
-          'Een fiets die niet bij jouw lichaam past, kost je op drie manieren: pijn, verloren kracht, en kortere ritten. Een bikefit lijnt de fiets uit op jou — niet omgekeerd.',
-        primaryCta: { label: 'Bekijk de bikefitdiensten', href: '#aanbod', external: false },
-        secondaryCta: null,
-      },
-    },
     {
       type: 'imageText',
       data: {
@@ -353,7 +345,7 @@ const BIKEFIT: SeedPage = {
         variant: 'dark',
         eyebrow: '3D-bewegingsanalyse',
         title: 'Meten om beter te kijken',
-        paragraphs: [MOTION_ANALYSIS_TEXT],
+        paragraphs: [MOTION_ANALYSIS_TEXT, STUDIO_EXTRAS_TEXT],
         image: editorialImage('bikefit-studio'),
         imagePosition: 'left',
       },

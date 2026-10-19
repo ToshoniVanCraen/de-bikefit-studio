@@ -304,7 +304,7 @@ export const blockRegistry = {
     schema: heroSchema,
     defaultData: {
       variant: 'full',
-      eyebrow: 'De Bikefit Studio · Ninove',
+      eyebrow: 'De Bikefit Studio',
       title: 'Fiets met',
       titleEmphasis: 'comfort.',
       subtitle:
@@ -397,12 +397,12 @@ export const blockRegistry = {
         {
           number: '03',
           title: 'Aanpassen',
-          body: 'We passen stap voor stap aan, met feedback na elke aanpassing, tot alles klopt.',
+          body: 'Heb je je fiets al, dan passen we ze ter plaatse aan: stap voor stap, met feedback na elke aanpassing, tot alles klopt.',
         },
         {
           number: '04',
-          title: 'Begrijpen',
-          body: 'Je vertrekt met begrip waarom jouw fiets staat zoals ze staat.',
+          title: 'Naar huis',
+          body: 'Je vertrekt met je analyse en advies op papier. Koop je een nieuwe fiets, dan weet je precies welke maten en afstelling bij jou passen. Heb je de fiets al, dan rij je naar huis op een fiets die bij jouw lichaam past — en begrijp je waarom ze staat zoals ze staat.',
         },
       ],
     },
@@ -612,7 +612,7 @@ export const blockRegistry = {
       eyebrow: 'Contact',
       title: 'Boek je bikefit',
       lede: '',
-      phoneLabel: '0473 95 26 33',
+      phoneLabel: '+32 473 95 26 33',
       phoneHref: 'tel:+32473952633',
       email: '',
       addressLines: [],

@@ -20,18 +20,18 @@ export const MAIN_MENU: SeedNavigationItem[] = [
   navItem('Voor wie', '/voor-wie'),
   navItem('Bikefit', '/bikefit'),
   navItem('Ons team', '/ons-team'),
+  // Moved up from the footer on Toshoni's review of 19 Oct 2026.
+  navItem('Veelgestelde vragen', '/veelgestelde-vragen'),
   navItem('Contact', BOOKING_PATH),
 ];
 
+/**
+ * Only the legal column: the Studio and Praktisch groups went on Toshoni's
+ * review of 19 Oct 2026 (the header carries those links). The footer's own
+ * Contact column, the cookie control and the Instagram icon are not menu items
+ * (`site-footer.tsx`).
+ */
 export const FOOTER_MENU: SeedNavigationItem[] = [
-  navItem('Aanbod', OFFER_INDEX_PATH, 'Studio'),
-  navItem('Voor wie', '/voor-wie', 'Studio'),
-  navItem('Bikefit', '/bikefit', 'Studio'),
-  navItem('Ons team', '/ons-team', 'Studio'),
-  navItem('Contact', BOOKING_PATH, 'Studio'),
-  navItem('Afspraak maken', BOOKING_PATH, 'Praktisch'),
-  navItem('Werkwijze', '/bikefit#werkwijze', 'Praktisch'),
-  navItem('Veelgestelde vragen', '/veelgestelde-vragen', 'Praktisch'),
   navItem('Privacyverklaring', '/privacy', 'Juridisch'),
   navItem('Algemene voorwaarden', '/algemene-voorwaarden', 'Juridisch'),
 ];
