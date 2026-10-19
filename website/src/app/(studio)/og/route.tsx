@@ -1,4 +1,6 @@
+import { getSiteSettings } from '@/lib/cms/content';
 import { renderDefaultOgImage } from '@/lib/studio/og-image';
+import { defaultLocale } from '@/lib/studio/locale';
 
 /**
  * `GET /og` — the default social-share card for every Studio page.
@@ -13,6 +15,7 @@ import { renderDefaultOgImage } from '@/lib/studio/og-image';
  * It lives in the `(studio)` group, so it is a static route and always wins
  * over the catch-all next to it.
  */
-export function GET() {
-  return renderDefaultOgImage();
+export async function GET() {
+  const { site } = await getSiteSettings(defaultLocale);
+  return renderDefaultOgImage({ name: site.name, tagline: site.tagline });
 }

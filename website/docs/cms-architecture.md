@@ -1009,11 +1009,11 @@ not by a menu. Validate with `validateNavigationItems(items)`.
 
 | Key | Contents |
 | --- | --- |
-| `site` | `name`, `tagline`, `strapline`, `mission`, `logoMediaId` |
-| `contact` | `phoneLabel`, `phoneHref`, `email`, `addressLines`, `postalCode`, `city`, `country`, `hours`, `website` |
+| `site` | `name`, `tagline` (the share image `/og` and the JSON-LD slogan), `mission`, `logoMediaId`. `strapline` was removed on 19 Oct 2026: nothing read it (a stored value is ignored) |
+| `contact` | `phoneLabel`, `phoneHref`, `email`, `addressLines`, `postalCode`, `city`, `country` (JSON-LD postal address), `hours`, `website` |
 | `seo` | `defaultMetaTitle`, `titleTemplate`, `defaultMetaDescription`, `defaultOgImageMediaId`, `allowIndexing` |
 | `organization` | `type`, `legalName`, `vatNumber`, `sameAs`, `priceRange`, `areaServed`, `latitude`, `longitude` — the Organization / LocalBusiness JSON-LD source |
-| `analytics` | `ga4MeasurementId` (reference only; the tag reads `NEXT_PUBLIC_GA4_MEASUREMENT_ID`), `ga4PropertyId` (numeric GA4 property for the admin panel; env `GA4_PROPERTY_ID` wins), `enabled` (default **false**; the tag and banner load only when true) |
+| `analytics` | `ga4PropertyId` (numeric GA4 property for the admin panel; env `GA4_PROPERTY_ID` wins), `enabled` (default **false**; the tag and banner load only when true). The measurement id is the env var `NEXT_PUBLIC_GA4_MEASUREMENT_ID` only (`ga4MeasurementId` removed from the admin on 19 Oct 2026: it was never read) |
 | `booking` | `slotStepMinutes` (30), `minNoticeHours` (24), `horizonDays` (56), `defaultBufferAfterMinutes` (15), `cancelUntilHours` (48), `timezone` (`Europe/Brussels`), `introTitle`, `introText`, `confirmationText`, `showProviderChoice` (true) — the booking rules, see `booking-architecture.md` §4 |
 
 Admin → Instellingen has one form per key: Site, Contact, SEO, Organisatie

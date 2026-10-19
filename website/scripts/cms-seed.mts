@@ -391,7 +391,6 @@ const DEFAULT_SETTINGS: Record<string, unknown> = {
   site: {
     name: 'De Bikefit Studio',
     tagline: 'Pijnvrij fietsen begint hier',
-    strapline: 'Professionele bikefit · Ninove',
     mission:
       'Iedereen verdient het om te genieten van alles wat een fiets te bieden heeft. Ons werk is ervoor te zorgen dat jouw fiets je dat ook toelaat.',
     logoMediaId: null,
@@ -427,7 +426,6 @@ const DEFAULT_SETTINGS: Record<string, unknown> = {
     longitude: null,
   },
   analytics: {
-    ga4MeasurementId: '',
     enabled: false,
   },
 };

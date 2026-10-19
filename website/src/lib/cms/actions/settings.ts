@@ -42,7 +42,6 @@ function valueFor(key: SiteSettingKey, form: FormData): unknown {
       return {
         name: field(form, 'name'),
         tagline: field(form, 'tagline'),
-        strapline: field(form, 'strapline'),
         mission: field(form, 'mission'),
         logoMediaId: field(form, 'logoMediaId') || null,
       };
@@ -79,7 +78,6 @@ function valueFor(key: SiteSettingKey, form: FormData): unknown {
       };
     case 'analytics':
       return {
-        ga4MeasurementId: field(form, 'ga4MeasurementId'),
         ga4PropertyId: field(form, 'ga4PropertyId').replace(/^properties\//, ''),
         enabled: boolField(form, 'enabled'),
       };

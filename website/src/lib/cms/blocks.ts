@@ -822,8 +822,8 @@ export function validateNavigationItems(
 export const siteSettingSchemas = {
   site: z.object({
     name: z.string().default('De Bikefit Studio'),
+    /** The one-liner under the name: the share image and the JSON-LD slogan. */
     tagline: z.string().default('Pijnvrij fietsen begint hier'),
-    strapline: z.string().default('Professionele bikefit · Ninove'),
     mission: z.string().default(''),
     logoMediaId: z.string().nullable().default(null),
   }),
@@ -834,6 +834,7 @@ export const siteSettingSchemas = {
     addressLines: z.array(z.string()).default([]),
     postalCode: z.string().default(''),
     city: z.string().default(''),
+    /** ISO country code for the JSON-LD postal address. */
     country: z.string().default('BE'),
     hours: z.string().default(''),
     website: z.string().default(''),
@@ -858,11 +859,8 @@ export const siteSettingSchemas = {
     longitude: z.number().nullable().default(null),
   }),
   analytics: z.object({
-    /**
-     * Readiness only. Empty by default and NOT read at runtime: no analytics
-     * script and no cookie ships until this is deliberately switched on.
-     */
-    ga4MeasurementId: z.string().default(''),
+    // The measurement id is NOT a setting: the tag reads the environment variable
+    // `NEXT_PUBLIC_GA4_MEASUREMENT_ID`, and nothing ships until `enabled` is on.
     /** Numeric GA4 property id for the Data API (admin dashboard); env `GA4_PROPERTY_ID` wins. */
     ga4PropertyId: z.string().default(''),
     enabled: z.boolean().default(false),
