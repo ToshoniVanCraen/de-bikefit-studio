@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { getSiteSettings } from '@/lib/cms/content';
 import { defaultLocale } from '@/lib/studio/locale';
+import { robotsRules } from '@/lib/studio/robots-rules';
 import { absoluteUrl } from '@/lib/studio/site';
 
 /**
@@ -10,9 +11,11 @@ import { absoluteUrl } from '@/lib/studio/site';
  * crawler `Disallow: /` until someone deliberately turns indexing on in the
  * admin. That is the one switch standing between a staging URL and Google.
  *
- * When it is on, everything is allowed except the four areas that must never
- * be crawled: the CMS admin, the API surface, and the webshop's checkout and
- * account pages (session-bound, thin, and useless in an index).
+ * When it is on, everything of the studio site is allowed; the areas that
+ * must never be crawled stay disallowed — the CMS admin, the API surface and
+ * the whole legacy webshop (`NEVER_CRAWLED` in `robots-rules.ts`, 19 Oct 2026;
+ * until then only checkout and account were listed, so flipping the switch
+ * would have opened the Qarakter demo shop to Google).
  *
  * The `Sitemap:` line is emitted in both states — a disallowed sitemap simply
  * is not fetched, and leaving it in means flipping the switch needs no second
@@ -28,25 +31,9 @@ export const dynamic = 'force-dynamic';
 
 export default async function robots(): Promise<MetadataRoute.Robots> {
   const settings = await getSiteSettings(defaultLocale);
-  const sitemapUrl = absoluteUrl('/sitemap.xml');
-  const host = absoluteUrl('/').replace(/\/+$/, '');
-
-  if (!settings.seo.allowIndexing) {
-    return {
-      rules: [{ userAgent: '*', disallow: '/' }],
-      sitemap: sitemapUrl,
-    };
-  }
-
-  return {
-    rules: [
-      {
-        userAgent: '*',
-        allow: '/',
-        disallow: ['/admin', '/api', '/checkout', '/account'],
-      },
-    ],
-    sitemap: sitemapUrl,
-    host,
-  };
+  return robotsRules({
+    allowIndexing: settings.seo.allowIndexing,
+    sitemapUrl: absoluteUrl('/sitemap.xml'),
+    host: absoluteUrl('/').replace(/\/+$/, ''),
+  });
 }

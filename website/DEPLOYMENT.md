@@ -199,4 +199,5 @@ A production → staging copy brings real personal data into a lower-trust envir
    `-- --apply`), monthly, per environment. Policy, schedule and manual steps:
    [`docs/booking-runbook.md`](docs/booking-runbook.md) §11.
 6. **No indexing.** Staging keeps `seo.allowIndexing = false` (`robots.txt` → `Disallow: /`,
-   `noindex` on every page).
+   `noindex` on every page). On production the same switch, once on, opens the studio site and
+   keeps the admin, the API and the legacy webshop out; the webshop is `noindex` regardless.

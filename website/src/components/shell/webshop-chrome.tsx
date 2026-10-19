@@ -49,4 +49,8 @@ export const webshopMetadata = {
   },
   description:
     'Qarakter is a boutique bike store: road, gravel and hand-picked accessories for riders with character.',
+  // The legacy webshop is kept as code, not as the studio's product: never
+  // indexed, whatever Instellingen → SEO → Indexeren toestaan says (19 Oct 2026;
+  // robots.txt keeps these paths out as well, `lib/studio/robots-rules.ts`).
+  robots: { index: false, follow: false, googleBot: { index: false, follow: false } },
 } as const;
