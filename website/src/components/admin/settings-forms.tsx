@@ -41,11 +41,12 @@ export function SettingsForms({
           <Field label="Naam" htmlFor="site-name">
             <Input id="site-name" name="name" defaultValue={settings.site.name} />
           </Field>
-          <Field label="Tagline" htmlFor="site-tagline">
+          <Field
+            label="Tagline"
+            htmlFor="site-tagline"
+            hint="Onder de naam op het deelbeeld (sociale media) en als slogan in de structured data."
+          >
             <Input id="site-tagline" name="tagline" defaultValue={settings.site.tagline} />
-          </Field>
-          <Field label="Strapline" htmlFor="site-strapline">
-            <Input id="site-strapline" name="strapline" defaultValue={settings.site.strapline} />
           </Field>
         </div>
         <Field label="Missie" htmlFor="site-mission" className="mt-3">
@@ -104,7 +105,11 @@ export function SettingsForms({
           <Field label="Gemeente" htmlFor="contact-city">
             <Input id="contact-city" name="city" defaultValue={settings.contact.city} />
           </Field>
-          <Field label="Land" htmlFor="contact-country">
+          <Field
+            label="Land"
+            htmlFor="contact-country"
+            hint="Landcode voor de structured data, bv. BE."
+          >
             <Input id="contact-country" name="country" defaultValue={settings.contact.country} />
           </Field>
           <Field label="Openingsuren" htmlFor="contact-hours">
@@ -392,18 +397,6 @@ export function SettingsForms({
         description="GA4 laadt pas als analytics hier ingeschakeld is, de meet-ID in Vercel staat (NEXT_PUBLIC_GA4_MEASUREMENT_ID) én de bezoeker via de cookiebanner toestemming gaf."
       >
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field
-            label="GA4 measurement id"
-            htmlFor="analytics-ga4"
-            hint="Ter referentie. Het script gebruikt de omgevingsvariabele NEXT_PUBLIC_GA4_MEASUREMENT_ID."
-          >
-            <Input
-              id="analytics-ga4"
-              name="ga4MeasurementId"
-              placeholder="G-XXXXXXX"
-              defaultValue={settings.analytics.ga4MeasurementId}
-            />
-          </Field>
           <Field
             label="GA4 property id"
             htmlFor="analytics-ga4PropertyId"
