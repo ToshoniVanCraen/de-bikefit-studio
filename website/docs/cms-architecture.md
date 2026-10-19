@@ -999,9 +999,9 @@ becomes a single `UPDATE`.
 
 `group` exists for the footer's labelled columns. Since 19 Oct 2026 the seed footer menu holds
 only the "Juridisch" group (the header carries the site links; the FAQ moved into the main
-menu); the footer's Contact column, the Instagram icon (the first instagram.com URL under
-Instellingen → Organisatie → sameAs) and the cookie control are rendered by `site-footer.tsx`,
-not by a menu. Validate with `validateNavigationItems(items)`.
+menu); the footer's Contact column, the "Volg ons" column (the first instagram.com URL under
+Instellingen → Organisatie → sameAs, shown as the Instagram glyph with its name) and the cookie
+control in the bottom bar are rendered by `site-footer.tsx`, not by a menu. Validate with `validateNavigationItems(items)`.
 
 ### Site settings keys
 
