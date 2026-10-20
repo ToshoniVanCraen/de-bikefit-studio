@@ -22,7 +22,12 @@ import { contentFromRow, type OfferingRecord } from './offering-content';
  * A failed read is reported with a fixed code and answered with an empty
  * catalogue (`storeAvailable: false`): the overviews then list nothing and the
  * booking actions refuse every service (fail closed), which is what a missing
- * migration 0010/0011 should look like, never a crash of the page.
+ * migration 0010/0011 should look like, never a crash of the page. The empty
+ * answer is NOT cached (20 Oct 2026): one transient transport failure must
+ * not empty the offer for the next five minutes — the next request reads
+ * again. The log names the error's class chain (`Error>NeonDbError>TypeError`
+ * is a failed fetch under Drizzle, which sets no name of its own), never a
+ * message, since a failed query's message holds its SQL and bound values.
  */
 
 export const OFFERING_TAG = 'cms:offerings';
@@ -31,9 +36,15 @@ const REVALIDATE_SECONDS = 300;
 /** A thrown error's class name (`TypeError`, `NeonDbError`); anything else is `unknown`. */
 const ERROR_NAME_RE = /^[A-Za-z]{1,64}$/;
 
+/** The class names along the cause chain, e.g. `Error>NeonDbError>TypeError`; never a message. */
 function errorName(error: unknown): string {
-  const name = error instanceof Error ? error.name : '';
-  return ERROR_NAME_RE.test(name) ? name : 'unknown';
+  const names: string[] = [];
+  let current: unknown = error;
+  for (let depth = 0; current instanceof Error && depth < 4; depth += 1) {
+    names.push(ERROR_NAME_RE.test(current.name) ? current.name : 'unknown');
+    current = current.cause;
+  }
+  return names.length > 0 ? names.join('>') : 'unknown';
 }
 
 export type OfferingStore = {
@@ -106,18 +117,11 @@ export async function readStoredOfferings(locale: string): Promise<OfferingRecor
 export async function getOfferingStore(locale: string = DEFAULT_LOCALE): Promise<OfferingStore> {
   const load = unstable_cache(
     async (): Promise<OfferingStore> => {
-      try {
-        const [offerings, services] = await Promise.all([
-          readStoredOfferings(locale),
-          readServices(locale),
-        ]);
-        return { offerings, services, storeAvailable: true };
-      } catch (error) {
-        // A fixed code and at most the error's class name, never its message:
-        // a failed query's message holds its SQL and bound values.
-        console.error('[aanbod] offerings_unavailable', { error: errorName(error) });
-        return { offerings: [], services: [], storeAvailable: false };
-      }
+      const [offerings, services] = await Promise.all([
+        readStoredOfferings(locale),
+        readServices(locale),
+      ]);
+      return { offerings, services, storeAvailable: true };
     },
     ['cms-offering-store', locale],
     {
@@ -125,5 +129,13 @@ export async function getOfferingStore(locale: string = DEFAULT_LOCALE): Promise
       revalidate: REVALIDATE_SECONDS,
     },
   );
-  return load();
+  try {
+    return await load();
+  } catch (error) {
+    // Outside the cache on purpose: a rejected read is not stored, so the next
+    // request reads again. A fixed code and the error's class names, never its
+    // message: a failed query's message holds its SQL and bound values.
+    console.error('[aanbod] offerings_unavailable', { error: errorName(error) });
+    return { offerings: [], services: [], storeAvailable: false };
+  }
 }

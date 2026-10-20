@@ -403,7 +403,13 @@ export async function verifyAanbodExtras(deps: PlanDeps): Promise<string[]> {
   const problems = [...extrasBlockers(plan)];
   if (extrasHasChanges(plan)) problems.push('a second plan still finds work');
   const { loadOfferCatalogue } = await import('@/lib/cms/offers-content');
-  const catalogue = await loadOfferCatalogue(deps.locale);
+  let catalogue = await loadOfferCatalogue(deps.locale);
+  if (catalogue.offers.length === 0) {
+    // The store answers a failed read with an empty catalogue (not cached):
+    // one transport failure is read past, a real problem shows twice.
+    await new Promise((resolve) => setTimeout(resolve, 750));
+    catalogue = await loadOfferCatalogue(deps.locale);
+  }
   for (const target of extrasTargets()) {
     const live = catalogue.bySlug[target.slug];
     if (!live) {
@@ -469,10 +475,16 @@ export async function runAanbodExtrasPatch(
     locale: schema.DEFAULT_LOCALE,
     log,
   };
-  // The write side is loaded before the first query (see the prices patch).
+  // The write side AND the catalogue the verify reads are loaded before the
+  // first query: importing the offers content pulls in the booking content and
+  // Google's auth library, seconds of compiling; done inside the session (20 Oct
+  // 2026, Neon Staging) that pause left the verify's first read on a keep-alive
+  // socket the server had closed, and the apply ended on "not in the public
+  // catalogue" after every write had landed.
   const writeSide = writing
     ? { repo: await import('@/lib/cms/repo'), auth: await import('@/lib/cms/auth') }
     : null;
+  if (writing) await import('@/lib/cms/offers-content');
   const actor = await findActor(planDeps);
 
   if (!writing) {
