@@ -31,6 +31,7 @@ export type BookingLogEvent =
   | 'availability_action_failed'
   | 'book_action_failed'
   | 'cancel_action_failed'
+  | 'review_action_failed'
   | 'confirmation_ref_unsigned'
   // Cancelling from the admin (`cancelBooking()` in `repo.ts`).
   | 'admin_google_delete_failed'

@@ -99,6 +99,13 @@
       "when": 1792313348712,
       "tag": "0013_cms_staging_gate",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1792496150213,
+      "tag": "0014_cms_booking_followups",
+      "breakpoints": true
     }
   ]
 }

@@ -205,6 +205,7 @@ const EVENT_SET: Record<BookingLogEvent, true> = {
   availability_action_failed: true,
   book_action_failed: true,
   cancel_action_failed: true,
+  review_action_failed: true,
   confirmation_ref_unsigned: true,
   admin_google_delete_failed: true,
   admin_cancellation_mail_failed: true,

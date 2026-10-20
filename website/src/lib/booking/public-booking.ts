@@ -88,7 +88,7 @@ export function hashCancelToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
 }
 
-function looksLikeToken(token: string): boolean {
+export function looksLikeToken(token: string): boolean {
   return /^[A-Za-z0-9_-]{40,64}$/.test(token);
 }
 

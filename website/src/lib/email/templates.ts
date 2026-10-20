@@ -139,7 +139,7 @@ export function layout(
   ].join('');
 }
 
-const BRING_ALONG =
+export const BRING_ALONG =
   'Breng je fiets mee (proper en in werkende staat), de schoenen en fietskleding waarin je écht rijdt, en eventuele notities over wat je dwars zit.';
 
 // ---------------------------------------------------------------------------

@@ -34,6 +34,7 @@ const NAV: Array<
   { href: '/admin', label: 'Overzicht' },
   { href: '/admin/analytics', label: 'Analytics', permission: 'analytics.read' },
   { href: '/admin/bookings', label: 'Afspraken', anyOf: ['booking.read', 'booking.read.own'] },
+  { href: '/admin/reviews', label: 'Beoordelingen', permission: 'booking.manage' },
   { href: '/admin/agenda', label: 'Mijn agenda', permission: 'provider.self' },
   // The offer: copy, shown or not, variants with their booking services and
   // prices, direct booking or enquiry (admin). A provider chooses what they

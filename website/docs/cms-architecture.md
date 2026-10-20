@@ -33,7 +33,7 @@ File ownership during parallel work comes from the work-block file (see
 | Offer ("Aanbod") | `src/lib/offers/{catalogue,offering,offering-content,offer-catalogue,defaults}.ts` (plain), `src/lib/offers/{offering-store,repo}.ts` (server-only), `src/db/cms-offering-schema.ts`, `src/app/(studio)/aanbod/[slug]/page.tsx` + `src/components/studio/offer-detail.tsx`, `src/app/admin/(dashboard)/aanbod/**` + `src/components/admin/offering-form.tsx`, `src/lib/studio/seed-content/**` (seed + rollout content), `src/lib/studio/editorial-images.{ts,json}`, `scripts/cms-migrate-aanbod.mts` + `scripts/lib/aanbod-migrate.mts`, `scripts/lib/offerings-bootstrap.mts`, `scripts/cms-rollout-aanbod.mts` + `scripts/lib/aanbod-rollout{,-plan,-run}.mts`, the prices of 20 Oct 2026: `src/lib/offers/aanbod-prices.ts` + `scripts/cms-patch-aanbod-prijzen.mts` + `scripts/lib/aanbod-prices-{plan,patch}.mts` — see §14 |
 | Admin | `src/app/admin/**`, `src/components/admin/**`, `src/lib/cms/actions/**` (server actions + `sanitize.ts`), `src/app/api/cms/media/**` |
 | Public site | `src/app/(studio)/**`, `src/components/studio/**`, `src/lib/studio/**`, `src/app/sitemap.ts`, `src/app/robots.ts` |
-| Booking | `src/lib/booking/**`, `src/lib/email/**`, `src/app/api/google/oauth/**` — see `booking-architecture.md` |
+| Booking | `src/lib/booking/**`, `src/lib/email/**`, `src/app/api/google/oauth/**`, the follow-up mails and reviews: `src/lib/booking/{follow-ups,follow-ups-policy,reviews,cron-auth}.ts`, `src/app/api/cron/booking-mails/route.ts`, `src/app/(studio)/beoordeling/[token]/`, `src/app/admin/(dashboard)/reviews/` — see `booking-architecture.md` (§17) |
 | Analytics | `src/lib/analytics/{consent,ga4-tag,page-view,ga4,ga4-errors}.ts(x)`, `src/components/studio/{analytics,consent-banner}.tsx`, `src/components/admin/analytics-panel.tsx`; the deep dive: `src/lib/analytics/{ga4-deep-dive,deep-dive-shape,deep-dive-labels,dates}.ts`, `src/components/admin/charts/*`, `src/app/admin/(dashboard)/analytics/` |
 | Scripts | `scripts/{db-migrate,cms-bootstrap,cms-seed,cms-seed-booking,cms-rollout-aanbod,cms-patch-booking-cta,cms-patch-page-cleanup,cms-patch-cadeaubon,cms-mfa-reset,cms-selftest,cms-retention,import-editorial-image}.mts`, shared helpers in `scripts/lib/`, self-test sections 5b–5f and 15–19 in `scripts/selftest/` |
 | Shared | `src/middleware.ts`, `src/lib/env.ts`, `.env.example`, `next.config.ts`, `package.json`, `src/app/layout.tsx` |
@@ -107,7 +107,7 @@ All tables in `src/db/cms-schema.ts` (the two-step verification tables in
 
 Booking adds eight more tables — `cms_locations`, `cms_services`,
 `cms_providers`, `cms_provider_services`, `cms_business_hours`,
-`cms_availability_exceptions`, `cms_bookings`, `cms_booking_rate_limit` —
+`cms_availability_exceptions`, `cms_bookings`, `cms_booking_rate_limit`, `cms_reviews` —
 described in [`booking-architecture.md`](./booking-architecture.md) §2.
 Two-step verification adds five — `cms_mfa_factors`, `cms_mfa_recovery_codes`,
 `cms_mfa_challenges`, `cms_mfa_rate_limits` (0007) and `cms_mfa_attempts` (no
@@ -815,6 +815,7 @@ navigation, redirects or settings**.
 | Manage providers | `provider.manage` | ❌ | ❌ | ✅ |
 | Own profile, hours, exceptions, Google | `provider.self` | ✅ | ❌ | ✅ |
 | GA4 dashboard panel and the `/admin/analytics` deep dive | `analytics.read` | ❌ | ❌ | ✅ |
+| Beoordelingen (`/admin/reviews`: read, approve, reject) | `booking.manage` | ❌ | ❌ | ✅ |
 
 The provider set is exactly `booking.read.own`, `booking.manage.own`,
 `service.read`, `service.subscribe.own`, `location.read`, `provider.self` (the
@@ -1276,6 +1277,7 @@ The full contract (every variable, per environment, secret or not) is in
 | `NEXT_PUBLIC_SITE_URL` | deployed envs | Canonical origin for canonicals, sitemap, OG, e-mail links and the Google OAuth redirect URI. `siteUrl()` in `src/lib/env.ts` falls back to `NEXT_PUBLIC_APP_URL`, then `VERCEL_URL`, then localhost; the Google OAuth redirect URI does not use those fallbacks outside development (`booking-architecture.md` §7). |
 | `NEXT_PUBLIC_GA4_MEASUREMENT_ID` | no | GA4 tag id. Loaded only when valid, `analytics.enabled` is true and the visitor consented (§12.7). Build-time. |
 | `GA4_PROPERTY_ID`, `GA4_SERVICE_ACCOUNT_JSON` | no | Admin analytics panel and deep dive (GA4 Data API). |
+| `CRON_SECRET` | no | Bearer secret of `GET /api/cron/booking-mails` (reminder, review request; `booking-architecture.md` §17). Unset = route off. |
 | `CMS_PGLITE_DIR` | no | Override the local PGlite directory. |
 | `CMS_PGLITE_AUTO_MIGRATE` | no | `"false"` disables auto-migration on first PGlite use. |
 

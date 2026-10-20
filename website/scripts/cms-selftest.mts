@@ -1295,6 +1295,17 @@ async function bookingSections(
     cookieJar,
     backupDir: resolve(process.cwd(), DATA_DIR, 'rollout-backups'),
   });
+  // Follow-up mails and reviews (section 19).
+  const { followUpsSection } = await import('./selftest/follow-ups.mjs');
+  await followUpsSection({
+    db,
+    check,
+    section,
+    signInAs,
+    admin,
+    provider: { id: providerId, userId: providerUserId },
+    cookieJar,
+  });
   await signInAs(providerUserId);
   const closure = await repo.setAvailabilityExceptions(providerId, [
     { date: addDaysYmd(todayYmd(new Date(), TZ), 30), kind: 'closed' },

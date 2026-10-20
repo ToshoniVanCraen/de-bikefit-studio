@@ -34,7 +34,7 @@ website/
 │   │   ├── admin/           CMS: /admin/login, /admin/mfa, /admin/password, (dashboard)/… (pages,
 │   │   │                    media, navigation, redirects, bookings, agenda, services, locations,
 │   │   │                    providers, settings, email, users, account, audit)
-│   │   ├── api/             cms/media/[id], google/oauth/{start,callback}, checkout, webhooks/*
+│   │   ├── api/             cms/media/[id], google/oauth/{start,callback}, cron/booking-mails, checkout, webhooks/*
 │   │   ├── (shop)/ (webshop)/ (content)/ (auth)/   legacy webshop
 │   │   └── layout.tsx, sitemap.ts, robots.ts, not-found.tsx
 │   ├── components/          studio/ (public site, blocks, booking widget, consent banner),
