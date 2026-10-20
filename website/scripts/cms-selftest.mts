@@ -585,6 +585,15 @@ async function main() {
     backupDir: resolve(process.cwd(), DATA_DIR, 'rollout-backups'),
   });
 
+  const { aanbodPrijzenSection } = await import('./selftest/aanbod-prijzen.mjs');
+  await aanbodPrijzenSection({
+    db,
+    check,
+    section,
+    cookieJar,
+    backupDir: resolve(process.cwd(), DATA_DIR, 'rollout-backups'),
+  });
+
   const { cadeaubonSection } = await import('./selftest/cadeaubon.mjs');
   await cadeaubonSection({ db, admin: user, check, section, cookieJar });
 

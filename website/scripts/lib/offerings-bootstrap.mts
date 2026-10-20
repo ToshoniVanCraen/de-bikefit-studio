@@ -95,7 +95,7 @@ export async function ensureDefaultOfferings(
         offeringId: row.id,
         audience: variant.audience,
         serviceId: id,
-        priceCents: null,
+        priceCents: variant.priceCents,
       });
     }
     created.push(content.slug);

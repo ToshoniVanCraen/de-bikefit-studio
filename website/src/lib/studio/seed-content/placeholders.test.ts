@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_SERVICES } from '@/lib/booking/defaults';
-import { formatDuration } from '@/lib/booking/format';
+import { formatDuration, formatPrice } from '@/lib/booking/format';
 import { OFFER_PRICE_FALLBACK, offerPagePath } from '@/lib/offers/catalogue';
 import { DEFAULT_OFFERS } from '@/lib/offers/defaults';
 import { AUDIENCE_LABELS } from '@/lib/offers/offering';
@@ -42,6 +42,11 @@ function row(id: string): Row {
   const found = ROWS.find((entry) => entry.id === id);
   if (!found) throw new Error(`register has no row ${id}`);
   return found;
+}
+
+/** Intl writes a no-break space between € and the amount; the register a plain one. */
+function plainSpaces(value: string): string {
+  return value.replace(/\s/g, ' ');
 }
 
 function rowsOf(series: string): Row[] {
@@ -93,7 +98,18 @@ describe('content placeholder register', () => {
     for (const offer of DEFAULT_OFFERS) {
       const path = `\`${offerPagePath(offer.content.slug)}\``;
       const price = rowMentioning('P', path);
-      expect(price.cells[2]).toBe(OFFER_PRICE_FALLBACK);
+      // Since 20 Oct 2026 every offering carries a price; the register shows the same label.
+      const priceLabel =
+        offer.variants.length === 1
+          ? formatPrice(offer.variants[0].priceCents)
+          : offer.variants
+              .map(
+                (variant) =>
+                  `${AUDIENCE_LABELS[variant.audience]} ${formatPrice(variant.priceCents)}`,
+              )
+              .join(' · ');
+      expect(priceLabel).not.toBe(OFFER_PRICE_FALLBACK);
+      expect(plainSpaces(price.cells[2])).toContain(plainSpaces(priceLabel));
       const duration = rowMentioning('D', path);
       // A directly booked offering shows the real length of its services, per variant.
       const linked = offer.variants
