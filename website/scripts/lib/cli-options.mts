@@ -96,3 +96,37 @@ export function assertWriteTarget(
     throw new Error('--expect-host does not match DATABASE_URL host; nothing changed');
   }
 }
+
+/**
+ * What a failed CLI run prints: the message, then every `cause` underneath it
+ * (name, message, SQLSTATE `code` when a driver error has one) and the first
+ * frames of the outermost stack, so the call site is visible. Drizzle wraps a
+ * driver error as "Failed query: … params: …" and hides the driver's own text
+ * in `cause`; without this an operator sees only the SQL (20 Oct 2026, the
+ * prices patch on Neon). Never prints bound values beyond what Drizzle already
+ * put in its message.
+ */
+export function describeError(error: unknown, frames = 12): string {
+  if (!(error instanceof Error)) return String(error);
+  const lines = [error.message];
+  let cause: unknown = error.cause;
+  for (let depth = 0; cause !== undefined && cause !== null && depth < 6; depth += 1) {
+    if (cause instanceof Error) {
+      const code = (cause as { code?: unknown }).code;
+      lines.push(
+        `  cause: ${cause.name}: ${cause.message}${typeof code === 'string' ? ` (code ${code})` : ''}`,
+      );
+      cause = cause.cause;
+    } else {
+      lines.push(`  cause: ${String(cause)}`);
+      break;
+    }
+  }
+  const stack = (error.stack ?? '')
+    .split('\n')
+    .slice(1, 1 + frames)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (stack.length) lines.push('  at:', ...stack.map((line) => `    ${line}`));
+  return lines.join('\n');
+}

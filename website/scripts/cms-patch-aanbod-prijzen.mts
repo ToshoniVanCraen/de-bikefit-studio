@@ -29,6 +29,7 @@ import { runAanbodPricesPatch } from './lib/aanbod-prices-patch.mjs';
 import {
   assertWriteTarget,
   databaseHost,
+  describeError,
   rejectUnknownOptions,
   valueOf,
 } from './lib/cli-options.mjs';
@@ -73,6 +74,6 @@ main()
   .then(() => process.exit(0))
   .catch((error) => {
     console.error('✗ aanbod prices patch failed');
-    console.error(error instanceof Error ? error.message : error);
+    console.error(describeError(error));
     process.exit(1);
   });

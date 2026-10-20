@@ -37,6 +37,7 @@ import { runAanbodMigration } from './lib/aanbod-migrate.mjs';
 import {
   assertWriteTarget,
   databaseHost,
+  describeError,
   rejectUnknownOptions,
   valueOf,
 } from './lib/cli-options.mjs';
@@ -89,6 +90,6 @@ main()
   .then(() => process.exit(0))
   .catch((error) => {
     console.error('✗ aanbod migration failed');
-    console.error(error instanceof Error ? error.message : error);
+    console.error(describeError(error));
     process.exit(1);
   });
