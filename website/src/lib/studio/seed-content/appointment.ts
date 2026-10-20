@@ -12,7 +12,9 @@ import { BOOKING_PATH, CONTACT_EMAIL, PHONE_HREF, PHONE_LABEL, type SeedPage } f
  *
  * Provenance: content/booking.html (step order, tone), the `booking` block,
  * and the "wat breng je mee" / "hoe lang duurt het" answers from
- * content/about.html. "Andere vraag?" is Toshoni's wording.
+ * content/about.html. "Andere vraag?" is Toshoni's wording. Since 20 Oct 2026
+ * "Reken op de tijd" carries `{{duur:…}}` tokens (`src/lib/studio/copy-tokens.ts`),
+ * so the durations follow the offer instead of a number in the copy.
  */
 
 /** "Andere vraag?" under "Voor je komt"; the patch appends exactly this. */
@@ -25,7 +27,7 @@ const BEFORE_YOU_COME_HTML = [
   '<h3>Breng het juiste mee</h3>',
   '<p>Je fiets (proper en in werkende staat), de schoenen en fietskleding waarin je écht rijdt, en eventuele notities over wat je dwars zit. Meer hebben we niet nodig. De rest doen wij.</p>',
   '<h3>Reken op de tijd</h3>',
-  '<p>Reken op 90 minuten voor een standaard bikefit voor volwassenen. Een jeugdfit is korter — ongeveer 60 minuten. We haasten ons niet — als het klaar is, is het klaar.</p>',
+  '<p>Reken op {{duur:volwassenenfit}} voor een bikefit voor volwassenen en {{duur:jeugdfit}} voor een jeugdfit. We haasten ons niet — als het klaar is, is het klaar.</p>',
   `<p>Liever bellen, of vind je geen moment dat past? Bel <a href="${PHONE_HREF}">${PHONE_LABEL}</a> en we zoeken samen een moment.</p>`,
   OTHER_QUESTION_HTML,
 ].join('');

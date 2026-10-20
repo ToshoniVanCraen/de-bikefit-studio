@@ -935,6 +935,20 @@ Deploy code that adds a block type **before** publishing pages that use it
 (this is why `/afspraak` is refreshed after the booking deploy, see the
 staging runbook).
 
+### Copy tokens (`{{duur:…}}`, 20 Oct 2026)
+
+An editor may type `{{duur:<service-slug>}}` in any text or rich-text field of a public page
+(e.g. "Reken op {{duur:volwassenenfit}} voor een bikefit voor volwassenen"). `BlockRenderer`
+(`src/components/studio/blocks/index.tsx`) resolves it at render time to that service's planning
+duration as the booking widget shows it ("2 uur", "1 u 30 min"), read once per page from the cached
+public services (`listPublicServices()`); an unknown or inactive slug reads "in overleg". In rich
+text the label is HTML-escaped. The admin and the stored block keep the token as typed, so the copy
+never repeats a number that lives in `/admin` → **Diensten**. Pure logic and tests:
+`src/lib/studio/copy-tokens.ts`. The seed uses it in "Reken op de tijd" on `/afspraak`, in the
+"Hoe lang duurt een bikefit?" answer on `/veelgestelde-vragen` and in the block defaults; on an
+existing database `cms:seed -- --refresh-slug afspraak` and `-- --refresh-slug veelgestelde-vragen`
+bring those pages up to date.
+
 ### Rich-text sanitiser
 
 `src/lib/cms/actions/sanitize.ts` is the one place that decides which markup

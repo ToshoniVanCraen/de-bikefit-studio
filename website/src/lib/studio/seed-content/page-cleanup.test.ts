@@ -35,6 +35,21 @@ function withTodaysPhone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value).split(OLD_PHONE_LABEL).join(PHONE_LABEL)) as T;
 }
 
+/**
+ * Since 20 Oct 2026 "Reken op de tijd" on /afspraak reads its durations from
+ * the offer through `{{duur:…}}` tokens; the patch itself is the 13 Oct
+ * state, so the comparison reads the fixture with today's sentence.
+ */
+const OLD_DURATION_SENTENCE =
+  'Reken op 90 minuten voor een standaard bikefit voor volwassenen. Een jeugdfit is korter — ongeveer 60 minuten. We haasten ons niet — als het klaar is, is het klaar.';
+const DURATION_SENTENCE =
+  'Reken op {{duur:volwassenenfit}} voor een bikefit voor volwassenen en {{duur:jeugdfit}} voor een jeugdfit. We haasten ons niet — als het klaar is, is het klaar.';
+function withTodaysDurations<T>(value: T): T {
+  return JSON.parse(
+    JSON.stringify(value).split(OLD_DURATION_SENTENCE).join(DURATION_SENTENCE),
+  ) as T;
+}
+
 function oldPage(slug: string) {
   const page = before.pages.find((entry) => entry.slug === slug);
   if (!page) throw new Error(`fixture has no page ${slug}`);
@@ -92,7 +107,9 @@ describe('page cleanup patch (review 13 Oct 2026)', () => {
                 : block,
             )
           : result.next;
-      expect(withTodaysPhone(next)).toEqual(stored(targetPage(spec.slug).blocks));
+      expect(withTodaysDurations(withTodaysPhone(next))).toEqual(
+        stored(targetPage(spec.slug).blocks),
+      );
       expect(pageCleanupProblems(spec.slug, stored(old.blocks)).length).toBeGreaterThan(0);
       expect(pageCleanupProblems(spec.slug, result.next)).toEqual([]);
 
