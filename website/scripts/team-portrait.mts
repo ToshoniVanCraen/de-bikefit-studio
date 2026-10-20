@@ -134,7 +134,9 @@ async function main() {
         ])
         .linear(0.94, 10);
     }
-    const result = await pipeline.webp({ quality, effort: 5 }).toBuffer({ resolveWithObject: true });
+    const result = await pipeline
+      .webp({ quality, effort: 5 })
+      .toBuffer({ resolveWithObject: true });
     output = result.data;
     info = { width: result.info.width, height: result.info.height, size: result.info.size };
     if (result.info.size <= MAX_BYTES) break;
@@ -167,7 +169,9 @@ async function main() {
     `  crop ${crop.width}×${crop.height} at (${crop.left}, ${crop.top}) of ${upright.info.width}×${upright.info.height}; treatment ${treat ? 'on' : 'off'}`,
   );
   console.log(`  source ${basename(src)} sha256 ${sha256}`);
-  console.log('  next: npm test, then `npm run cms:rollout-aanbod` (dry run) to see /ons-team change.');
+  console.log(
+    '  next: npm test, then `npm run cms:rollout-aanbod` (dry run) to see /ons-team change.',
+  );
 }
 
 main().catch((error) => {
