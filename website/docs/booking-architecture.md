@@ -1189,9 +1189,18 @@ against the options (`pickAddons()`). The catalogue (`buildOfferCatalogue()`) ex
 `addonsByService` (per service of a shown, direct, sold-alone offering) and per extra its
 `addonHosts` (the shown offerings that list it).
 
-**Beheer → Aanbod.** The "Extra's" card: *Als extra te boeken* with *Extra tijd (minuten)*, *Ook
-apart te boeken of aan te vragen* (only meaningful for an extra; off = extra only), and *Extra's
-bij dit aanbod* (every other offering marked as an extra, in overview order). Saved by
+**Choices within an extra** (`addonOptions`, migration 0016). An extra may offer several choices,
+each with its own time and price (*Bikefit – tweede fiets*: "Zelfde type fiets" 30 min € 75 or "Ander
+type fiets" 1 u € 150, Toshoni 20 Oct 2026). Each choice is its own `BookingAddonOption` with the id
+`<offering id>#<choice key>` and the title "<extra> – <choice>"; the widget groups them under the
+extra's title ("kies één"), ticking one unticks the other (`toggleAddonId()`), and `pickAddons()`
+refuses two choices of one extra, so the server never books both. The Kostprijs and Duur lines of
+such an extra list its choices. Without choices an extra has one option: its id, `addonMinutes` and
+the host variant's audience price.
+
+**Beheer → Aanbod.** The "Extra's" card: *Als extra te boeken* with *Extra tijd (minuten)*, *Keuzes binnen deze extra*
+(up to four rows: name, minutes, price; the key is the slug of the name), *Ook apart te boeken of
+aan te vragen* (only meaningful for an extra; off = extra only), and *Extra's bij dit aanbod* (every other offering marked as an extra, in overview order). Saved by
 `writeOffering()` → `syncOfferingAddons()` (`repo-addons.ts`: every id must be an extra of the
 locale, never the offering itself; upsert, then prune).
 

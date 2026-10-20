@@ -112,6 +112,7 @@ describe('offerFromOffering (the card and labels of one offering)', () => {
       soldAlone: true,
       addonMinutes: null,
       addonIds: [],
+      addonOptions: [],
       bookingMode: entry.bookingMode,
       variantMode: entry.variantMode,
       variants: entry.variants.map((variant) => ({
@@ -170,6 +171,7 @@ describe('offerFromOffering (the card and labels of one offering)', () => {
           soldAlone: true,
           addonMinutes: null,
           addonIds: [],
+          addonOptions: [],
           bookingMode: 'enquiry',
           variantMode: 'single',
           variants: [{ audience: 'all', serviceId: null, priceCents: null }],

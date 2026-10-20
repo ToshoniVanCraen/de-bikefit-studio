@@ -85,6 +85,7 @@ export async function ensureDefaultOfferings(
         isAddon: entry.isAddon,
         soldAlone: entry.soldAlone,
         addonMinutes: entry.addonMinutes,
+        addonOptions: entry.addonOptions,
       })
       .returning({ id: offerings.cmsOfferings.id });
     const linked: string[] = [];

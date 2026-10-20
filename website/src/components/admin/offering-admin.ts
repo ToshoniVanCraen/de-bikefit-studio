@@ -30,6 +30,7 @@ export function toOfferingFormValues(
       soldAlone: true,
       addonMinutes: null,
       addonIds: [],
+      addonOptions: [],
     };
   }
   return {
@@ -42,6 +43,7 @@ export function toOfferingFormValues(
     soldAlone: offering.settings.soldAlone,
     addonMinutes: offering.settings.addonMinutes,
     addonIds: offering.settings.addonIds,
+    addonOptions: offering.settings.addonOptions,
     variants: offering.settings.variants.map((variant) => {
       const service = variant.serviceId
         ? (services.find((entry) => entry.id === variant.serviceId) ?? null)
@@ -70,7 +72,7 @@ export function addonCandidates(
     .map((offering) => ({
       id: offering.id,
       title: offering.content.title,
-      minutes: offering.settings.addonMinutes,
+      minutes: offering.settings.addonOptions.length > 0 ? null : offering.settings.addonMinutes,
       priceLabel: offeringPriceLabel(offering.resolved),
     }));
 }

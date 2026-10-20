@@ -1,15 +1,23 @@
 import { formatDuration, formatPrice } from '@/lib/booking/format';
-import type { OfferingAudience, OfferingSettings } from './offering';
+import type { AddonChoice, OfferingAudience, OfferingSettings } from './offering';
 
 /**
  * Extra's (add-ons, 20 Oct 2026). An offering marked "als extra te boeken"
- * (`isAddon`, with `addonMinutes` and a price) can be ticked by a visitor who
- * books another offering that lists it under "Extra's bij dit aanbod"
- * (`addonIds`, Beheer → Aanbod). The extra adds its minutes to the
- * appointment and its price to the total; the booking keeps a snapshot of
- * both (`cms_booking_addons`). An offering that is not `soldAlone` exists
- * only as an extra (Bikefit – tweede fiets): listed on `/aanbod`, its page
- * sends the visitor to the offering it belongs to.
+ * (`isAddon`) can be ticked by a visitor who books another offering that
+ * lists it under "Extra's bij dit aanbod" (`addonIds`, Beheer → Aanbod). The
+ * extra adds its minutes to the appointment and its price to the total; the
+ * booking keeps a snapshot of both (`cms_booking_addons`). An offering that
+ * is not `soldAlone` exists only as an extra (Bikefit – tweede fiets):
+ * listed on `/aanbod`, its page sends the visitor to the offering it belongs
+ * to.
+ *
+ * Choices within an extra (`addonOptions`, Toshoni 20 Oct 2026): an extra
+ * may offer several choices with their own time and price ("Zelfde type
+ * fiets" 30 min € 75 / "Ander type fiets" 1 u € 150). Each choice is its own
+ * {@link BookingAddonOption} with the id `<offering id>#<choice key>`; the
+ * visitor picks at most one per extra ({@link pickAddons} refuses two). An
+ * extra without choices has one option, its id the offering id, its minutes
+ * `addonMinutes` and its price the host variant's audience price.
  *
  * Plain module: no I/O, no Next. Unit-tested in `addons.test.ts`; shared by
  * the catalogue, the booking widget, the booking actions and the self-test.
@@ -22,14 +30,26 @@ export const MAX_BOOKING_ADDONS = 8;
 export type AddonSource = {
   id: string;
   content: { slug: string; title: string };
-  settings: Pick<OfferingSettings, 'isListed' | 'isAddon' | 'addonMinutes' | 'variants'>;
+  settings: Pick<
+    OfferingSettings,
+    'isListed' | 'isAddon' | 'addonMinutes' | 'addonOptions' | 'variants'
+  >;
 };
 
-/** One extra as the booking widget and the actions see it. Plain data. */
+/** One extra, or one choice within an extra, as the widget and the actions see it. Plain data. */
 export type BookingAddonOption = {
+  /** What the visitor picks and the actions receive: the offering id, or `<offering id>#<choice key>`. */
+  id: string;
   offeringId: string;
+  /** The choice within the extra; `null` for an extra with one price and time. */
+  optionKey: string | null;
   slug: string;
+  /** "Voetanalyse", or "Bikefit – tweede fiets – Ander type fiets" for a choice. */
   title: string;
+  /** The extra's own title when this is one of its choices (the widget groups them), else `null`. */
+  groupTitle: string | null;
+  /** The row's own text: the choice's label, else the title. */
+  label: string;
   /** Minutes added to the appointment. */
   minutes: number;
   /** Added to the price; never null (an extra without a price is not offered). */
@@ -37,6 +57,11 @@ export type BookingAddonOption = {
   /** "€ 85,00" */
   priceLabel: string;
 };
+
+/** The id of a choice within an extra. */
+export function addonChoiceId(offeringId: string, key: string): string {
+  return `${offeringId}#${key}`;
+}
 
 /**
  * The price of an extra for the audience of the variant it is added to:
@@ -55,9 +80,10 @@ export function addonPriceFor(
 }
 
 /**
- * The extras a visitor may add when booking `host` as `audience`, in the
- * host's order. An extra that is hidden, no longer marked as an extra, or
- * has no minutes or no price is left out, never shown half.
+ * The options a visitor may tick when booking `host` as `audience`, in the
+ * host's order: one per extra, or one per choice of an extra with choices.
+ * An extra that is hidden, no longer marked as an extra, or has no minutes
+ * or no price is left out, never shown half.
  */
 export function addonOptionsFor(
   host: { id: string; settings: Pick<OfferingSettings, 'addonIds'> },
@@ -69,13 +95,38 @@ export function addonOptionsFor(
     if (id === host.id || options.some((option) => option.offeringId === id)) continue;
     const addon = offerings.find((entry) => entry.id === id);
     if (!addon || !addon.settings.isListed || !addon.settings.isAddon) continue;
+    const { slug, title } = addon.content;
+    const choices = addon.settings.addonOptions ?? [];
+    if (choices.length > 0) {
+      for (const choice of choices) {
+        const choiceId = addonChoiceId(addon.id, choice.key);
+        if (options.some((option) => option.id === choiceId)) continue;
+        options.push({
+          id: choiceId,
+          offeringId: addon.id,
+          optionKey: choice.key,
+          slug,
+          title: `${title} – ${choice.label}`,
+          groupTitle: title,
+          label: choice.label,
+          minutes: choice.minutes,
+          priceCents: choice.priceCents,
+          priceLabel: formatPrice(choice.priceCents),
+        });
+      }
+      continue;
+    }
     const minutes = addon.settings.addonMinutes;
     const priceCents = addonPriceFor(addon, audience);
     if (minutes == null || minutes <= 0 || priceCents == null) continue;
     options.push({
+      id: addon.id,
       offeringId: addon.id,
-      slug: addon.content.slug,
-      title: addon.content.title,
+      optionKey: null,
+      slug,
+      title,
+      groupTitle: null,
+      label: title,
       minutes,
       priceCents,
       priceLabel: formatPrice(priceCents),
@@ -107,19 +158,62 @@ export function addonTotals(
   };
 }
 
+export type PickAddonsResult =
+  | { ok: true; addons: BookingAddonOption[] }
+  /** `unknown`: ids that are no option here; `twice`: extras with more than one choice picked. */
+  | { ok: false; reason: 'unknown' | 'twice'; ids: string[] };
+
 /**
- * The extras a visitor asked for, as the options allow them: in option order,
- * each once. Refuses the whole request when one id is not an option for this
- * service (the server never books an extra it did not offer).
+ * The options a visitor asked for, as the catalogue allows them: in option
+ * order, each once, at most one choice per extra. Refuses the whole request
+ * otherwise (the server never books an extra it did not offer).
  */
 export function pickAddons(
   options: readonly BookingAddonOption[],
   ids: readonly string[],
-): { ok: true; addons: BookingAddonOption[] } | { ok: false; unknown: string[] } {
-  const wanted = new Set(ids);
-  const unknown = [...wanted].filter((id) => !options.some((option) => option.offeringId === id));
-  if (unknown.length > 0) return { ok: false, unknown };
-  return { ok: true, addons: options.filter((option) => wanted.has(option.offeringId)) };
+): PickAddonsResult {
+  const wanted = [...new Set(ids)];
+  const unknown = wanted.filter((id) => !options.some((option) => option.id === id));
+  if (unknown.length > 0) return { ok: false, reason: 'unknown', ids: unknown };
+  const addons = options.filter((option) => wanted.includes(option.id));
+  const seen = new Set<string>();
+  const twice = new Set<string>();
+  for (const addon of addons) {
+    if (seen.has(addon.offeringId)) twice.add(addon.offeringId);
+    seen.add(addon.offeringId);
+  }
+  if (twice.size > 0) return { ok: false, reason: 'twice', ids: [...twice] };
+  return { ok: true, addons };
+}
+
+/** Ticking an option: in or out; a choice takes the place of its siblings (one per extra). */
+export function toggleAddonId(
+  options: readonly BookingAddonOption[],
+  selected: readonly string[],
+  id: string,
+): string[] {
+  const option = options.find((entry) => entry.id === id);
+  if (!option) return [...selected];
+  if (selected.includes(id)) return selected.filter((entry) => entry !== id);
+  const siblings = new Set(
+    options.filter((entry) => entry.offeringId === option.offeringId).map((entry) => entry.id),
+  );
+  return [...selected.filter((entry) => !siblings.has(entry)), id];
+}
+
+/** `?extra=<slug>`: the first option of each named extra (its first choice), in option order. */
+export function preselectAddonIds(
+  options: readonly BookingAddonOption[],
+  slugs: readonly string[],
+): string[] {
+  const ids: string[] = [];
+  const seen = new Set<string>();
+  for (const option of options) {
+    if (!slugs.includes(option.slug) || seen.has(option.offeringId)) continue;
+    seen.add(option.offeringId);
+    ids.push(option.id);
+  }
+  return ids;
 }
 
 /** "+ 30 min · + € 85,00" */
@@ -131,4 +225,14 @@ export function addonMetaLabel(addon: Pick<BookingAddonOption, 'minutes' | 'pric
 export function totalsLabel(totals: Pick<AddonTotals, 'minutes' | 'priceCents'>): string {
   const duration = `Samen ${formatDuration(totals.minutes)}`;
   return totals.priceCents == null ? duration : `${duration} · ${formatPrice(totals.priceCents)}`;
+}
+
+/** "Zelfde type fiets € 75,00 · Ander type fiets € 150,00" — the Kostprijs line of an extra with choices. */
+export function addonChoicesPriceLabel(choices: readonly AddonChoice[]): string {
+  return choices.map((choice) => `${choice.label} ${formatPrice(choice.priceCents)}`).join(' · ');
+}
+
+/** "Zelfde type fiets: 30 min · Ander type fiets: 1 uur" — the Duur line of an extra with choices. */
+export function addonChoicesDurationLabel(choices: readonly AddonChoice[]): string {
+  return choices.map((choice) => `${choice.label}: ${formatDuration(choice.minutes)}`).join(' · ');
 }

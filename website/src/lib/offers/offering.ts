@@ -49,6 +49,15 @@ export const OFFERING_MAX_PRICE_CENTS = 1_000_000;
 
 /** At most this many extras linked to one offering. */
 export const OFFERING_MAX_ADDONS = 12;
+/** At most this many choices within one extra (the admin card shows this many rows). */
+export const OFFERING_MAX_ADDON_CHOICES = 4;
+
+/**
+ * A choice within an extra (20 Oct 2026): "Zelfde type fiets" 30 min € 75 /
+ * "Ander type fiets" 1 u € 150. `key` is a slug derived from the label, stable
+ * across saves, and part of what the widget sends (`<offering id>#<key>`).
+ */
+export type AddonChoice = { key: string; label: string; minutes: number; priceCents: number };
 
 /** `addon`: not sold alone — only ticked as an extra when booking another offering (20 Oct 2026). */
 export type OfferingStatus = 'bookable' | 'unavailable' | 'enquiry' | 'addon';
@@ -85,6 +94,8 @@ export type OfferingSettings = {
   addonMinutes: number | null;
   /** "Extra's bij dit aanbod": ids of the extras a visitor may add, in order. */
   addonIds: string[];
+  /** Choices within this extra, in order; empty = one price (the variants') and one time (`addonMinutes`). */
+  addonOptions: AddonChoice[];
 };
 
 /** `stored` = a `cms_offerings` row; `legacy` = derived from the offer block (no row yet). */
@@ -120,6 +131,38 @@ export const variantServiceInputSchema = z.object({
 
 export type VariantServiceInput = z.infer<typeof variantServiceInputSchema>;
 
+const addonChoiceSchema = z.object({
+  key: z
+    .string()
+    .trim()
+    .min(1, 'Ongeldige keuze.')
+    .max(40, 'Ongeldige keuze.')
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Ongeldige keuze.'),
+  label: z
+    .string()
+    .trim()
+    .min(1, 'Geef elke keuze een naam.')
+    .max(60, 'De naam van een keuze is te lang (max. 60 tekens).'),
+  minutes: z
+    .number()
+    .int('De tijd van een keuze moet een geheel aantal minuten zijn.')
+    .min(5, 'Een keuze duurt minstens 5 minuten.')
+    .max(720, 'Een keuze duurt maximaal 12 uur.'),
+  priceCents: z
+    .number()
+    .int('Geef de prijs van elke keuze in euro.')
+    .min(1, 'Elke keuze heeft een prijs nodig.')
+    .max(OFFERING_MAX_PRICE_CENTS, 'De prijs is te hoog.'),
+});
+
+/** Stored choices, read defensively: anything malformed reads as no choices. */
+export function parseAddonChoices(value: unknown): AddonChoice[] {
+  const parsed = z.array(addonChoiceSchema).safeParse(value ?? []);
+  if (!parsed.success) return [];
+  const seen = new Set<string>();
+  return parsed.data.filter((choice) => !seen.has(choice.key) && seen.add(choice.key));
+}
+
 const variantSchema = z.object({
   audience: z.enum(OFFERING_AUDIENCES),
   /** The existing service row of this variant, if any (kept; never re-created). */
@@ -153,6 +196,10 @@ export const offeringInputSchema = z
     addonIds: z
       .array(z.string().trim().min(1).max(64, 'Ongeldige extra.'))
       .max(OFFERING_MAX_ADDONS, `Maximaal ${OFFERING_MAX_ADDONS} extra’s per aanbod.`)
+      .default([]),
+    addonOptions: z
+      .array(addonChoiceSchema)
+      .max(OFFERING_MAX_ADDON_CHOICES, `Maximaal ${OFFERING_MAX_ADDON_CHOICES} keuzes per extra.`)
       .default([]),
   })
   .superRefine((value, ctx) => {
@@ -188,17 +235,24 @@ export const offeringInputSchema = z
       });
     }
     if (value.isAddon) {
-      if (value.addonMinutes == null) {
+      // With choices each choice carries its own time and price; without, the
+      // extra needs the extra time and a price on every variant.
+      const choices = value.addonOptions.length > 0;
+      if (!choices && value.addonMinutes == null) {
         ctx.addIssue({
           code: 'custom',
-          message: 'Vul in hoeveel minuten deze extra bij een afspraak komt.',
+          message: 'Vul in hoeveel minuten deze extra bij een afspraak komt, of geef keuzes op.',
         });
       }
-      if (value.variants.some((variant) => variant.priceCents == null)) {
+      if (!choices && value.variants.some((variant) => variant.priceCents == null)) {
         ctx.addIssue({
           code: 'custom',
           message: 'Een extra heeft een prijs nodig; zonder prijs kan ze niet mee geboekt worden.',
         });
+      }
+      const keys = value.addonOptions.map((choice) => choice.key);
+      if (new Set(keys).size !== keys.length) {
+        ctx.addIssue({ code: 'custom', message: 'Twee keuzes hebben dezelfde naam.' });
       }
     } else if (!value.soldAlone) {
       ctx.addIssue({
@@ -248,6 +302,7 @@ export function validateOfferingInput(
         soldAlone: data.isAddon ? data.soldAlone : true,
         addonMinutes: data.isAddon ? data.addonMinutes : null,
         addonIds: data.addonIds,
+        addonOptions: data.isAddon ? data.addonOptions : [],
       },
       services,
     },
@@ -268,6 +323,8 @@ export function settingsFromRows(
     isAddon?: boolean;
     soldAlone?: boolean;
     addonMinutes?: number | null;
+    /** The `addon_options` jsonb column, parsed defensively. */
+    addonOptions?: unknown;
   },
   variantRows: ReadonlyArray<{
     audience: string;
@@ -293,6 +350,7 @@ export function settingsFromRows(
         ? minutes
         : null,
     addonIds: [...new Set(addonIds)],
+    addonOptions: isAddon ? parseAddonChoices(row.addonOptions) : [],
     variants: audiencesFor(variantMode).map((audience) => {
       const found = variantRows.find((entry) => entry.audience === audience);
       const price = found?.priceCents ?? null;
@@ -351,6 +409,7 @@ export type ResolvedOffering = {
   soldAlone: boolean;
   addonMinutes: number | null;
   addonIds: string[];
+  addonOptions: AddonChoice[];
 };
 
 export function resolveOffering(input: {
@@ -399,6 +458,7 @@ export function resolveOffering(input: {
     soldAlone: !addonOnly,
     addonMinutes: settings.addonMinutes ?? null,
     addonIds: [...(settings.addonIds ?? [])],
+    addonOptions: settings.isAddon === true ? [...(settings.addonOptions ?? [])] : [],
   };
 }
 
@@ -412,7 +472,15 @@ export function variantPriceLabel(variant: Pick<ResolvedVariant, 'priceCents'>):
  * price; one amount for a single option; per variant otherwise
  * ("Volwassene € 150,00 · Jeugd op aanvraag"). Never an invented amount.
  */
-export function offeringPriceLabel(offering: Pick<ResolvedOffering, 'variants'>): string {
+export function offeringPriceLabel(
+  offering: Pick<ResolvedOffering, 'variants'> & { addonOptions?: AddonChoice[] },
+): string {
+  // An extra with choices is priced per choice ("Zelfde type fiets € 75,00 · Ander type fiets € 150,00").
+  if (offering.addonOptions?.length) {
+    return offering.addonOptions
+      .map((choice) => `${choice.label} ${formatPrice(choice.priceCents)}`)
+      .join(' · ');
+  }
   const { variants } = offering;
   if (!variants.some((variant) => variant.priceCents != null)) return OFFER_PRICE_FALLBACK;
   if (variants.length === 1) return variantPriceLabel(variants[0]);
@@ -430,9 +498,15 @@ export function offeringPriceLabel(offering: Pick<ResolvedOffering, 'variants'>)
  * Enquiry: the editorial text on the offer page (else "Duur in overleg").
  */
 export function offeringDurationLabel(
-  offering: Pick<ResolvedOffering, 'bookingMode' | 'variants'>,
+  offering: Pick<ResolvedOffering, 'bookingMode' | 'variants'> & { addonOptions?: AddonChoice[] },
   editorialDuration: string,
 ): string {
+  // An extra with choices: the time of each choice, whatever the booking mode.
+  if (offering.addonOptions?.length) {
+    return offering.addonOptions
+      .map((choice) => `${choice.label}: ${formatDuration(choice.minutes)}`)
+      .join(' · ');
+  }
   if (offering.bookingMode === 'enquiry') return offerDurationLabel(editorialDuration);
   const parts = offering.variants
     .filter((variant) => variant.durationMinutes != null)

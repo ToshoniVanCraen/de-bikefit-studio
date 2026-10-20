@@ -29,6 +29,7 @@ const offering = (variants: ReturnType<typeof variant>[]): ResolvedOffering => (
   soldAlone: true,
   addonMinutes: null,
   addonIds: [],
+  addonOptions: [],
   bookingMode: 'direct',
   variantMode: variants.length > 1 ? 'audience' : 'single',
   status: 'bookable',

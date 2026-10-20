@@ -1,6 +1,11 @@
 import { editorialImage, type EditorialSlot } from '@/lib/studio/editorial-images';
 import { OFFER_DURATION_FALLBACK, OFFER_EXTRAS_NOTE, type OfferCategory } from './catalogue';
-import type { OfferingAudience, OfferingBookingMode, OfferingVariantMode } from './offering';
+import type {
+  AddonChoice,
+  OfferingAudience,
+  OfferingBookingMode,
+  OfferingVariantMode,
+} from './offering';
 import type { OfferingContent } from './offering-content';
 
 /**
@@ -29,9 +34,10 @@ import type { OfferingContent } from './offering-content';
  * Extra's (Toshoni, 20 Oct 2026): voetanalyse, zadelanalyse and het afstellen
  * van schoenplaatjes are sold on their own AND can be ticked as an extra when
  * booking a bikefit (their minutes and price are added); *Bikefit – tweede
- * fiets* is an extra only, never booked alone (the same-type price and time;
- * another type is settled on site). Both bikefits list those four extras. An
- * existing database gets this with `npm run cms:patch-aanbod-extras`.
+ * fiets* is an extra only, never booked alone, with two choices the visitor
+ * picks from: zelfde type (30 min, € 75) or ander type (1 u, € 150). Both
+ * bikefits list those four extras. An existing database gets this with
+ * `npm run cms:patch-aanbod-extras`.
  *
  * Booking: *Bikefit – huidige fiets* is booked directly as Volwassenenfit
  * (Volwassene) and Jeugdfit (Jeugd); the eight others are asked for through
@@ -58,6 +64,8 @@ export type DefaultOfferingExtras = {
   addonMinutes: number | null;
   /** Slugs of the extras a visitor may add when booking this offering, in order. */
   addonSlugs: string[];
+  /** Choices within this extra (each its own time and price); empty = one price and time. */
+  addonOptions: AddonChoice[];
 };
 
 export type DefaultOffering = DefaultOfferingExtras & {
@@ -73,6 +81,7 @@ const NOT_AN_EXTRA: DefaultOfferingExtras = {
   soldAlone: true,
   addonMinutes: null,
   addonSlugs: [],
+  addonOptions: [],
 };
 
 /** The three temporary AI images (`docs/editorial-images.md`): one per category, the lactate test apart. */
@@ -267,7 +276,25 @@ export const DEFAULT_OFFERS: DefaultOffering[] = [
     },
     enquiry(PRICES.secondBikeSameType),
     // An extra only: ticked when booking a bikefit, 30 min and € 75 for the same type.
-    { isAddon: true, soldAlone: false, addonMinutes: 30 },
+    {
+      isAddon: true,
+      soldAlone: false,
+      addonMinutes: 30,
+      addonOptions: [
+        {
+          key: 'zelfde-type',
+          label: 'Zelfde type fiets',
+          minutes: 30,
+          priceCents: PRICES.secondBikeSameType,
+        },
+        {
+          key: 'ander-type',
+          label: 'Ander type fiets',
+          minutes: 60,
+          priceCents: PRICES.secondBikeOtherType,
+        },
+      ],
+    },
   ),
   offer(
     {

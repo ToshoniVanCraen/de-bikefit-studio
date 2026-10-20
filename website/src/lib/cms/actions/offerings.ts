@@ -6,6 +6,7 @@ import { euroInputToCents, slugify } from '@/lib/booking/format';
 import {
   audiencesFor,
   AUDIENCE_LABELS,
+  OFFERING_MAX_ADDON_CHOICES,
   OFFERING_BOOKING_MODES,
   OFFERING_VARIANT_MODES,
   type OfferingAudience,
@@ -152,6 +153,24 @@ export async function saveOfferingAction(
       .filter((value): value is string => typeof value === 'string' && value.trim() !== '')
       .map((value) => value.trim());
 
+    // Choices within an extra: the rows of the "Keuzes" list; an empty name is no row.
+    const addonOptions: { key: string; label: string; minutes: number; priceCents: number }[] = [];
+    for (let row = 0; row < OFFERING_MAX_ADDON_CHOICES; row += 1) {
+      const label = field(form, `addonOptionLabel:${row}`);
+      if (!label) continue;
+      const minutes = intIn(field(form, `addonOptionMinutes:${row}`), 5, 720);
+      if (minutes === null) {
+        return actionError(
+          `Keuze “${label}”: de tijd moet een geheel aantal minuten tussen 5 en 720 zijn.`,
+        );
+      }
+      const priceCents = euroInputToCents(field(form, `addonOptionPrice:${row}`));
+      if (priceCents === undefined || priceCents === null) {
+        return actionError(`Keuze “${label}”: geef de prijs in euro, bv. 75 of 149,50.`);
+      }
+      addonOptions.push({ key: slugify(label) || `keuze-${row + 1}`, label, minutes, priceCents });
+    }
+
     const input = {
       content,
       settings: {
@@ -163,6 +182,7 @@ export async function saveOfferingAction(
         soldAlone: isAddon ? boolField(form, 'soldAlone') : true,
         addonMinutes: isAddon ? addonMinutes : null,
         addonIds,
+        addonOptions: isAddon ? addonOptions : [],
       },
     };
     const result = offeringId

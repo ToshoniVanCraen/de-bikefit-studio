@@ -1,0 +1,17 @@
+-- Choices within an extra (Toshoni, 20 Oct 2026): "Bikefit – tweede fiets" is one
+-- extra with two choices, zelfde type (30 min, € 75) or ander type (1 u, € 150),
+-- and the visitor picks one — docs/booking-architecture.md §18.
+--
+-- ADDITIVE. One column: `cms_offerings.addon_options`, a jsonb list of
+-- { key, label, minutes, priceCents }; empty (the default) means the extra has
+-- one price and one time as before. Existing rows keep today's behaviour. The
+-- choices themselves come from `npm run cms:patch-aanbod-extras` (its second
+-- run on a database that had the first adds exactly them).
+-- No row is created, updated or removed; nothing touches cms_services,
+-- cms_provider_services, cms_bookings or a webshop table.
+--
+-- Guarded (IF NOT EXISTS) so the file is safe to re-run.
+--
+-- Apply BEFORE deploying a build that contains it: the new build selects the
+-- column on every offering read.
+ALTER TABLE "cms_offerings" ADD COLUMN IF NOT EXISTS "addon_options" jsonb DEFAULT '[]'::jsonb NOT NULL;

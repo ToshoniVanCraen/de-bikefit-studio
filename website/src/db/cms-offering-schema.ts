@@ -51,6 +51,9 @@ import {
 } from 'drizzle-orm/pg-core';
 import { cmsBookings, cmsPages, cmsServices, cmsUsers, DEFAULT_LOCALE } from './cms-schema';
 
+/** A choice within an extra (`src/lib/offers/offering.ts` `AddonChoice`), kept structural here. */
+export type CmsAddonChoice = { key: string; label: string; minutes: number; priceCents: number };
+
 /** The shape of `src/lib/cms/block-primitives.ts` `CmsImageRef`, kept structural here. */
 export type CmsOfferingImage = {
   mediaId: string | null;
@@ -101,8 +104,10 @@ export const cmsOfferings = pgTable(
     isAddon: boolean('is_addon').default(false).notNull(),
     /** Booked or asked for on its own; `false` = only as an extra (then `isAddon` holds). */
     soldAlone: boolean('sold_alone').default(true).notNull(),
-    /** Minutes an extra adds to the appointment; `null` unless `isAddon`. */
+    /** Minutes an extra adds to the appointment; `null` unless `isAddon`; unused once there are choices. */
     addonMinutes: integer('addon_minutes'),
+    /** Choices within an extra (migration 0016): the visitor picks one; empty = one price and time. */
+    addonOptions: jsonb('addon_options').$type<CmsAddonChoice[]>().default([]).notNull(),
     updatedBy: text('updated_by').references(() => cmsUsers.id, { onDelete: 'set null' }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
