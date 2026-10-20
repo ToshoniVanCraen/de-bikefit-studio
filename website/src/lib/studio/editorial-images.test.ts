@@ -23,17 +23,22 @@ describe('editorial images', () => {
     }
   });
 
-  it('records provenance and Dutch alt text, and never names a team member', () => {
+  it('records provenance and Dutch alt text; a generated image never names a team member', () => {
     for (const slot of EDITORIAL_SLOTS) {
       const entry = manifest.images[slot] as {
         file: string | null;
         alt: string;
         generated: boolean;
+        prompt: string | null;
         sourceSha256: string | null;
       };
-      expect(entry.generated).toBe(true);
       expect(entry.alt.length).toBeGreaterThan(20);
-      expect(JSON.stringify(entry)).not.toMatch(/Rutger|Robin|Goran|Roelandts|Lierde|Walle/);
+      if (entry.generated) {
+        expect(JSON.stringify(entry)).not.toMatch(/Rutger|Robin|Goran|Roelandts|Lierde|Walle/);
+      } else {
+        // A real photograph (20 Oct 2026): no prompt, and it may name who is on it.
+        expect(entry.prompt).toBeNull();
+      }
       if (entry.file) expect(entry.sourceSha256).toMatch(/^[0-9a-f]{64}$/);
     }
   });

@@ -294,7 +294,8 @@ const VOOR_WIE: SeedPage = {
         title: 'Jonge fietsers groeien',
         paragraphs: [JUNIOR_TEXT],
         cta: { label: 'Bekijk het aanbod', href: OFFER_INDEX_PATH, external: false },
-        image: editorialImage('junior-coaching'),
+        // Toshoni, 20 Oct 2026: his own photo with a young rider, instead of the AI image.
+        image: editorialImage('rutger-jeugd'),
         imagePosition: 'right',
       },
     },
