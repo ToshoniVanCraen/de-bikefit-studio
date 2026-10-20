@@ -7,7 +7,7 @@ import {
 } from '@/lib/booking/time';
 import { formatDuration } from '@/lib/booking/format';
 import { escapeHtml } from '@/lib/html';
-import { LEGAL_IDENTITY, LEGAL_LINKS } from '@/lib/studio/legal';
+import { LEGAL_LINKS } from '@/lib/studio/legal';
 
 /**
  * Dutch booking e-mails (informal “je”): plain text + simple inline-styled HTML
@@ -48,6 +48,8 @@ export type BookingEmailData = {
   cancelledBy?: 'customer' | 'provider' | 'admin' | null;
   /** Phone fallback, e.g. "0473 95 26 33". */
   contactPhoneLabel?: string | null;
+  /** The studio's address on one line (Instellingen → Contact), for the footer; empty = name only. */
+  studioAddress?: string | null;
   confirmationText?: string | null;
   /** Admin link for the provider mails. */
   adminUrl?: string | null;
@@ -143,17 +145,17 @@ const BRING_ALONG =
 // ---------------------------------------------------------------------------
 // Transactional footer (customer-facing mails)
 //
-// Legal identity (art. 2:20 WVV), phone, and links to the terms and the
-// privacy statement. No unsubscribe link: these are service messages about a
-// booking, not marketing. Identity comes from `@/lib/studio/legal`, the same
-// source as the public footer.
+// The studio's name and address (Instellingen → Contact) and links to the
+// terms and the privacy statement; both legal pages carry the company
+// identity. Toshoni, 20 Oct 2026: no company identity line (Qarakter BV, KBO,
+// RPR) and no phone number here. No unsubscribe link: these are service
+// messages about a booking, not marketing.
 // ---------------------------------------------------------------------------
 
 function legalFooter(data: BookingEmailData) {
   const base = data.siteUrl.replace(/\/+$/, '');
   return {
-    identity: `${LEGAL_IDENTITY.name} (handelsnaam ${LEGAL_IDENTITY.tradeName}), ${LEGAL_IDENTITY.street}, ${LEGAL_IDENTITY.city} · KBO/btw ${LEGAL_IDENTITY.kbo} · RPR ${LEGAL_IDENTITY.rpr}`,
-    phone: `Tel. ${data.contactPhoneLabel?.trim() || LEGAL_IDENTITY.phoneLabel}`,
+    studio: [data.siteName.trim(), data.studioAddress?.trim()].filter(Boolean).join(' · '),
     termsUrl: `${base}${LEGAL_LINKS.terms}`,
     privacyUrl: `${base}${LEGAL_LINKS.privacy}`,
   };
@@ -163,8 +165,7 @@ export function legalFooterText(data: BookingEmailData): string {
   const footer = legalFooter(data);
   return [
     '--',
-    footer.identity,
-    footer.phone,
+    footer.studio,
     `Algemene voorwaarden: ${footer.termsUrl}`,
     `Privacyverklaring: ${footer.privacyUrl}`,
   ].join('\n');
@@ -175,8 +176,8 @@ export function legalFooterHtml(data: BookingEmailData): string {
   const link = (href: string, label: string) =>
     `<a href="${escapeHtml(href)}" style="color:${PALETTE.muted};text-decoration:underline">${escapeHtml(label)}</a>`;
   return (
-    `<p style="margin:0 0 6px;line-height:1.5">${escapeHtml(footer.identity)}</p>` +
-    `<p style="margin:0;line-height:1.5">${escapeHtml(footer.phone)} · ` +
+    `<p style="margin:0 0 6px;line-height:1.5">${escapeHtml(footer.studio)}</p>` +
+    `<p style="margin:0;line-height:1.5">` +
     `${link(footer.termsUrl, 'Algemene voorwaarden')} · ${link(footer.privacyUrl, 'Privacyverklaring')}</p>`
   );
 }

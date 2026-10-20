@@ -341,8 +341,8 @@ export const blockRegistry = {
         {
           label: '',
           title: 'Volwassenenfit',
-          body: 'De standaard bikefit. Reken op 90 minuten; complexe gevallen, eerste keren of fits na een blessure kunnen tot twee uur duren.',
-          duration: '90 minuten',
+          body: 'De standaard bikefit. Reken op {{duur:volwassenenfit}}; we haasten ons niet.',
+          duration: '{{duur:volwassenenfit}}',
           image: emptyImage,
           cta: null,
         },
@@ -492,7 +492,7 @@ export const blockRegistry = {
         {
           question: 'Hoe lang duurt een bikefit?',
           answer:
-            'Reken op 90 minuten voor een standaard bikefit voor volwassenen. Een jeugdfit is korter — ongeveer 60 minuten. Complexe gevallen, eerste keren, of fits na een blessure kunnen tot twee uur duren. We haasten ons niet — als het klaar is, is het klaar.',
+            'Reken op {{duur:volwassenenfit}} voor een bikefit voor volwassenen en {{duur:jeugdfit}} voor een jeugdfit. We haasten ons niet — als het klaar is, is het klaar.',
         },
         {
           question: 'Moet ik nieuwe onderdelen kopen?',

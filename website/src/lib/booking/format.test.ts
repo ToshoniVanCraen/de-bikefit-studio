@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { formatDuration, formatLocation, formatPrice, slugify } from './format';
+import {
+  formatDuration,
+  formatLocation,
+  formatPostalAddress,
+  formatPrice,
+  slugify,
+} from './format';
 
 /** Intl uses a no-break space between the euro sign and the amount. */
 function plain(value: string): string {
@@ -8,6 +14,18 @@ function plain(value: string): string {
 
 /** The slug rule enforced by the service form (`src/lib/cms/actions/services.ts`). */
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+describe('formatPostalAddress', () => {
+  it('joins the lines and the town, and is empty when nothing is filled in', () => {
+    expect(
+      formatPostalAddress({ addressLines: ['Straat 1 '], postalCode: '9400', city: 'Ninove' }),
+    ).toBe('Straat 1, 9400 Ninove');
+    expect(formatPostalAddress({ addressLines: [], postalCode: '', city: 'Ninove' })).toBe(
+      'Ninove',
+    );
+    expect(formatPostalAddress({ addressLines: ['', ' '], postalCode: '', city: '' })).toBe('');
+  });
+});
 
 describe('formatPrice', () => {
   it('formats cents as euros in nl-BE', () => {

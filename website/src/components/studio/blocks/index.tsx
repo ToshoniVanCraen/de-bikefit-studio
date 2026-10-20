@@ -1,5 +1,7 @@
+import { listPublicServices } from '@/lib/booking/content';
 import type { BlockInstance } from '@/lib/cms/blocks';
 import { sectionAnchors, visibleBlocks } from '@/lib/studio/blocks';
+import { hasCopyTokens, resolveCopyTokens } from '@/lib/studio/copy-tokens';
 import type { StudioLocale } from '@/lib/studio/locale';
 import { AudienceBlock } from './audience';
 import { BookingBlock } from './booking';
@@ -32,11 +34,15 @@ import type { BlockPageContext } from './types';
  *     `pricing` and `testimonial` blocks while `isPlaceholder` is set.
  *  3. **Stable anchors.** `sectionAnchors()` gives each section a readable
  *     `id` (`#werkwijze`, `#vragen`) that navigation can deep link to.
+ *  4. **Copy tokens are resolved.** `{{duur:<service-slug>}}` anywhere in a
+ *     block becomes that service's planning duration (`copy-tokens.ts`),
+ *     read once per page from the cached public services; a page without a
+ *     token never touches the booking data.
  *
  * The switch is exhaustive over the registry: adding a block type there makes
  * this file fail to typecheck until a renderer exists for it.
  */
-export function BlockRenderer({
+export async function BlockRenderer({
   blocks,
   locale,
   page,
@@ -46,7 +52,10 @@ export function BlockRenderer({
   page: BlockPageContext;
 }) {
   const anchors = sectionAnchors(blocks);
-  const visible = visibleBlocks(blocks);
+  const shown = visibleBlocks(blocks);
+  const visible = hasCopyTokens(shown)
+    ? resolveCopyTokens(shown, await durationLookup(locale))
+    : shown;
   const headingOwner = visible.find((block) => block.type === 'hero')?.id ?? visible[0]?.id;
 
   return (
@@ -63,6 +72,14 @@ export function BlockRenderer({
       ))}
     </>
   );
+}
+
+/** Service slug → duration label, for `{{duur:…}}`; only the services the site offers. */
+async function durationLookup(locale: StudioLocale) {
+  const services = await listPublicServices(locale);
+  return {
+    durationBySlug: new Map(services.map((service) => [service.slug, service.durationLabel])),
+  };
 }
 
 function StudioBlock({
