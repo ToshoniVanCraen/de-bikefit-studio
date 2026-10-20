@@ -72,11 +72,13 @@ describe('aanbod rollout pages', () => {
     });
   });
 
-  it('the seven offerings are the brief, verbatim: no price, no device brand, an honest duration', () => {
+  it("the nine offerings are the brief plus Toshoni's prices of 20 Oct 2026: no device brand, an honest duration", () => {
     const text = JSON.stringify(DEFAULT_OFFERS);
     expect(DEFAULT_OFFERS.map((entry) => entry.content.title)).toEqual([
       'Bikefit – aankoop nieuwe fiets',
       'Bikefit – huidige fiets',
+      'Bikefit – tweede bezoek',
+      'Bikefit – tweede fiets',
       'Voetanalyse',
       'Zadelanalyse',
       'Afstellen schoenplaatjes',
@@ -89,7 +91,16 @@ describe('aanbod rollout pages', () => {
       expect(entry.content.image.url).toMatch(/^\/images\/editorial\//);
       expect(entry.content.metaDescription.length).toBeGreaterThan(40);
     }
-    expect(text).not.toMatch(/€|\bgratis\b/);
+    // Only the amounts Toshoni gave (20 Oct 2026) appear in the copy, and "gratis" only for
+    // the six-month follow-up he named.
+    for (const amount of text.match(/€ \d+/g) ?? []) {
+      expect(['€ 15', '€ 60', '€ 65', '€ 75', '€ 85', '€ 120', '€ 150', '€ 275'], amount).toContain(
+        amount,
+      );
+    }
+    for (const line of text.match(/[^"]*\bgratis\b[^"]*/g) ?? []) {
+      expect(line).toMatch(/zes maanden/);
+    }
     expect(text).not.toMatch(/Retül|Retul|Vicon|Kinetic|Gebiomized|idmatch/i);
   });
 
