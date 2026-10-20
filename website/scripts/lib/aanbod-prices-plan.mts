@@ -19,6 +19,7 @@ import {
 } from '@/lib/offers/aanbod-prices';
 import { OFFERING_AUDIENCES, type OfferingAudience } from '@/lib/offers/offering';
 import { stable, type PlanDeps } from './aanbod-rollout.mjs';
+import { isTransportFailure } from './cli-options.mjs';
 
 export type OfferingRow = typeof cmsOfferings.$inferSelect;
 export type VariantRow = typeof cmsOfferingVariants.$inferSelect;
@@ -65,16 +66,34 @@ const AUDIENCE_ORDER: Record<OfferingAudience, number> = Object.fromEntries(
   OFFERING_AUDIENCES.map((audience, index) => [audience, index]),
 ) as Record<OfferingAudience, number>;
 
+/**
+ * Runs a read again, once, after a transport failure of the HTTP driver (20 Oct
+ * 2026 on Neon Staging: the first query after the apply's module imports hit a
+ * keep-alive socket the server had closed meanwhile — "fetch failed"). An SQL
+ * error is thrown as is.
+ */
+async function withTransportRetry<T>(read: () => Promise<T>): Promise<T> {
+  try {
+    return await read();
+  } catch (error) {
+    if (!isTransportFailure(error)) throw error;
+    await new Promise((resolve) => setTimeout(resolve, 750));
+    return read();
+  }
+}
+
 export async function readStoredOffering(
   deps: PlanDeps,
   slug: string,
 ): Promise<StoredOffering | null> {
   const { and, asc, eq } = deps.orm;
-  const [row] = await deps.db
-    .select()
-    .from(cmsOfferings)
-    .where(and(eq(cmsOfferings.locale, deps.locale), eq(cmsOfferings.slug, slug)))
-    .limit(1);
+  const [row] = await withTransportRetry(() =>
+    deps.db
+      .select()
+      .from(cmsOfferings)
+      .where(and(eq(cmsOfferings.locale, deps.locale), eq(cmsOfferings.slug, slug)))
+      .limit(1),
+  );
   if (!row) return null;
   const variants = await deps.db
     .select()
@@ -91,13 +110,18 @@ export async function readStoredOffering(
 
 export async function readStoredService(deps: PlanDeps, slug: string): Promise<ServiceRow | null> {
   const { and, eq } = deps.orm;
-  const [row] = await deps.db
-    .select()
-    .from(deps.schema.cmsServices)
-    .where(
-      and(eq(deps.schema.cmsServices.locale, deps.locale), eq(deps.schema.cmsServices.slug, slug)),
-    )
-    .limit(1);
+  const [row] = await withTransportRetry(() =>
+    deps.db
+      .select()
+      .from(deps.schema.cmsServices)
+      .where(
+        and(
+          eq(deps.schema.cmsServices.locale, deps.locale),
+          eq(deps.schema.cmsServices.slug, slug),
+        ),
+      )
+      .limit(1),
+  );
   return row ?? null;
 }
 

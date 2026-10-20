@@ -1348,3 +1348,12 @@ description from the offering's summary.
 
 **Rollback:** `npm run cms:patch-aanbod-prijzen -- --restore <backup.json> --expect-host '<host>'`
 puts the nine rows back and deletes the two created offerings. Then, if needed, the code.
+
+**If the apply stops on `Error connecting to database: TypeError: fetch failed`:** that is the
+HTTP driver's transport, not the query (the dry run and the rollout use the same credentials). On
+20 Oct 2026 the apply failed three times at its first read on Neon Staging: it loaded the offers
+repo (and with it the booking content and Google's auth library, seconds of compiling) inside the
+admin session, after the session row had been written, and the first read then went over a
+keep-alive socket Neon had closed meanwhile. The apply now loads its modules before its first
+query and the plan's reads are sent a second time after one transport failure. Nothing is written
+before the plan and the backup, so a failed run is safe to repeat.

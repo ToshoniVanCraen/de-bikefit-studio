@@ -3,6 +3,7 @@ import {
   assertWriteTarget,
   databaseHost,
   describeError,
+  isTransportFailure,
   rejectBooleanFlagValues,
   rejectPositionals,
   rejectUnknownOptions,
@@ -177,5 +178,28 @@ describe('describeError', () => {
     expect(text).toContain('at:');
     expect(describeError('plain string')).toBe('plain string');
     expect(describeError(new Error('no cause'))).not.toContain('cause:');
+  });
+});
+
+describe('isTransportFailure', () => {
+  it('recognises a failed transport of the HTTP driver anywhere in the cause chain', () => {
+    const socket = Object.assign(new TypeError('fetch failed'), {
+      cause: Object.assign(new Error('other side closed'), { code: 'UND_ERR_SOCKET' }),
+    });
+    const neon = new Error('Error connecting to database: TypeError: fetch failed', {
+      cause: socket,
+    });
+    neon.name = 'NeonDbError';
+    expect(isTransportFailure(new Error('Failed query: select 1', { cause: neon }))).toBe(true);
+    expect(
+      isTransportFailure(Object.assign(new Error('read ECONNRESET'), { code: 'ECONNRESET' })),
+    ).toBe(true);
+  });
+
+  it('leaves an SQL error, a plain value and nothing alone', () => {
+    const sql = Object.assign(new Error('relation "x" does not exist'), { code: '42P01' });
+    expect(isTransportFailure(new Error('Failed query: select 1', { cause: sql }))).toBe(false);
+    expect(isTransportFailure('fetch failed')).toBe(false);
+    expect(isTransportFailure(null)).toBe(false);
   });
 });

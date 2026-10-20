@@ -396,6 +396,17 @@ export async function runAanbodPricesPatch(
     locale: schema.DEFAULT_LOCALE,
     log,
   };
+  // Load the write side before the first query: importing the offers repo pulls
+  // in the booking content and Google's auth library, a graph tsx compiles for
+  // seconds; done inside the session that pause left the first Neon request on a
+  // keep-alive socket the server had closed ("fetch failed", 20 Oct 2026).
+  const writeSide = writing
+    ? {
+        repo: await import('@/lib/cms/repo'),
+        offersRepo: await import('@/lib/offers/repo'),
+        auth: await import('@/lib/cms/auth'),
+      }
+    : null;
   const actor = await findActor(planDeps);
 
   if (!writing) {
@@ -418,13 +429,7 @@ export async function runAanbodPricesPatch(
   }
 
   await withAdminSession(context, actor.id, 'cms-patch-aanbod-prijzen', async () => {
-    const deps: PricesDeps = {
-      ...planDeps,
-      repo: await import('@/lib/cms/repo'),
-      offersRepo: await import('@/lib/offers/repo'),
-      auth: await import('@/lib/cms/auth'),
-      actor,
-    };
+    const deps: PricesDeps = { ...planDeps, ...writeSide!, actor };
     if (options.restore !== null) {
       const backup = await readPricesBackup(options.restore);
       if (backup.locale !== deps.locale) {
