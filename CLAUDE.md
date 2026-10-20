@@ -17,7 +17,8 @@ Read before changing the app: `website/README.md` (setup and scripts), `website/
 (environments, env var contract), `website/docs/cms-architecture.md` (CMS data model, auth,
 blocks, caching), `website/docs/booking-architecture.md` (booking, availability, Google
 Calendar, e-mail), `website/docs/staging-runbook.md` and `website/docs/booking-runbook.md`
-(operations). Next.js 16 differs from older training data: read `website/AGENTS.md` and the
+(operations), and `website/docs/engineering-best-practices.md` (how modules are shaped, named,
+typed, split and reviewed; the reviewer checklist). Next.js 16 differs from older training data: read `website/AGENTS.md` and the
 guides under `website/node_modules/next/dist/docs/` before using a Next API you are unsure of.
 
 ## 2. Commands (run inside `website/`)
@@ -45,6 +46,9 @@ feature branch. CI runs the same six steps; a red CI is never merged.
 
 ## 3. Architecture rules
 
+- **Structure and style:** the rules in `website/docs/engineering-best-practices.md` (module kinds,
+  dependency direction, file size, naming, typing, actions, repos, caching, logging, components,
+  tests, scripts) apply to every new or touched module; its §15 is the review checklist.
 - **Layers:** page/route → server action (`src/lib/**/actions/*.ts`, `'use server'`) → repo
   (`src/lib/*/repo.ts`) → Drizzle. Pages and actions never call `getCmsDb()` directly.
   Read paths go through the cached readers in `src/lib/cms/content.ts` and
