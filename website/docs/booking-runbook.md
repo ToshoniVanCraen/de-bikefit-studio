@@ -721,16 +721,22 @@ hero + one text block each):
   (*Instellingen → Contact → e-mail*, `info@debikefitstudio.be`) is in the
   footer's contact column. The legal identity line (Qarakter BV, Weversstraat 7,
   1730 Asse, BTW, RPR; `src/lib/studio/legal.ts`) was removed from the footer at
-  Toshoni's request on 13 Oct 2026; it stays in both legal texts and in the
-  customer e-mails — recheck art. III.74 WER with the lawyer before production. A fresh `cms:seed` also
+  Toshoni's request on 13 Oct 2026; it stays in both legal texts (since 20 Oct 2026 no
+  longer in the customer e-mails, which name the studio and its address instead) — recheck
+  art. III.74 WER with the lawyer before production. A fresh `cms:seed` also
   adds a footer menu column **Juridisch** with the same two links; the bottom
   row then skips them so nothing shows twice. Existing databases do not get
   that menu column (menus are not re-seeded); the bottom-row links cover it.
 - The booking form says "Door te boeken ga je akkoord met onze algemene
   voorwaarden en privacyverklaring", both links opening in a new tab.
-- The confirmation and cancellation e-mails end with a transactional footer
-  (legal identity, KBO number, RPR, phone, links to both pages). No
-  unsubscribe link: they are service messages, not marketing.
+- The confirmation, cancellation and assignment e-mails end with a transactional footer:
+  the studio's name and address (*Instellingen → Contact*; name alone while the address is
+  empty) and links to both pages. Since 20 Oct 2026 no company identity line and no phone
+  number there (Toshoni). No unsubscribe link: they are service messages, not marketing.
+- The privacy statement (20 Oct 2026) allows commercial e-mail to customers on the soft
+  opt-in basis (art. XII.13 WER, legitimate interest) and consent for non-customers, always
+  with an unsubscribe link in every such e-mail and an opt-out by e-mail. No commercial mail
+  exists in the code yet; whatever sends one must carry that link and respect the opt-out.
 - **E-mail address in the texts**: at seed time the `[E-MAILADRES]`
   placeholder is filled from *Instellingen → Contact → e-mail*; when that is
   empty the seed writes `info@debikefitstudio.be` and prints a `!` warning.

@@ -151,12 +151,17 @@ const FAQ_ITEMS = [
 const LEGAL_EMAIL_PLACEHOLDER = '[E-MAILADRES]';
 const LEGAL_FALLBACK_EMAIL = CONTACT_EMAIL;
 
-/** Privacyverklaring — work block 2026-09-24-legal-pages.md, page 1 (verbatim + KBO substitutions). */
-const PRIVACY_HTML = `<p><em>Laatst bijgewerkt: 24 september 2026</em></p>
+/**
+ * Privacyverklaring — work block 2026-09-24-legal-pages.md, page 1 (verbatim + KBO substitutions).
+ * 20 Oct 2026 (Toshoni): commercial e-mail to customers is allowed, always with an unsubscribe
+ * link (section 2 "Nieuws en aanbiedingen per e-mail", the retention and rights lines), the
+ * experience question after an appointment is named, the phone number in the +32 format.
+ */
+const PRIVACY_HTML = `<p><em>Laatst bijgewerkt: 20 oktober 2026</em></p>
 
 <h2>1. Wie zijn wij?</h2>
 <p>De Bikefit Studio is een handelsnaam van <strong>Qarakter BV</strong>, met maatschappelijke zetel te Weversstraat 7, 1730 Asse, ingeschreven in de Kruispuntbank van Ondernemingen onder het nummer <strong>BE 1036.912.281</strong> (RPR Brussel, Nederlandstalige afdeling). Wij zijn de verwerkingsverantwoordelijke voor de persoonsgegevens die je via deze website en bij een bikefit aan ons toevertrouwt.</p>
-<p>Vragen over deze verklaring of over je gegevens? Mail naar <a href="mailto:[E-MAILADRES]">[E-MAILADRES]</a> of bel <a href="tel:+32473952633">0473 95 26 33</a>.</p>
+<p>Vragen over deze verklaring of over je gegevens? Mail naar <a href="mailto:[E-MAILADRES]">[E-MAILADRES]</a> of bel <a href="tel:+32473952633">+32 473 95 26 33</a>.</p>
 
 <h2>2. Welke gegevens verwerken wij, en waarom?</h2>
 <h3>Als je een afspraak maakt</h3>
@@ -165,7 +170,9 @@ const PRIVACY_HTML = `<p><em>Laatst bijgewerkt: 24 september 2026</em></p>
 <h3>Agenda van de bikefitter</h3>
 <p>Een afspraak wordt ingeschreven in de agenda van de bikefitter die de fit uitvoert. Daarvoor gebruiken wij Google Agenda (Google Ireland Ltd). In die agenda staan enkel de dienst, het tijdstip, je naam en de contactgegevens die nodig zijn om de afspraak uit te voeren.</p>
 <h3>Bevestiging en herinneringen per e-mail</h3>
-<p>Wij sturen je een bevestiging van je afspraak, een agenda-uitnodiging en, waar van toepassing, een herinnering of een annulatiebevestiging. Deze e-mails versturen wij via Resend (Resend, Inc.). Wij sturen geen nieuwsbrieven of reclame zonder je aparte toestemming.</p>
+<p>Wij sturen je een bevestiging van je afspraak, een agenda-uitnodiging en, waar van toepassing, een herinnering, een annulatiebevestiging en na je afspraak een korte vraag naar je ervaring. Deze e-mails horen bij je afspraak. Wij versturen ze via Resend (Resend, Inc.).</p>
+<h3>Nieuws en aanbiedingen per e-mail</h3>
+<p>Ben je klant bij ons geweest, dan kunnen wij je af en toe een e-mail sturen over ons aanbod, nieuws uit de studio of een actie. Rechtsgrond: ons gerechtvaardigd belang om bestaande klanten te informeren over gelijkaardige diensten (art. 6.1.f AVG en art. XII.13 van het Wetboek van economisch recht). Ben je nog geen klant, dan vragen wij eerst je toestemming (art. 6.1.a AVG). Je kunt je op elk moment uitschrijven via de link onderaan elke e-mail of met een mailtje naar <a href="mailto:[E-MAILADRES]">[E-MAILADRES]</a>; daarna sturen wij je geen commerciële e-mails meer. Bevestigingen en herinneringen van je afspraken blijven wel komen, want die horen bij je afspraak.</p>
 <h3>Facturatie en boekhouding</h3>
 <p>Als wij een factuur opmaken, verwerken wij de gegevens die daarvoor wettelijk verplicht zijn. Rechtsgrond: een wettelijke verplichting (art. 6.1.c AVG).</p>
 <h3>Technische gegevens en beveiliging</h3>
@@ -178,6 +185,7 @@ const PRIVACY_HTML = `<p><em>Laatst bijgewerkt: 24 september 2026</em></p>
 <li>Afspraak- en contactgegevens: tot drie jaar na je laatste afspraak, zodat wij je bij een volgende fit verder kunnen helpen. Daarna verwijderen of anonimiseren wij ze.</li>
 <li>Omschrijving van klachten of doelen: tot drie jaar na je laatste afspraak, of eerder als je erom vraagt.</li>
 <li>Facturen en boekhoudkundige stukken: de wettelijke bewaartermijn (tot tien jaar).</li>
+<li>Je uitschrijving voor commerciële e-mails: zolang nodig om ze te respecteren.</li>
 <li>Technische logbestanden: maximaal dertig dagen.</li>
 <li>Statistieken (Google Analytics): maximaal veertien maanden.</li>
 </ul>
@@ -188,7 +196,7 @@ const PRIVACY_HTML = `<p><em>Laatst bijgewerkt: 24 september 2026</em></p>
 <li><strong>Vercel Inc.</strong> – hosting van de website (Verenigde Staten; deelnemer aan het EU-VS Data Privacy Framework).</li>
 <li><strong>Neon Inc.</strong> – databank waarin afspraken bewaard worden (servers in Frankfurt, Europese Unie).</li>
 <li><strong>Google Ireland Ltd.</strong> – Google Agenda van de bikefitter en, na toestemming, Google Analytics.</li>
-<li><strong>Resend, Inc.</strong> – verzenden van bevestigings- en herinneringsmails (Verenigde Staten; standaardcontractbepalingen van de Europese Commissie).</li>
+<li><strong>Resend, Inc.</strong> – verzenden van onze e-mails: bevestigingen, herinneringen, de vraag naar je ervaring en nieuws of aanbiedingen (Verenigde Staten; standaardcontractbepalingen van de Europese Commissie).</li>
 </ul>
 <p>Wanneer gegevens buiten de Europese Economische Ruimte terechtkomen, gebeurt dat op basis van een adequaatheidsbesluit van de Europese Commissie of van standaardcontractbepalingen. Wij geven je gegevens verder enkel door als een wet ons daartoe verplicht.</p>
 
@@ -202,7 +210,7 @@ const PRIVACY_HTML = `<p><em>Laatst bijgewerkt: 24 september 2026</em></p>
 <p>Zonder toestemming plaatsen wij geen statistische cookies en laden wij geen script van Google Analytics. Je keuze kun je altijd aanpassen via de link “Cookies” onderaan elke pagina.</p>
 
 <h2>6. Jouw rechten</h2>
-<p>Je hebt het recht om je gegevens in te kijken, te laten verbeteren of te laten wissen, om de verwerking te laten beperken, om bezwaar te maken tegen een verwerking op basis van ons gerechtvaardigd belang, en om je gegevens in een gangbaar bestandsformaat te ontvangen. Toestemming die je gaf, kun je op elk moment intrekken; dat verandert niets aan de rechtmatigheid van wat ervoor gebeurde.</p>
+<p>Je hebt het recht om je gegevens in te kijken, te laten verbeteren of te laten wissen, om de verwerking te laten beperken, om bezwaar te maken tegen een verwerking op basis van ons gerechtvaardigd belang, en om je gegevens in een gangbaar bestandsformaat te ontvangen. Toestemming die je gaf, kun je op elk moment intrekken; dat verandert niets aan de rechtmatigheid van wat ervoor gebeurde. Tegen commerciële e-mails kun je altijd bezwaar maken: uitschrijven via de link in de e-mail volstaat.</p>
 <p>Mail je vraag naar <a href="mailto:[E-MAILADRES]">[E-MAILADRES]</a>. Wij antwoorden binnen een maand. Om zeker te zijn dat wij met de juiste persoon spreken, kunnen wij je vragen om je identiteit te bevestigen.</p>
 <p>Ben je niet tevreden met hoe wij met je gegevens omgaan? Dan kun je een klacht indienen bij de Gegevensbeschermingsautoriteit, Drukpersstraat 35, 1000 Brussel, <a href="https://www.gegevensbeschermingsautoriteit.be" rel="noopener">www.gegevensbeschermingsautoriteit.be</a>, <a href="mailto:contact@apd-gba.be">contact@apd-gba.be</a>.</p>
 
@@ -219,7 +227,7 @@ const PRIVACY_HTML = `<p><em>Laatst bijgewerkt: 24 september 2026</em></p>
 const TERMS_HTML = `<p><em>Versie van 24 september 2026</em></p>
 
 <h2>Artikel 1 – Wie wij zijn</h2>
-<p>Deze algemene voorwaarden gelden voor alle diensten van <strong>Qarakter BV</strong>, handelend onder de naam De Bikefit Studio, met maatschappelijke zetel te Weversstraat 7, 1730 Asse, KBO/btw-nummer BE 1036.912.281, RPR Brussel, Nederlandstalige afdeling, bereikbaar via <a href="mailto:[E-MAILADRES]">[E-MAILADRES]</a> en <a href="tel:+32473952633">0473 95 26 33</a>. Hierna “wij”. De klant die een dienst boekt, hierna “jij”.</p>
+<p>Deze algemene voorwaarden gelden voor alle diensten van <strong>Qarakter BV</strong>, handelend onder de naam De Bikefit Studio, met maatschappelijke zetel te Weversstraat 7, 1730 Asse, KBO/btw-nummer BE 1036.912.281, RPR Brussel, Nederlandstalige afdeling, bereikbaar via <a href="mailto:[E-MAILADRES]">[E-MAILADRES]</a> en <a href="tel:+32473952633">+32 473 95 26 33</a>. Hierna “wij”. De klant die een dienst boekt, hierna “jij”.</p>
 
 <h2>Artikel 2 – Toepassing</h2>
 <p>Door een afspraak te maken via onze website, per e-mail of telefonisch, aanvaard je deze voorwaarden. Afwijkingen gelden enkel als wij ze schriftelijk bevestigen. Als een bepaling ongeldig zou zijn, blijven de andere bepalingen gelden.</p>
