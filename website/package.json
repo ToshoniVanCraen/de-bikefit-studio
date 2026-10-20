@@ -32,7 +32,8 @@
     "cms:retention": "tsx scripts/cms-retention.mts",
     "cms:mfa-reset": "tsx scripts/cms-mfa-reset.mts",
     "staging:access": "tsx scripts/staging-access.mts",
-    "images:import": "tsx scripts/import-editorial-image.mts"
+    "images:import": "tsx scripts/import-editorial-image.mts",
+    "images:portrait": "tsx scripts/team-portrait.mts"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

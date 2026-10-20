@@ -52,3 +52,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Files handed over for import (team portraits), never committed
+/.incoming/

@@ -8,6 +8,8 @@
  * carry their name and team membership only. Plain data.
  */
 
+import { teamPortrait } from '@/lib/studio/team-portraits';
+
 export const HERO_SUBTITLE =
   'Van een fiets die beter past tot begeleiding die met je meegroeit. We luisteren naar jouw verhaal en helpen je op weg, in de studio of bij jou thuis.';
 
@@ -29,13 +31,17 @@ export const TEAM_INTRO =
 
 /**
  * Second bio line on an interim profile, so the card reads as unfinished on
- * purpose rather than as a finished one-line bio.
+ * purpose rather than as a finished one-line bio. No profile uses it since
+ * 20 Oct 2026 (Robin and Goran left the page); kept for a future interim card.
  */
 export const TEAM_PROFILE_PENDING = 'Een uitgebreid profiel volgt binnenkort.';
 
 /**
- * Team members. Only Rutger has a source-backed bio (content/about.html §1).
- * Open fields per person: docs/content-placeholders.md, T-rows.
+ * Team members. Since 20 Oct 2026 (Toshoni) only Rutger: Robin Van Lierde and
+ * Goran Van de Walle no longer appear on /ons-team. His bio is source-backed
+ * (content/about.html §1); his portrait is his own photo, imported with
+ * `scripts/team-portrait.mts` (initials while the file is not there).
+ * Open fields: docs/content-placeholders.md, T-rows.
  */
 export const TEAM_MEMBERS = [
   {
@@ -45,21 +51,8 @@ export const TEAM_MEMBERS = [
       'Ik zit op een fiets zolang ik me kan herinneren. Negentien jaar competitie, en een heel leven daarbuiten gewoon fietsen — naar school, naar het werk, het heuvelland in op zondag.',
       'Daarom heb ik De Bikefit Studio opgericht. Iedereen verdient het om te genieten van alles wat een fiets te bieden heeft. Mijn werk is ervoor te zorgen dat jouw fiets je dat ook toelaat.',
     ],
+    image: teamPortrait('rutger-roelandts'),
     internalNote:
-      'Register T-01–T-04. Bio: Rutgers eigen tekst uit content/about.html §1 (eerder gepubliceerd op /over-ons), ingekort; akkoord van Rutger nodig. Rol “Oprichter” volgt uit die tekst. Kwalificaties: niets vermeld. Foto: nog geen echte portretfoto (nu initialen).',
-  },
-  {
-    name: 'Robin Van Lierde',
-    role: '',
-    bio: ['Robin maakt deel uit van het team van De Bikefit Studio.', TEAM_PROFILE_PENDING],
-    internalNote:
-      'OPEN (register T-05–T-08): bio, rol, kwalificaties/specialisaties en portretfoto nog op te vragen bij Robin. Niets invullen zonder bron; geen gegenereerd portret gebruiken. Verwijder de regel “profiel volgt” zodra de echte bio er staat.',
-  },
-  {
-    name: 'Goran Van de Walle',
-    role: '',
-    bio: ['Goran maakt deel uit van het team van De Bikefit Studio.', TEAM_PROFILE_PENDING],
-    internalNote:
-      'OPEN (register T-09–T-12): bio, rol, kwalificaties/specialisaties en portretfoto nog op te vragen bij Goran. Niets invullen zonder bron; geen gegenereerd portret gebruiken. Verwijder de regel “profiel volgt” zodra de echte bio er staat.',
+      'Register T-01–T-04. Bio: Rutgers eigen tekst uit content/about.html §1 (eerder gepubliceerd op /over-ons), ingekort; akkoord van Rutger nodig. Rol “Oprichter” volgt uit die tekst. Kwalificaties: niets vermeld. Foto: eigen foto, aangeleverd door Toshoni op 20 okt 2026 (public/images/team, zie docs/editorial-images.md).',
   },
 ];

@@ -133,25 +133,18 @@ describe('aanbod rollout pages', () => {
     expect(text).not.toMatch(/€|korting|gratis|\d+\s*%/i);
   });
 
-  it('/ons-team: three real names, only Rutger has a sourced bio, no portraits, no invented credentials', () => {
+  it('/ons-team: Rutger alone since 20 Oct 2026, sourced bio, his own portrait or the initials, no invented credentials', () => {
     const team = page('ons-team').blocks.find((block) => block.type === 'team');
     const members = team?.data.members as typeof TEAM_MEMBERS;
-    expect(members.map((member) => member.name)).toEqual([
-      'Rutger Roelandts',
-      'Robin Van Lierde',
-      'Goran Van de Walle',
-    ]);
-    for (const member of members) {
-      expect('image' in member).toBe(false);
-    }
-    for (const member of members.slice(1)) {
-      expect(member.role).toBe('');
-      expect(member.bio).toEqual([
-        `${member.name.split(' ')[0]} maakt deel uit van het team van De Bikefit Studio.`,
-        'Een uitgebreid profiel volgt binnenkort.',
-      ]);
-      expect(member.internalNote).toMatch(/^OPEN \(register T-/);
-    }
+    expect(members.map((member) => member.name)).toEqual(['Rutger Roelandts']);
+    const [rutger] = members;
+    expect(rutger.role).toBe('Oprichter');
+    expect(rutger.bio).toHaveLength(2);
+    // A real photo under /images/team, never a media id or a generated image.
+    expect(rutger.image.mediaId).toBeNull();
+    expect(rutger.image.decorative).toBe(false);
+    expect(rutger.image.url === null || rutger.image.url.startsWith('/images/team/')).toBe(true);
+    expect(allText).not.toMatch(/Robin|Goran|profiel volgt/);
   });
 
   it('makes no medical, guarantee or device-brand claims', () => {

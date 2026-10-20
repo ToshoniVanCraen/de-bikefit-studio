@@ -42,8 +42,9 @@ import {
  *     callout) and Rutger's own first-person text.
  *   Short connective lines (group ledes, section titles) are neutral and claim
  *   nothing beyond those sources. No prices, durations, credentials, titles,
- *   years or achievements are added; Robin's and Goran's profiles carry only
- *   their name and the fact that they are part of the team.
+ *   years or achievements are added. Since 20 Oct 2026 the page shows Rutger
+ *   alone (Toshoni: Robin and Goran removed), with his own portrait
+ *   (`src/lib/studio/team-portraits.ts`).
  *   Toshoni's site review of the same day (work block
  *     2026-10-13-page-cleanup): no "Ninove" kicker on /aanbod, /voor-wie and
  *     /ons-team, no second heading above the audiences or the profiles, and
@@ -444,7 +445,7 @@ const ONS_TEAM: SeedPage = {
       type: 'team',
       data: {
         variant: 'default',
-        // No section heading: the three profiles follow "Ons team" directly.
+        // No section heading: the profile follows "Ons team" directly.
         eyebrow: '',
         title: '',
         lede: '',

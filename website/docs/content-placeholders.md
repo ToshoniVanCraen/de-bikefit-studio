@@ -34,12 +34,12 @@ datum).
 | P | Prijzen | 9 | 0 | 1 | 0 | 8 |
 | D | Duur | 9 | 2 | 0 | 0 | 7 |
 | E | Inhoud, extra's, pakketten | 10 | 1 | 9 | 0 | 0 |
-| T | Team | 13 | 10 | 2 | 1 | 0 |
+| T | Team | 5 | 2 | 2 | 1 | 0 |
 | B | AI-beelden en lege beeldvakken | 5 | 5 | 0 | 0 | 0 |
 | K | Online boeken per dienst | 6 | 2 | 1 | 0 | 3 |
 | G | Bestaande hiaten in aangeraakte inhoud | 7 | 2 | 1 | 2 | 2 |
 | C | Cadeaubon (bestelformulier) | 4 | 3 | 1 | 0 | 0 |
-| | **Totaal** | **63** | **25** | **15** | **3** | **20** |
+| | **Totaal** | **55** | **17** | **15** | **3** | **20** |
 
 ## 1. Prijzen (P)
 
@@ -135,9 +135,11 @@ Plaats: CMS → *Ons team* (`/ons-team`) → blok *Team* → **Teamleden** → d
 kwalificaties: die komen, met bron, in **Bio** of kort in **Rol**. Het veld **Interne notitie (niet
 publiek)** herhaalt per persoon de open rijen. Zonder **Afbeelding** toont de site de initialen.
 
-Robin en Goran hebben een neutrale tussenkaart: naam, initialen en twee regels, "*Naam* maakt deel
-uit van het team van De Bikefit Studio." en "Een uitgebreid profiel volgt binnenkort." Verwijder
-die tweede regel zodra de echte bio er staat.
+Sinds 20 okt 2026 staat enkel Rutger op de pagina (beslissing Toshoni): de tussenkaarten van Robin
+Van Lierde en Goran Van de Walle zijn weg, en met hen de rijen T-05 tot en met T-12. Een echte
+portretfoto komt via `npm run images:portrait` in `public/images/team/` (procedure en herkomst:
+`docs/editorial-images.md`), nooit als AI-beeld; de seed en `cms:rollout-aanbod` schrijven de
+verwijzing in het blok.
 
 | ID | Persoon — veld | Nu | Nodig | Status |
 | --- | --- | --- | --- | --- |
@@ -145,14 +147,6 @@ die tweede regel zodra de echte bio er staat.
 | T-02 | Rutger Roelandts — Rol | "Oprichter" (volgt uit zijn eigen tekst) | bevestigen | te bevestigen |
 | T-03 | Rutger Roelandts — Kwalificaties | niets vermeld | diploma's of opleidingen, enkel met bron | open |
 | T-04 | Rutger Roelandts — Afbeelding | leeg → initialen "RR" | echte portretfoto (geen AI-beeld), met akkoord | open |
-| T-05 | Robin Van Lierde — Bio | "Robin maakt deel uit van het team van De Bikefit Studio." + "Een uitgebreid profiel volgt binnenkort." | korte bio, aangeleverd door Robin zelf | open |
-| T-06 | Robin Van Lierde — Rol | leeg (niet getoond) | rol of functie | open |
-| T-07 | Robin Van Lierde — Kwalificaties en specialisaties | niets vermeld | enkel met bron | open |
-| T-08 | Robin Van Lierde — Afbeelding | leeg → initialen "RV" | echte portretfoto, met akkoord | open |
-| T-09 | Goran Van de Walle — Bio | "Goran maakt deel uit van het team van De Bikefit Studio." + "Een uitgebreid profiel volgt binnenkort." | korte bio, aangeleverd door Goran zelf | open |
-| T-10 | Goran Van de Walle — Rol | leeg (niet getoond) | rol of functie | open |
-| T-11 | Goran Van de Walle — Kwalificaties en specialisaties | niets vermeld | enkel met bron | open |
-| T-12 | Goran Van de Walle — Afbeelding | leeg → initialen "GV" | echte portretfoto, met akkoord | open |
 | T-13 | Algemene claim: `/aanbod` → blok *Hero* → **Ondertitel** ("uitsluitend met ervaren, gediplomeerde professionals"); `/ons-team` → *Hero* → **Ondertitel** en home → blok *Oproep* → **Tekst** ("de nodige diploma's") | aangeleverd door Toshoni | blijft algemeen; geen individuele diploma's noemen zonder bron | bevestigd |
 
 ## 5. Beelden: AI-gegenereerd, tijdelijk of leeg (B)

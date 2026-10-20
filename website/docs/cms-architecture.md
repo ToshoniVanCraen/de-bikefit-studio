@@ -1757,7 +1757,10 @@ applies the five pages, menus and redirects.
 **Images.** Three temporary AI images (generic people) in `public/images/editorial/`, written
 into the home/bikefit/voor-wie blocks and into the default offerings via `editorialImage()`;
 provenance in [`editorial-images.md`](./editorial-images.md). Team members never get a generated
-image: the `team` block draws initials.
+image: the `team` block draws initials until a real portrait is imported with
+`npm run images:portrait` (`scripts/team-portrait.mts` → `public/images/team/`, manifest
+`src/lib/studio/team-portraits.json`, ref via `teamPortrait()`; 20 Oct 2026, Rutger). Since that
+day `/ons-team` lists Rutger alone.
 
 **Tests.** `offering-content.test.ts`, `offering.test.ts`, `offer-catalogue.test.ts`,
 `catalogue.test.ts`, `jsonld.test.ts`, `actions/offerings.test.ts`, the seed-content tests; on
