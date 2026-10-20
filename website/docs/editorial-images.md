@@ -35,3 +35,28 @@ initials instead). Each must be replaced by real studio photography; the replace
 
 Editors can replace any image at any time in `/admin` with a media-library upload (*Afbeelding*
 field of the block); that does not need a deploy.
+
+## Team portraits (real photos, with consent)
+
+The `team` block never shows a generated image. A real portrait of a team member goes in through
+its own, separate pipeline (20 Oct 2026):
+
+1. The person's photo is handed over as a file (Toshoni puts it in `website/.incoming/`, which is
+   gitignored, or attaches it); the file itself is never committed.
+2. `npm run images:portrait -- --person <person> --src <file> [--focus x,y] [--alt "…"] [--version N]`
+   (`scripts/team-portrait.mts`) writes one WebP master
+   `public/images/team/<person>-v<N>.webp`: EXIF-rotated, cropped to the 4:5 frame of
+   `.studio-team__portrait` around `--focus` (fractions of the picture, default its centre), at
+   most 1200×1500, metadata stripped, under 450 KB, with a light grade so a phone photo sits next
+   to the editorial images (saturation −12 %, a touch warmer, blacks lifted a little;
+   `--no-treatment` skips it). It never overwrites: a new photo gets a new version. The crop,
+   the treatment, the source's sha256 and the consent note are recorded in
+   `src/lib/studio/team-portraits.json`.
+3. `teamPortrait(person)` (`src/lib/studio/team-portraits.ts`) turns the manifest entry into the
+   block image ref the seed writes into the `team` block (`TEAM_MEMBERS` in
+   `src/lib/studio/seed-content/copy.ts`); without a file the ref is empty and the card shows the
+   initials. On an existing database `cms:rollout-aanbod` carries the new ref to /ons-team.
+
+| Person | File (committed) | Source (not committed) | Consent |
+| --- | --- | --- | --- |
+| `rutger-roelandts` | see the manifest (`file` is null until the import ran) | photo handed over by Toshoni on 20 Oct 2026 | Toshoni, 20 Oct 2026 (chat) |

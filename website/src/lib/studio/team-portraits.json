@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "note": "Real portraits of team members for the `team` block, each imported with the person's consent by scripts/team-portrait.mts (never a generated image: those are editorial images and are never used as a portrait). `file` null = no portrait yet, the site shows the initials. Provenance and the import procedure: docs/editorial-images.md.",
+  "portraits": {
+    "rutger-roelandts": {
+      "name": "Rutger Roelandts",
+      "file": null,
+      "width": null,
+      "height": null,
+      "bytes": null,
+      "alt": "Rutger Roelandts in fietskledij naast zijn racefiets, met een jonge fietser naast hem en besneeuwde bergen op de achtergrond",
+      "source": null,
+      "sourceSha256": null,
+      "crop": null,
+      "treatment": null,
+      "consent": "Photo handed over by Toshoni on 20 Oct 2026 for the team page (chat).",
+      "importedAt": null
+    }
+  }
+}

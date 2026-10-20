@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { sanitizeRichTextHtml } from '@/lib/cms/actions/sanitize';
 import { validateBlocks } from '@/lib/cms/blocks';
-import { AANBOD_PAGES, FOOTER_MENU, MAIN_MENU, OFFER_GROUPS, OTHER_OFFER_GROUP } from './aanbod';
+import {
+  AANBOD_PAGES,
+  FOOTER_MENU,
+  MAIN_MENU,
+  OFFER_GROUPS,
+  OTHER_OFFER_GROUP,
+  TEAM_MEMBERS,
+} from './aanbod';
 import { AFSPRAAK_PAGE, OTHER_QUESTION_HTML } from './appointment';
 import { CADEAUBON_CARD } from './cadeaubon';
 import before from './page-cleanup.fixture.json';
@@ -33,6 +40,25 @@ const TARGETS = [...AANBOD_PAGES, AFSPRAAK_PAGE];
 const OLD_PHONE_LABEL = '0473 95 26 33';
 function withTodaysPhone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value).split(OLD_PHONE_LABEL).join(PHONE_LABEL)) as T;
+}
+
+/**
+ * Since 20 Oct 2026 /ons-team shows Rutger alone, with his own portrait and an
+ * updated internal note (Toshoni: Robin and Goran removed). The patch itself
+ * is the 13 Oct state, so the comparison keeps today's members only and reads
+ * each with today's portrait and note; name, role and bio are still compared.
+ */
+function withTodaysTeam<T extends { type: string; data: Record<string, unknown> }>(
+  blocks: T[],
+): T[] {
+  return blocks.map((block) => {
+    if (block.type !== 'team') return block;
+    const members = (block.data.members as Array<Record<string, unknown>>).flatMap((member) => {
+      const today = TEAM_MEMBERS.find((entry) => entry.name === member.name);
+      return today ? [{ ...member, image: today.image, internalNote: today.internalNote }] : [];
+    });
+    return { ...block, data: { ...block.data, members } };
+  });
 }
 
 function oldPage(slug: string) {
@@ -92,7 +118,7 @@ describe('page cleanup patch (review 13 Oct 2026)', () => {
                 : block,
             )
           : result.next;
-      expect(withTodaysPhone(next)).toEqual(stored(targetPage(spec.slug).blocks));
+      expect(withTodaysTeam(withTodaysPhone(next))).toEqual(stored(targetPage(spec.slug).blocks));
       expect(pageCleanupProblems(spec.slug, stored(old.blocks)).length).toBeGreaterThan(0);
       expect(pageCleanupProblems(spec.slug, result.next)).toEqual([]);
 

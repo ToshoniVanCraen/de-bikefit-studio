@@ -119,6 +119,7 @@ Run inside `website/`. Scripts that touch a database use PGlite unless `DATABASE
 | `npm run brand:icons` | Renders `favicon.ico`, `apple-icon.png` and the 512 px PNG from the brand SVGs in `public/brand/` (`docs/brand-assets.md`); outputs are committed |
 | `npm run cms:migrate-aanbod` | Turns the offer pages of an existing database into offerings (Beheer → Aanbod owns the offer since 17 Oct 2026): dry run by default; `-- --apply --expect-host <host>` (backup first); `-- --verify` re-runs the final check read-only. See `docs/staging-runbook.md` §19 |
 | `npm run images:import -- --slot <slot> --src <file>` | Compress a delivered editorial image into `public/images/editorial/` and record it (`docs/editorial-images.md`) |
+| `npm run images:portrait -- --person <person> --src <file>` | Crop (4:5) and grade a real team portrait into `public/images/team/` and record it (`docs/editorial-images.md`, "Team portraits") |
 | `npm run cms:selftest` | Integration checks on a throwaway PGlite in `.pglite-selftest/` |
 | `npm run cms:retention` | GDPR retention purge, dry run; `-- --apply` deletes, `-- --json` for a report |
 | `npm run cms:mfa-reset -- --email <address>` | Break-glass: remove a user's two-step verification when no other admin can; dry run by default, `-- --apply --expect-host <host>`. See `docs/staging-runbook.md` §14 |
