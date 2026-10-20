@@ -980,3 +980,21 @@ the page has loaded its JavaScript never puts the visitor's data in a URL.
 
 **Not decided, not stated** (register C-04): validity, form of the voucher, delivery, minimum or
 maximum amount. The form accepts € 1 to € 5.000 as a technical bound.
+
+## 14. Follow-up mails (reminder, review request) and reviews — 20 Oct 2026
+
+What goes out and when: `docs/booking-architecture.md` §17. To switch it on in an environment:
+
+1. Migration `0014_cms_booking_followups` (`npm run db:migrate`), before the deploy that carries it.
+2. Set `CRON_SECRET` in Vercel for that environment (`openssl rand -base64 32`, at least 16
+   characters, different per environment, in 1Password). Vercel Cron (`website/vercel.json`,
+   daily 07:00 UTC) then calls `GET /api/cron/booking-mails` with that bearer by itself; without
+   the variable the route answers 503 and no follow-up mail goes out.
+3. Resend must be live (§6): the run uses the same sender as the confirmations.
+4. Check: `curl -s -H "Authorization: Bearer <secret>" "<origin>/api/cron/booking-mails?dry=1"`
+   returns counts (`reminders.due`, `reviews.due`); without `?dry=1` it sends. A wrong bearer is
+   401; the log line is `[booking] follow_ups reminders a/b reviews c/d`.
+5. Reviews arrive in Beheer → Beoordelingen; approving publishes nothing yet.
+
+Staging sends real mails to the booking's addresses (like the confirmations): keep test
+bookings on `@example.invalid` addresses or your own.

@@ -134,6 +134,15 @@ const envSchema = z.object({
   /** Service-account key JSON, raw or base64-encoded. Viewer on the property. */
   GA4_SERVICE_ACCOUNT_JSON: z.string().optional(),
 
+  // --- Follow-up mails: the cron route's bearer secret ---
+
+  /**
+   * Who may call `GET /api/cron/booking-mails` (reminders, review requests):
+   * Vercel Cron sends it as `Authorization: Bearer` by itself; another
+   * scheduler does the same. Unset = the route is off (503).
+   */
+  CRON_SECRET: z.string().min(16).optional(),
+
   // --- Transactional e-mail (Resend REST API) ---
   // All four are optional: an admin can set the same values in /admin/email
   // (`src/lib/email/settings.ts`). When set here, each one wins over the admin.
@@ -250,6 +259,10 @@ export const features = {
    * GA4 Data API credentials present. The property id may still come from the
    * `analytics.ga4PropertyId` setting instead of `GA4_PROPERTY_ID`.
    */
+  /** The follow-up mail run can be triggered (`src/lib/booking/follow-ups.ts`). */
+  get cron() {
+    return Boolean(env.CRON_SECRET);
+  },
   get ga4Data() {
     return Boolean(env.GA4_SERVICE_ACCOUNT_JSON);
   },

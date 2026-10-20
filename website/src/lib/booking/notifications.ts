@@ -94,7 +94,7 @@ export async function loadBookingContext(bookingId: string): Promise<BookingCont
   return { ...row, location: location ?? null };
 }
 
-async function emailData(
+export async function emailData(
   ctx: BookingContext,
   extra: Partial<BookingEmailData> = {},
 ): Promise<BookingEmailData> {
@@ -139,7 +139,7 @@ async function emailData(
   };
 }
 
-function customerRecipients(booking: CmsBooking): string[] {
+export function customerRecipients(booking: CmsBooking): string[] {
   const list = [booking.customerEmail];
   if (
     booking.guardianEmail &&

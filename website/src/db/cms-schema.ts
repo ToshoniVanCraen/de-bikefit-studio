@@ -620,6 +620,10 @@ export const cmsBookings = pgTable(
     assignment: text('assignment').$type<CmsBookingAssignment>().default('assigned').notNull(),
     /** When a beheerder assigned it (null while pending or when assigned at creation). */
     assignedAt: timestamp('assigned_at', { withTimezone: true }),
+    /** When the reminder mail went out, 12–36 h before the start; null = not yet (docs/booking-architecture.md §17). */
+    reminderSentAt: timestamp('reminder_sent_at', { withTimezone: true }),
+    /** When the review request went out, 20–72 h after the end; null = not yet. */
+    reviewRequestedAt: timestamp('review_requested_at', { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -632,6 +636,50 @@ export const cmsBookings = pgTable(
       .where(sql`status = 'confirmed'`),
   ],
 );
+
+export type CmsReviewStatus = 'requested' | 'submitted' | 'approved' | 'rejected';
+
+/**
+ * A customer's review of an appointment, asked for by e-mail the day after
+ * (`src/lib/booking/follow-ups.ts`, docs/booking-architecture.md §17). The row
+ * is created when the request goes out (`requested`), filled in through the
+ * e-mailed link (`submitted`) and judged by an admin (`approved` /
+ * `rejected`). Nothing is published automatically; an approved review may
+ * later appear on the site with the customer's first name only, and only when
+ * `allow_first_name` is set. The link token is stored as a sha256 hash.
+ */
+export const cmsReviews = pgTable(
+  'cms_reviews',
+  {
+    id: id(),
+    locale: text('locale').default(DEFAULT_LOCALE).notNull(),
+    bookingId: text('booking_id').references(() => cmsBookings.id, { onDelete: 'set null' }),
+    tokenHash: text('token_hash').notNull(),
+    tokenExpiresAt: timestamp('token_expires_at', { withTimezone: true }).notNull(),
+    customerName: text('customer_name').notNull(),
+    customerEmail: text('customer_email').notNull(),
+    serviceName: text('service_name').notNull(),
+    providerName: text('provider_name').default('').notNull(),
+    appointmentAt: timestamp('appointment_at', { withTimezone: true }).notNull(),
+    /** 1–5 once submitted. */
+    rating: integer('rating'),
+    body: text('body').default('').notNull(),
+    allowFirstName: boolean('allow_first_name').default(false).notNull(),
+    status: text('status').$type<CmsReviewStatus>().default('requested').notNull(),
+    submittedAt: timestamp('submitted_at', { withTimezone: true }),
+    decidedAt: timestamp('decided_at', { withTimezone: true }),
+    decidedBy: text('decided_by').references(() => cmsUsers.id, { onDelete: 'set null' }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    uniqueIndex('cms_reviews_token_hash_key').on(t.tokenHash),
+    uniqueIndex('cms_reviews_booking_key').on(t.bookingId),
+    index('cms_reviews_status_idx').on(t.status, t.submittedAt),
+  ],
+);
+
+export type CmsReview = typeof cmsReviews.$inferSelect;
 
 /** One row per public booking attempt; mirrors `cms_login_attempts`. */
 export const cmsBookingRateLimit = pgTable(

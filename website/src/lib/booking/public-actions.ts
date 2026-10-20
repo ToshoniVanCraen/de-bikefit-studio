@@ -25,6 +25,7 @@ import {
   createPublicBooking,
   type PublicBookingSummary,
 } from './public-booking';
+import { submitReview, type SubmitReviewResult } from './reviews';
 
 /**
  * Server actions behind the public booking widget (`/afspraak`) and the
@@ -253,5 +254,40 @@ export async function cancelAction(token: string): Promise<CancelActionResult> {
   } catch {
     logBookingFailure('cancel_action_failed');
     return { ok: false, message: CANCEL_ERROR, booking: null };
+  }
+}
+
+/** The review form behind the e-mailed link (`/beoordeling/[token]`). */
+export async function submitReviewAction(
+  token: string,
+  input: { rating: string; body: string; allowFirstName: boolean },
+): Promise<SubmitReviewResult> {
+  if (typeof token !== 'string' || token.length === 0 || token.length > 128) {
+    return {
+      ok: false,
+      code: 'not_found',
+      message: 'Deze link is ongeldig of verlopen.',
+      fieldErrors: {},
+    };
+  }
+  try {
+    const ip = clientIpFromHeaders(await headers());
+    return await submitReview(
+      token,
+      {
+        rating: typeof input?.rating === 'string' ? input.rating : '',
+        body: typeof input?.body === 'string' ? input.body : '',
+        allowFirstName: Boolean(input?.allowFirstName),
+      },
+      { ip },
+    );
+  } catch {
+    logBookingFailure('review_action_failed');
+    return {
+      ok: false,
+      code: 'error',
+      message: 'Er ging iets mis. Probeer het opnieuw.',
+      fieldErrors: {},
+    };
   }
 }

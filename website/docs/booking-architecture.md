@@ -1121,3 +1121,47 @@ Until 17 Oct 2026 an `offer` block carried `bookingServiceSlugs`, `BOOKING_RECON
 recorded which page linked which service, and Beheer → Aanbod (16 Oct) saved those settings per
 page id. §14 replaces it; `cms:migrate-aanbod` converts a database that still holds offer pages
 (`deriveLegacyOffering()` reads the old block one last time).
+
+## 17. Follow-up mails and reviews (20 Oct 2026)
+
+Two mails after the confirmation (Toshoni, 20 Oct 2026), and a review the customer can leave:
+
+| Mail | When | To | Marks |
+| --- | --- | --- | --- |
+| Reminder (`bookingReminderEmail`, `src/lib/email/templates-followups.ts`) | the first run that finds the start 12–36 h away; confirmed and assigned bookings only | customer (+ guardian when different) | `cms_bookings.reminder_sent_at` |
+| Review request (`reviewRequestEmail`) | the first run that finds the end 20–72 h ago; confirmed or completed, never cancelled or no-show | same | `cms_bookings.review_requested_at`; a `cms_reviews` row (`requested`) with the link's token hash and a 30-day expiry |
+
+**The run.** `runBookingFollowUps()` (`src/lib/booking/follow-ups.ts`): two selects on the
+windows (`follow-ups-policy.ts`, pure, tested), one mail per booking through `sendEmail()`, the
+flag only when the sender accepted the mail (a refused mail is retried at the next run; the log
+gets `[booking] reminder_not_sent (<reason>)` / `review_request_not_sent`, never an address). The
+windows overlap on purpose so the cadence may be hourly or daily; the flags make each mail go
+out once. `dryRun` counts without sending. A renewed review request (earlier mail refused)
+replaces the token of a `requested` row, never a submitted review.
+
+**The trigger.** `GET /api/cron/booking-mails` (`src/app/api/cron/booking-mails/route.ts`):
+`Authorization: Bearer <CRON_SECRET>`, compared in constant time (`cron-auth.ts`, pure, tested);
+503 while the variable is unset, 401 for a wrong bearer, `?dry=1` for the dry run, JSON counts
+back. `website/vercel.json` registers a Vercel Cron for it, daily at 07:00 UTC (the Hobby plan
+runs crons at most daily; Vercel sends the bearer by itself once `CRON_SECRET` exists in the
+environment). Arend's scheduler may call it more often with the same header.
+
+**The review.** `/beoordeling/[token]` (noindex, `no-referrer`, per request): the appointment
+with the first name only, then `ReviewForm` → `submitReviewAction` (`public-actions.ts`) →
+`submitReview()` (`reviews.ts`): score 1–5, text ≤ 1000 characters, the consent to show the
+first name; rate-limited per link (5/h) and per IP (10/h) with the database-backed pattern; the
+row goes `requested` → `submitted` exactly once; an expired or unknown link reads "ongeldig".
+**Nothing is published**: Beheer → Beoordelingen (`/admin/reviews`, `booking.manage`) lists
+submitted and judged reviews, approves, rejects or reopens them (audited `review.decide`).
+Showing an approved review on the site (first name only, only with consent) is a later step.
+
+**Privacy.** Both mails are service messages about the booking and are named in the privacy
+statement; a review holds the customer's name and e-mail with the appointment and should be
+purged with the booking's retention (`cms:retention` — to be extended to `cms_reviews`, open point).
+
+**Migration.** `drizzle/0014_cms_booking_followups.sql` (additive, guarded): the two flags on
+`cms_bookings` and the table `cms_reviews`. Apply before deploying the build that carries it.
+
+**Tests.** `follow-ups-policy.test.ts`, `cron-auth.test.ts`, `templates-followups.test.ts`;
+self-test section 19 (`scripts/selftest/follow-ups.mts`) runs a dry run, the run with an
+injected sender, the link, the submit, the admin decisions and the clean-up.
