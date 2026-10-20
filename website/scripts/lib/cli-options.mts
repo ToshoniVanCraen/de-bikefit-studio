@@ -130,3 +130,27 @@ export function describeError(error: unknown, frames = 12): string {
   if (stack.length) lines.push('  at:', ...stack.map((line) => `    ${line}`));
   return lines.join('\n');
 }
+
+/**
+ * A failure of the transport under the Neon HTTP driver rather than of the
+ * query: undici's "fetch failed" (a keep-alive socket the server closed while
+ * the process was busy, a reset, a timeout) wrapped by Drizzle. Such a query
+ * can be sent again; an SQL error cannot. Checked on the error and on its
+ * causes.
+ */
+export function isTransportFailure(error: unknown): boolean {
+  let current: unknown = error;
+  for (let depth = 0; current instanceof Error && depth < 6; depth += 1) {
+    const code = (current as { code?: unknown }).code;
+    if (
+      /fetch failed|Error connecting to database|socket hang up|other side closed/i.test(
+        current.message,
+      ) ||
+      (typeof code === 'string' && /^(ECONNRESET|ECONNREFUSED|ETIMEDOUT|EPIPE|UND_ERR_)/.test(code))
+    ) {
+      return true;
+    }
+    current = current.cause;
+  }
+  return false;
+}
