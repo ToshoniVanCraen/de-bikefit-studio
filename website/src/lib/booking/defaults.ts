@@ -2,9 +2,12 @@
  * Initial booking data written by `scripts/cms-bootstrap.mts` (idempotent) and
  * used by `scripts/cms-seed-booking.mts`. Plain data, no I/O.
  *
- * Decided by Toshoni (24 Sep 2026): five services, prices hidden. Descriptions
- * reuse the site's existing copy (block registry defaults); nothing is invented
- * beyond the durations given.
+ * Decided by Toshoni (24 Sep 2026): five services, prices hidden. Since 17 Oct
+ * 2026 only the two fits remain; since 20 Oct 2026 (Toshoni) both take 2 hours
+ * and show their price: € 275, under 16 € 150 without the six-month problem
+ * follow-up. An existing database gets those values with
+ * `npm run cms:patch-aanbod-prijzen`. Nothing is invented beyond what Toshoni
+ * gave.
  */
 
 export const DEFAULT_STUDIO_LOCATION = {
@@ -42,6 +45,9 @@ export type DefaultService = {
   choiceLabel: string;
   description: string;
   durationMinutes: number;
+  /** Price in cents shown in the booking widget when `showPrice`; `null` = "Prijs op aanvraag". */
+  priceCents: number | null;
+  showPrice: boolean;
   requiresGuardian: boolean;
   /** `'customer'` → linked to {@link CUSTOMER_LOCATION}; `null` → provider default. */
   location: 'customer' | null;
@@ -54,8 +60,10 @@ export const DEFAULT_SERVICES: DefaultService[] = [
     name: 'Volwassenenfit',
     choiceLabel: 'Volwassene',
     description:
-      'De standaard bikefit. Reken op 90 minuten; complexe gevallen, eerste keren of fits na een blessure kunnen tot twee uur duren.',
-    durationMinutes: 90,
+      'De volledige bikefit op je eigen fiets, zadel-, voet- en schoenplaatjesanalyse inbegrepen. Probleemopvolging tot zes maanden na je fit is inbegrepen.',
+    durationMinutes: 120,
+    priceCents: 27500,
+    showPrice: true,
     requiresGuardian: false,
     location: null,
     sortOrder: 0,
@@ -65,8 +73,10 @@ export const DEFAULT_SERVICES: DefaultService[] = [
     name: 'Jeugdfit',
     choiceLabel: 'Jeugd',
     description:
-      'Korter, ongeveer 60 minuten, en afgestemd op een lichaam in groei. Betaalbaar, duidelijk, op hun tempo.',
-    durationMinutes: 60,
+      'Voor fietsers onder 16: dezelfde fit, afgestemd op een lichaam in groei, zonder probleemopvolging. Met opvolging kies je Volwassene (€ 275).',
+    durationMinutes: 120,
+    priceCents: 15000,
+    showPrice: true,
     requiresGuardian: true,
     location: null,
     sortOrder: 1,

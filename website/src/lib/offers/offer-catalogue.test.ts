@@ -72,7 +72,7 @@ function record(entry: DefaultOffering, settings: Partial<OfferingSettings> = {}
       variants: entry.variants.map((variant) => ({
         audience: variant.audience,
         serviceId: variant.serviceSlug ? `svc-${variant.serviceSlug}` : null,
-        priceCents: null,
+        priceCents: variant.priceCents,
       })),
       ...settings,
     },
@@ -96,11 +96,13 @@ function card(catalogue: ReturnType<typeof build>, slug: string) {
 }
 
 describe('buildOfferCatalogue: the seeded offer', () => {
-  it('seven shown offers in category order; Bikefit bookable as Volwassene/Jeugd, the rest on request', () => {
+  it('nine shown offers in category order; Bikefit bookable as Volwassene/Jeugd, the rest on request', () => {
     const catalogue = build();
     expect(catalogue.offers.map((offer) => offer.slug)).toEqual([
       'bikefit-nieuwe-fiets',
       'bikefit-huidige-fiets',
+      'bikefit-tweede-bezoek',
+      'bikefit-tweede-fiets',
       'voetanalyse',
       'zadelanalyse',
       'afstellen-schoenplaatjes',
@@ -110,10 +112,10 @@ describe('buildOfferCatalogue: the seeded offer', () => {
     expect(card(catalogue, 'bikefit-huidige-fiets')).toMatchObject({
       status: 'bookable',
       bookingServiceSlugs: ['volwassenenfit', 'jeugdfit'],
-      durationLabel: 'Volwassene: 1 u 30 min · Jeugd: 1 uur',
-      priceLabel: 'Prijs op aanvraag',
+      durationLabel: 'Volwassene: 2 uur · Jeugd: 2 uur',
+      priceLabel: `Volwassene ${formatPrice(27500)} · Jeugd ${formatPrice(15000)}`,
     });
-    expect(catalogue.offers.filter((offer) => offer.status === 'enquiry')).toHaveLength(6);
+    expect(catalogue.offers.filter((offer) => offer.status === 'enquiry')).toHaveLength(8);
     expect(card(catalogue, 'lactaattest')?.durationLabel).toBe('Duur in overleg');
   });
 
@@ -134,7 +136,10 @@ describe('buildOfferCatalogue: the seeded offer', () => {
       { kind: 'service', serviceId: HOME },
       { kind: 'service', serviceId: 'svc-inspanningstest' },
     ]);
-    expect(catalogue.variantDisplay[ADULT]).toEqual({ label: 'Volwassene', priceLabel: '' });
+    expect(catalogue.variantDisplay[ADULT]).toEqual({
+      label: 'Volwassene',
+      priceLabel: formatPrice(27500),
+    });
     // Retired for real means deactivated: then it is not among the public services at all.
     const withoutRetired = services.filter((service) => service.id !== HOME);
     expect(
@@ -156,7 +161,7 @@ describe('buildOfferCatalogue: what Beheer → Aanbod controls', () => {
     expect(card(catalogue, 'bikefit-huidige-fiets')).toMatchObject({
       status: 'unavailable',
       bookingServiceSlugs: [],
-      durationLabel: 'Volwassene: 1 u 30 min · Jeugd: 1 uur',
+      durationLabel: 'Volwassene: 2 uur · Jeugd: 2 uur',
     });
     expect(catalogue.withheldServiceIds).not.toContain(ADULT);
   });

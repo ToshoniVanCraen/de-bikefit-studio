@@ -136,7 +136,7 @@ describe('offerFromOffering (the card and labels of one offering)', () => {
       title: 'Bikefit – huidige fiets',
       status: 'bookable',
       bookingServiceSlugs: ['volwassenenfit', 'jeugdfit'],
-      durationLabel: 'Volwassene: 1 u 30 min · Jeugd: 1 uur',
+      durationLabel: 'Volwassene: 2 uur · Jeugd: 2 uur',
       priceLabel: OFFER_PRICE_FALLBACK,
     });
     expect(card.summary).toBe('Comfortabeler fietsen op de fiets die je al hebt.');
@@ -276,9 +276,9 @@ describe('resolveBookingSelection (service preselection)', () => {
 });
 
 describe('default offerings (what cms:bootstrap writes)', () => {
-  it('has the seven offers (five Bikefit, two Begeleiding) and nothing else, unique slugs', () => {
-    expect(DEFAULT_OFFERS).toHaveLength(7);
-    expect(DEFAULT_OFFERS.filter((entry) => entry.content.category === 'bikefit')).toHaveLength(5);
+  it('has the nine offers (seven Bikefit, two Begeleiding) and nothing else, unique slugs', () => {
+    expect(DEFAULT_OFFERS).toHaveLength(9);
+    expect(DEFAULT_OFFERS.filter((entry) => entry.content.category === 'bikefit')).toHaveLength(7);
     expect(DEFAULT_OFFERS.filter((entry) => entry.content.category === 'begeleiding')).toHaveLength(
       2,
     );
@@ -300,12 +300,16 @@ describe('default offerings (what cms:bootstrap writes)', () => {
     }
   });
 
-  it('every offer carries the default CTA, no price and an honest duration', () => {
+  it('every offer carries the default CTA, a price Toshoni gave and an honest duration', () => {
     for (const entry of DEFAULT_OFFERS) {
       expect(entry.content.ctaLabel).toBe('');
-      expect(entry.content.duration).toMatch(/in overleg$/);
+      // A real duration (20 Oct 2026) or, where none was given, "in overleg".
+      expect(entry.content.duration).toMatch(/^(\d+ (uur|minuten).*|.*in overleg)$/);
       expect(entry.content.title).not.toMatch(/€/);
       expect(entry.isListed).toBe(true);
+      for (const variant of entry.variants) {
+        expect(variant.priceCents).toBeGreaterThan(0);
+      }
     }
     expect(OFFER_CTA_LABEL).toBe('Boek een afspraak voor deze dienst');
     expect(GIFT_VOUCHER_PRICE_LABEL).toBe('Bedrag naar keuze');
@@ -333,7 +337,7 @@ describe('default offerings (what cms:bootstrap writes)', () => {
       'adult:volwassenenfit',
       'youth:jeugdfit',
     ]);
-    expect(DEFAULT_OFFERS.filter((entry) => entry.bookingMode === 'enquiry')).toHaveLength(6);
+    expect(DEFAULT_OFFERS.filter((entry) => entry.bookingMode === 'enquiry')).toHaveLength(8);
   });
 });
 

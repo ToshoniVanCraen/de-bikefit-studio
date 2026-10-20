@@ -545,7 +545,7 @@ a working inbox is chosen, so orders show "niet verstuurd". **Never a full `cms:
 
 1. Deploy the code first (release gate, staging READY). Old content renders unchanged on the
    new code.
-2. **Dry run** (read-only; self-test section 18):
+2. **Dry run** (read-only; self-test section 17b):
 
    ```bash
    DATABASE_URL='<staging pooled url>' npm run cms:patch-cadeaubon
@@ -1298,3 +1298,53 @@ on an existing database (after the staging gate of §20, which is unrelated):
    "Waarom is een bikefit belangrijk?" and step 04 reads "Naar huis"; header menu has
    *Veelgestelde vragen* before *Contact*; footer: Juridisch + Contact columns, © line with the two
    icons on the right; `+32 473 95 26 33` in the footer and on `/afspraak`.
+
+## 22. Prices and durations of the offer (20 Oct 2026, no migration)
+
+Toshoni's prices and durations of 20 Oct 2026 live in the code
+(`src/lib/offers/defaults.ts`, `src/lib/booking/defaults.ts`; what changes, field by field, in
+`src/lib/offers/aanbod-prices.ts`). A fresh database gets them from `cms:bootstrap`; an existing
+one from `npm run cms:patch-aanbod-prijzen` (self-test section 17b):
+
+| What | Before | After |
+| --- | --- | --- |
+| The seven offerings of 17 Oct | "Prijs op aanvraag", "Duur in overleg" | a price per variant (€ 275 / € 150 for the fits, € 85, € 60, € 15, € 120, € 65), the duration text (2 uur, 30 minuten, 1 uur, 15 minuten; lactaattest and coaching keep "in overleg"), contents and extras that say what a bikefit includes, the meta descriptions |
+| *Bikefit – aankoop nieuwe fiets* | one option | Volwassene / Jeugd, still asked for |
+| New: *Bikefit – tweede bezoek* (€ 75, 1 uur), *Bikefit – tweede fiets* (€ 75 / € 150) | — | created from the defaults, asked for |
+| Services `volwassenenfit`, `jeugdfit` | 90 / 60 min, no price | 120 / 120 min, € 275 / € 150 shown in the widget |
+
+Every field edit names the value it expects (the defaults of 17–19 Oct 2026); a field an admin
+changed since makes the patch refuse (`!`) — no override. Nothing else is touched: no page, menu,
+setting, provider, subscription or booking; no row is added to or removed from the booking tables.
+Saving the fit through the repo renames its two services the way Beheer → Aanbod does
+("Bikefit – huidige fiets – Volwassene" / "– Jeugd"; slugs unchanged) and rewrites their
+description from the offering's summary.
+
+1. Deploy the code first (release gate, staging READY). Old content renders fine on the new code.
+2. **Dry run** (read-only like §9):
+
+   ```bash
+   DATABASE_URL='<staging pooled url>' npm run cms:patch-aanbod-prijzen
+   ```
+
+   Expected: `~ offering <slug> — n change(s)` for the seven offerings (each change listed),
+   `+ offering bikefit-tweede-bezoek — create`, `+ offering bikefit-tweede-fiets — create`,
+   `~ service volwassenenfit — …`, `~ service jeugdfit — …`, the guard counts, then
+   `dry run: run again with --apply to write`. **Stop and report on any `!` line.**
+3. **Apply** (optional Neon snapshot first; the tool writes its own backup before the first write):
+
+   ```bash
+   DATABASE_URL='<staging pooled url>' npm run cms:patch-aanbod-prijzen -- --apply \
+     --expect-host '<host part of the staging DATABASE_URL>' --backup-dir <dir>
+   ```
+
+   Backup `aanbod-prices-patch-<timestamp>.json`: the seven offering rows with their variants and
+   the two service rows. It verifies with a second plan and the public catalogue, checks the
+   booking tables' counts, audits `patch.aanbod-prijzen.apply` and always revokes its session. A
+   second dry run prints `dry run: nothing to do`.
+4. **Verify** after the 5-minute cache window: `/aanbod` and each offer page show the prices and
+   durations; `/afspraak` shows € 275 / € 150 and 2 uur per choice; "Reken op de tijd" on
+   `/afspraak` reads 2 uur twice (§21 copy tokens, PR #26).
+
+**Rollback:** `npm run cms:patch-aanbod-prijzen -- --restore <backup.json> --expect-host '<host>'`
+puts the nine rows back and deletes the two created offerings. Then, if needed, the code.

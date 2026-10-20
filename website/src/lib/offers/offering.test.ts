@@ -301,7 +301,7 @@ describe('resolveOffering and its labels', () => {
     });
     expect(resolved.status).toBe('bookable');
     expect(offeringDurationLabel(resolved, 'Duur in overleg')).toBe(
-      'Volwassene: 1 u 30 min · Jeugd: 1 uur',
+      'Volwassene: 2 uur · Jeugd: 2 uur',
     );
     expect(offeringPriceLabel(resolved)).toBe('Prijs op aanvraag');
     expect(offeringBookingSlugs(resolved)).toEqual(['volwassenenfit', 'jeugdfit']);
@@ -316,7 +316,7 @@ describe('resolveOffering and its labels', () => {
     });
     expect(resolved.status).toBe('unavailable');
     expect(offeringBookingSlugs(resolved)).toEqual([]);
-    expect(offeringDurationLabel(resolved, '')).toBe('Volwassene: 1 u 30 min · Jeugd: 1 uur');
+    expect(offeringDurationLabel(resolved, '')).toBe('Volwassene: 2 uur · Jeugd: 2 uur');
   });
 
   it('a variant without a provider is left out of the booking, the other stays bookable', () => {
@@ -341,7 +341,7 @@ describe('resolveOffering and its labels', () => {
       bookableServiceIds: bothOffered,
     });
     expect(resolved.variants[1]).toMatchObject({ bookable: false, durationMinutes: null });
-    expect(offeringDurationLabel(resolved, '')).toBe('Volwassene: 1 u 30 min');
+    expect(offeringDurationLabel(resolved, '')).toBe('Volwassene: 2 uur');
   });
 
   it('enquiry: never bookable, editorial duration, own price; hidden: no slugs', () => {

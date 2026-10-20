@@ -174,22 +174,22 @@ export async function offeringsSection(ctx: {
   const youthId = publicServices.find((s) => s.slug === 'jeugdfit')?.id;
   const homeId = publicServices.find((s) => s.slug === 'fit-aan-huis')?.id;
   check(
-    'bootstrap: seven offerings created once (all shown, no hidden legacy ones), kept on a second run',
-    first.created.length === 7 &&
+    'bootstrap: nine offerings created once (all shown, no hidden legacy ones), kept on a second run',
+    first.created.length === 9 &&
       first.kept.length === 0 &&
       again.created.length === 0 &&
-      again.kept.length === 7 &&
-      seeded.offers.length === 7 &&
+      again.kept.length === 9 &&
+      seeded.offers.length === 9 &&
       seeded.hiddenSlugs.length === 0,
     `${first.created.length} created, ${seeded.offers.length} shown, hidden ${seeded.hiddenSlugs.join(',')}`,
   );
   check(
-    'bootstrap: Bikefit – huidige fiets is bookable as Volwassenenfit + Jeugdfit; the rest on request',
+    'bootstrap: Bikefit – huidige fiets is bookable as Volwassenenfit + Jeugdfit (section-14 durations, priced variants); the rest on request',
     huidige?.status === 'bookable' &&
       huidige.bookingServiceSlugs.join() === 'volwassenenfit,jeugdfit' &&
       huidige.durationLabel === 'Volwassene: 1 u 30 min · Jeugd: 1 uur' &&
-      huidige.priceLabel === 'Prijs op aanvraag' &&
-      seeded.offers.filter((offer) => offer.status === 'enquiry').length === 6,
+      huidige.priceLabel === `Volwassene ${formatPrice(27500)} · Jeugd ${formatPrice(15000)}` &&
+      seeded.offers.filter((offer) => offer.status === 'enquiry').length === 8,
     JSON.stringify(huidige),
   );
   const withheld = new Set(seeded.withheldServiceIds);
