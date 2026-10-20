@@ -16,6 +16,8 @@ import { recordAudit } from '@/lib/cms/auth';
 import { getSiteSettings } from '@/lib/cms/content';
 import { reserveRateLimit } from '@/lib/rate-limit';
 import { clientIpFromHeaders } from '@/lib/request-ip';
+import { resolveBookingAddons } from './addon-resolve';
+import { insertBookingAddons } from './booking-addons';
 import { isUniqueViolation, logBookingFailure } from './booking-log';
 import { countEligibleProviders, getAvailability } from './content';
 import { formatLocation } from './format';
@@ -61,6 +63,11 @@ import { formatSlot, instantToLocal } from './time';
  * Afspraken (`repo-assignment.ts`). The customer is not told who until then.
  * With exactly one provider offering the service there is nothing to decide
  * and the booking is `assigned` at once.
+ *
+ * Extra's (20 Oct 2026): the ticked extras are resolved against the catalogue
+ * (`resolveBookingAddons()`: minutes and price from Beheer → Aanbod, never
+ * from the client), the slot is re-checked for the longer appointment, and a
+ * snapshot of each extra is stored with the booking (`cms_booking_addons`).
  *
  * Cancel tokens: 32 random bytes, base64url. Only their SHA-256 is stored
  * (`cms_bookings.cancel_token_hash`); the raw token exists only in the mail.
@@ -109,6 +116,8 @@ export type PublicBookingSummary = {
   timezone: string;
   locationLabel: string;
   status: CmsBooking['status'];
+  /** The extras booked with it, as stored. */
+  addons: { title: string; minutes: number }[];
 };
 
 export type PublicBookingErrorCode = 'invalid' | 'rate_limited' | 'slot_taken' | 'error';
@@ -201,6 +210,7 @@ export async function summarizeBooking(bookingId: string): Promise<PublicBooking
     timezone: ctx.booking.timezone,
     locationLabel: location,
     status: ctx.booking.status,
+    addons: ctx.addons.map(({ title, minutes }) => ({ title, minutes })),
   };
 }
 
@@ -268,6 +278,18 @@ export async function createPublicBooking(
       }
     }
 
+    // The extras: only what the catalogue offers for this service, priced and timed there.
+    const addons = await resolveBookingAddons(
+      service.id,
+      input.addonIds,
+      input.locale || DEFAULT_LOCALE,
+    );
+    if (!addons.ok) {
+      return fail('invalid', 'Een gekozen extra hoort niet bij deze dienst. Kies ze opnieuw.', {
+        addonIds: 'Kies de extra’s opnieuw.',
+      });
+    }
+
     // Re-check the slot against a FRESH computation (live bookings + Google).
     const startsAt = new Date(input.startsAt);
     const rules = await getBookingRules(input.locale || DEFAULT_LOCALE);
@@ -277,6 +299,7 @@ export async function createPublicBooking(
       providerId: input.providerId || null,
       fromYmd: day,
       toYmd: day,
+      extraMinutes: addons.extraMinutes,
       now,
       locale: input.locale || DEFAULT_LOCALE,
     });
@@ -354,6 +377,8 @@ export async function createPublicBooking(
           assignment,
         })
         .returning();
+      // The extras as booked (the row's ends_at already holds their minutes).
+      await insertBookingAddons(db, booking.id, addons.addons);
     } catch (error) {
       if (isUniqueViolation(error)) {
         return fail(
@@ -397,7 +422,13 @@ export async function createPublicBooking(
           ? `nog toe te wijzen (voorlopig ${provider.displayName})`
           : provider.displayName
       }`,
-      metadata: { source: 'web', google: googleSyncStatus, emailSent, assignment },
+      metadata: {
+        source: 'web',
+        google: googleSyncStatus,
+        emailSent,
+        assignment,
+        addons: addons.addons.map((addon) => addon.slug),
+      },
     });
 
     const summary = (await summarizeBooking(booking.id)) ?? {
@@ -410,6 +441,7 @@ export async function createPublicBooking(
       timezone: booking.timezone,
       locationLabel: location ? formatLocation(location).label : '',
       status: booking.status,
+      addons: addons.addons.map(({ title, minutes }) => ({ title, minutes })),
     };
 
     return {

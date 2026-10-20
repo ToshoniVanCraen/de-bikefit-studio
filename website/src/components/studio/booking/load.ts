@@ -33,6 +33,7 @@ function toLocation(location: PublicLocation | null): BookingLocationOption | nu
     id: location.id,
     kind: location.kind === 'customer' ? 'customer' : 'studio',
     label: location.kind === 'customer' ? location.label || 'Bij jou thuis' : location.label,
+    addressLines: location.kind === 'customer' ? [] : location.addressLines,
   };
 }
 
@@ -47,6 +48,9 @@ function toService(service: PublicService): BookingServiceOption {
     requiresGuardian: service.requiresGuardian,
     location: toLocation(service.location),
     priceLabel: service.priceLabel,
+    priceCents: service.priceCents,
+    // Filled in by the booking block from the offer catalogue.
+    addons: [],
   };
 }
 

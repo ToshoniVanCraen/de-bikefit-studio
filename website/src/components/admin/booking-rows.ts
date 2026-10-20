@@ -50,6 +50,7 @@ export function toBookingRow(item: BookingListItem, now: number = Date.now()): B
     isPast: new Date(item.startsAt).getTime() < now,
     serviceId: item.serviceId,
     serviceName: item.serviceName,
+    addons: item.addons.map((addon) => addon.title),
     providerId: item.providerId,
     providerName: item.providerName,
     assignment: item.assignment,

@@ -23,6 +23,14 @@
  * `cms_provider_services` (the provider's own subscription). Bookings keep
  * referencing `cms_services` by id; nothing here touches `cms_bookings`.
  *
+ * Extra's (20 Oct 2026): `is_addon` marks an offering a visitor can tick when
+ * booking another offering that lists it in `cms_offering_addons` (its
+ * `addon_minutes` and its variant price are added); `sold_alone = false`
+ * makes it an extra only (never booked or asked for on its own).
+ * `cms_booking_addons` keeps, per booking, a snapshot of the extras ticked
+ * (title, minutes, price), so later edits in Beheer → Aanbod never change
+ * what was booked. Migration 0015.
+ *
  * `page_id` is the offer page an offering was derived from before 17 Oct 2026;
  * it is nullable, unused by the app and only read by `cms:migrate-aanbod`.
  *
@@ -41,7 +49,7 @@ import {
   uniqueIndex,
   index,
 } from 'drizzle-orm/pg-core';
-import { cmsPages, cmsServices, cmsUsers, DEFAULT_LOCALE } from './cms-schema';
+import { cmsBookings, cmsPages, cmsServices, cmsUsers, DEFAULT_LOCALE } from './cms-schema';
 
 /** The shape of `src/lib/cms/block-primitives.ts` `CmsImageRef`, kept structural here. */
 export type CmsOfferingImage = {
@@ -89,6 +97,12 @@ export const cmsOfferings = pgTable(
     bookingMode: text('booking_mode').default('enquiry').notNull(),
     /** `single` (one option) | `audience` (Volwassene and Jeugd apart). */
     variantMode: text('variant_mode').default('single').notNull(),
+    /** Can be ticked as an extra when booking an offering that lists it (needs `addonMinutes` and a price). */
+    isAddon: boolean('is_addon').default(false).notNull(),
+    /** Booked or asked for on its own; `false` = only as an extra (then `isAddon` holds). */
+    soldAlone: boolean('sold_alone').default(true).notNull(),
+    /** Minutes an extra adds to the appointment; `null` unless `isAddon`. */
+    addonMinutes: integer('addon_minutes'),
     updatedBy: text('updated_by').references(() => cmsUsers.id, { onDelete: 'set null' }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
@@ -121,3 +135,47 @@ export const cmsOfferingVariants = pgTable(
 export type CmsOffering = typeof cmsOfferings.$inferSelect;
 export type NewCmsOffering = typeof cmsOfferings.$inferInsert;
 export type CmsOfferingVariant = typeof cmsOfferingVariants.$inferSelect;
+
+/** "Extra's bij dit aanbod": which extras a visitor may add when booking `offering_id`. */
+export const cmsOfferingAddons = pgTable(
+  'cms_offering_addons',
+  {
+    offeringId: text('offering_id')
+      .notNull()
+      .references(() => cmsOfferings.id, { onDelete: 'cascade' }),
+    /** The extra (an offering with `is_addon`). */
+    addonId: text('addon_id')
+      .notNull()
+      .references(() => cmsOfferings.id, { onDelete: 'cascade' }),
+    sortOrder: integer('sort_order').default(0).notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.offeringId, t.addonId] }),
+    index('cms_offering_addons_addon_idx').on(t.addonId),
+  ],
+);
+
+/** The extras a booking was made with: a snapshot, never re-read from the offering. */
+export const cmsBookingAddons = pgTable(
+  'cms_booking_addons',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    bookingId: text('booking_id')
+      .notNull()
+      .references(() => cmsBookings.id, { onDelete: 'cascade' }),
+    /** The extra's offering at booking time; null once that offering is deleted. */
+    offeringId: text('offering_id').references(() => cmsOfferings.id, { onDelete: 'set null' }),
+    slug: text('slug').default('').notNull(),
+    title: text('title').notNull(),
+    /** Minutes added to the appointment (already inside `cms_bookings.ends_at`). */
+    minutes: integer('minutes').notNull(),
+    priceCents: integer('price_cents'),
+    sortOrder: integer('sort_order').default(0).notNull(),
+  },
+  (t) => [index('cms_booking_addons_booking_idx').on(t.bookingId)],
+);
+
+export type CmsOfferingAddon = typeof cmsOfferingAddons.$inferSelect;
+export type CmsBookingAddon = typeof cmsBookingAddons.$inferSelect;

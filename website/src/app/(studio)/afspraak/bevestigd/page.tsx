@@ -56,6 +56,7 @@ export default async function BookingConfirmedPage({
         {ref ? (
           <BookingSummaryList
             serviceName={ref.serviceName}
+            addons={ref.addons ?? []}
             durationMinutes={minutesBetween(ref.startsAt, ref.endsAt)}
             startsAt={ref.startsAt}
             endsAt={ref.endsAt}

@@ -96,6 +96,11 @@ export const publicBookingInputSchema = z.object({
   locationId: z.string(TYPE_ERROR).max(RAW.locationId, TYPE_ERROR).trim().nullable().default(null),
   /** ISO instant of the chosen slot, exactly as returned by `getAvailability()`. */
   startsAt: text(RAW.startsAt, INVALID),
+  /** The extras ticked (offering ids); checked against the catalogue by the booking (20 Oct 2026). */
+  addonIds: z
+    .array(z.string(TYPE_ERROR).max(64, TYPE_ERROR).trim(), TYPE_ERROR)
+    .max(8, TYPE_ERROR)
+    .default([]),
   customerName: text(RAW.customerName, tooLong(LIMITS.customerName)),
   customerEmail: text(RAW.customerEmail, tooLong(LIMITS.customerEmail)),
   customerPhone: text(RAW.customerPhone, PHONE_MESSAGE),

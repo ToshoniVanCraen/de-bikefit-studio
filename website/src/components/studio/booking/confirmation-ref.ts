@@ -27,6 +27,8 @@ export type ConfirmationRef = {
   endsAt: string;
   timezone: string;
   where: string;
+  /** Titles of the extras booked with it (20 Oct 2026); absent on older refs. */
+  addons?: string[];
 };
 
 const HMAC_CONTEXT = 'booking-confirmation-ref:v1:';
@@ -69,7 +71,13 @@ export function readConfirmationRef(value: string | null | undefined): Confirmat
       typeof ref.timezone !== 'string' ||
       typeof ref.where !== 'string' ||
       Number.isNaN(Date.parse(ref.startsAt)) ||
-      Number.isNaN(Date.parse(ref.endsAt))
+      Number.isNaN(Date.parse(ref.endsAt)) ||
+      (ref.addons !== undefined &&
+        !(
+          Array.isArray(ref.addons) &&
+          ref.addons.length <= 8 &&
+          ref.addons.every((addon) => typeof addon === 'string' && addon.length <= 160)
+        ))
     ) {
       return null;
     }

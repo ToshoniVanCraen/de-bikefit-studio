@@ -1,6 +1,7 @@
 import { formatDateShort, formatTime } from '@/lib/booking/time';
 import { formatDuration } from '@/lib/booking/format';
 import {
+  extrasRow,
   button,
   layout,
   legalFooterHtml,
@@ -37,6 +38,7 @@ function shortWhen(data: BookingEmailData): string {
 function customerRows(data: BookingEmailData): Row[] {
   return [
     ['Dienst', `${data.serviceName} (${formatDuration(data.durationMinutes)})`],
+    extrasRow(data),
     ['Wanneer', whenLabel(data)],
     ['Waar', whereLines(data).join('\n')],
     ['Klant', data.customerName],
@@ -76,6 +78,7 @@ export function bookingAssignedEmail(data: BookingEmailData): RenderedEmail {
   const intro = `Hallo ${data.customerName}, ${data.providerName} doet je ${data.serviceName}. Dit blijft je afspraak:`;
   const rows: Row[] = [
     ['Wat', `${data.serviceName} (${formatDuration(data.durationMinutes)})`],
+    extrasRow(data),
     ['Wanneer', whenLabel(data)],
     ['Bij', data.providerName],
     ['Waar', whereLines(data).join('\n')],

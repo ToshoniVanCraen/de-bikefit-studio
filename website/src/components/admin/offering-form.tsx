@@ -19,6 +19,10 @@ import {
   type LocationOption,
 } from '@/components/admin/booking-labels';
 import { MediaPicker, type MediaOption } from '@/components/admin/media-picker';
+import {
+  OfferingAddonsFields,
+  type AddonCandidate,
+} from '@/components/admin/offering-addons-fields';
 import { deleteOfferingAction, saveOfferingAction } from '@/lib/cms/actions/offerings';
 import { IDLE_STATE } from '@/lib/cms/actions/state';
 import { OFFER_CATEGORIES, OFFER_CATEGORY_LABELS, OFFER_CTA_LABEL } from '@/lib/offers/catalogue';
@@ -50,6 +54,11 @@ export type OfferingFormValues = {
   bookingMode: OfferingBookingMode;
   variantMode: OfferingVariantMode;
   variants: OfferingFormVariant[];
+  /** Extra's (20 Oct 2026): see `OfferingSettings`. */
+  isAddon: boolean;
+  soldAlone: boolean;
+  addonMinutes: number | null;
+  addonIds: string[];
 };
 
 /**
@@ -66,11 +75,14 @@ export function OfferingForm({
   locations,
   media,
   defaultBuffer,
+  addonCandidates,
 }: {
   offering: OfferingFormValues;
   locations: LocationOption[];
   media: MediaOption[];
   defaultBuffer: number;
+  /** The other offerings marked as an extra. */
+  addonCandidates: AddonCandidate[];
 }) {
   const [state, formAction] = useActionState(saveOfferingAction, IDLE_STATE);
   const [variantMode, setVariantMode] = useState<OfferingVariantMode>(offering.variantMode);
@@ -266,6 +278,16 @@ export function OfferingForm({
             )}
           </div>
         </SectionCard>
+
+        <OfferingAddonsFields
+          values={{
+            isAddon: offering.isAddon,
+            soldAlone: offering.soldAlone,
+            addonMinutes: offering.addonMinutes,
+            addonIds: offering.addonIds,
+          }}
+          candidates={addonCandidates}
+        />
 
         <SectionCard
           title={variantMode === 'audience' ? 'Varianten' : 'Boeking'}

@@ -25,6 +25,10 @@ const variant = (audience: 'adult' | 'youth' | 'all', priceCents: number | null)
 const offering = (variants: ReturnType<typeof variant>[]): ResolvedOffering => ({
   source: 'stored',
   isListed: true,
+  isAddon: false,
+  soldAlone: true,
+  addonMinutes: null,
+  addonIds: [],
   bookingMode: 'direct',
   variantMode: variants.length > 1 ? 'audience' : 'single',
   status: 'bookable',

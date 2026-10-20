@@ -2,15 +2,15 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { bookAction } from '@/lib/booking/public-actions';
+import { formatDuration, formatPrice } from '@/lib/booking/format';
+import { AddonStep } from './addon-step';
 import { Confirmation } from './confirmation';
 import {
   addDays,
   addMonths,
   instantToTime,
   instantToYmd,
-  longDate,
   monthOf,
-  monthTitle,
   shortDate,
   type Ym,
   type Ymd,
@@ -26,15 +26,20 @@ import {
   type DetailsValues,
 } from './details';
 import { DetailsForm } from './details-form';
-import { MonthCalendar } from './month-calendar';
+import {
+  filterSlotsByLocation,
+  locationsForService,
+  normalizeLocationSelection,
+} from './location-choice';
 import { ProviderPicker, type ProviderChoice } from './provider-picker';
 import { narrowChoices, serviceSummary } from './service-choice';
 import { ServicePicker } from './service-picker';
 import { groupDaySlots, slotLocationIds } from './slot-grouping';
-import { SlotList, slotKey } from './slot-list';
 import { StepItem, type BookingStep as Step, type StepState } from './step-item';
+import { useBookingAddons } from './use-booking-addons';
 import { useMonthAvailability } from './use-month-availability';
 import { useServiceChoice } from './use-service-choice';
+import { WhenPanel } from './when-panel';
 import {
   PENDING_PROVIDER_TEXT,
   type BookActionResult,
@@ -48,21 +53,31 @@ import {
 /**
  * The public booking flow:
  *
- *   (aanbieder of "Iedereen") → dienst → dag in de maandkalender → uur →
- *   gegevens → bevestiging
+ *   (aanbieder of "Iedereen") → dienst → (extra's) → dag in de maandkalender →
+ *   uur → gegevens → bevestiging
  *
  * The current step is *derived* from what has been chosen, never stored, so
  * "Wijzigen" on an earlier step is just clearing that choice. Availability is
- * fetched per (service, provider, month) through `availabilityAction`
+ * fetched per (service, extras, provider, month) through `availabilityAction`
  * (`use-month-availability.ts`) and kept in a small in-memory cache.
  *
  * Bij wie (17 Oct 2026): a specific provider narrows the services to what
  * they offer and the calendar to their agenda. "Iedereen" shows every free
  * moment, one per time and location, without names: the beheerder assigns
- * the booking afterwards and the customer hears by e-mail. Where: a slot
- * carries its location (a provider may work from several places); it is
- * shown next to the time when more than one place is in play and decides
- * whether the form asks for an address.
+ * the booking afterwards and the customer hears by e-mail.
+ *
+ * Extra's (20 Oct 2026, `use-booking-addons.ts`): when the chosen service has
+ * extras (Beheer → Aanbod, "Extra's bij dit aanbod") a step lets the visitor
+ * tick them; the duration and the price shown add up, the free moments are
+ * computed for the longer appointment, and the server books the extras it
+ * offered (never what the client says they cost). `initialAddonSlugs` (from
+ * `?extra=`) ticks an extra in advance.
+ *
+ * Where (20 Oct 2026, `location-choice.ts`): "Kies een dag en uur" names the
+ * place the visitor books for, with its address from Beheer → Locaties; with
+ * several places a row of toggles narrows the free moments to the chosen
+ * ones. A slot still carries its own location, which decides whether the
+ * form asks for an address.
  *
  * `initialServiceId` preselects a service (from `/afspraak?dienst=…`, resolved
  * on the server); `context` names the offer the visitor came from. `choices`
@@ -77,6 +92,7 @@ import {
 
 type Confirmed = {
   serviceName: string;
+  addons: string[];
   durationMinutes: number;
   providerName: string;
   startsAt: string;
@@ -101,6 +117,7 @@ export function BookingWidget({
   copy,
   todayYmd,
   initialServiceId = null,
+  initialAddonSlugs = [],
   context = null,
   notice: introNotice = '',
 }: BookingWidgetProps) {
@@ -115,11 +132,13 @@ export function BookingWidget({
     initialServiceId,
     onChange: () => {
       interacted.current = true;
+      addons.reset();
       resetWhen();
     },
   });
   const { serviceId } = choice;
   const [providerChoice, setProviderChoice] = useState<ProviderChoice | undefined>(undefined);
+  const [locationSelection, setLocationSelection] = useState<string[] | null>(null);
   const [month, setMonth] = useState<Ym>(monthOf(todayYmd));
   const [day, setDay] = useState<Ymd | null>(null);
   const [slot, setSlot] = useState<BookingSlot | null>(null);
@@ -164,19 +183,29 @@ export function BookingWidget({
   // "Iedereen" with several providers: one button per time and location.
   const onePerStart = providerId === null && providersForService.length > 1;
 
+  // --- extras -------------------------------------------------------------------
+  const addons = useBookingAddons({
+    service,
+    initialSlugs: initialAddonSlugs,
+    onChange: resetWhen,
+  });
+
   const step: Step = confirmed
     ? 'done'
     : providerStep && providerChoice === undefined
       ? 'provider'
       : !service
         ? 'service'
-        : !slot
-          ? 'when'
-          : 'details';
+        : addons.hasStep && !addons.confirmed
+          ? 'addons'
+          : !slot
+            ? 'when'
+            : 'details';
 
   // --- when -------------------------------------------------------------------
   const availability = useMonthAvailability({
     serviceId: service?.id ?? null,
+    addonIds: addons.chosenIds,
     providerId,
     month,
     active: step === 'when',
@@ -185,7 +214,16 @@ export function BookingWidget({
   });
   const { monthState, loading } = availability;
   const monthSlots = monthState?.status === 'ready' ? monthState.slots : [];
-  const slotsByDay = groupDaySlots(monthSlots, {
+
+  // --- where --------------------------------------------------------------------
+  const locationsById = new Map(locations.map((location) => [location.id, location]));
+  const locationLabels = Object.fromEntries(
+    locations.map((location) => [location.id, location.label]),
+  );
+  const placesForService = locationsForService({ service, providers, providerId, locations });
+  const selectedPlaces = normalizeLocationSelection(locationSelection, placesForService);
+  const shownSlots = filterSlotsByLocation(monthSlots, selectedPlaces);
+  const slotsByDay = groupDaySlots(shownSlots, {
     timezone: tz,
     todayYmd,
     lastYmd,
@@ -196,13 +234,7 @@ export function BookingWidget({
   const daySlots = day ? (slotsByDay.get(day) ?? []) : [];
   const canPrev = month > firstMonth;
   const canNext = month < lastMonth;
-
-  // --- where --------------------------------------------------------------------
-  const locationsById = new Map(locations.map((location) => [location.id, location]));
-  const locationLabels = Object.fromEntries(
-    locations.map((location) => [location.id, location.label]),
-  );
-  const showLocation = slotLocationIds(monthSlots).size > 1;
+  const showLocation = slotLocationIds(shownSlots).size > 1;
   // The slot knows where it is; a slot without a location falls back to the
   // provider's resolved entry, then the service's own location (as before).
   function locationFor(
@@ -236,6 +268,13 @@ export function BookingWidget({
     setDay(null);
     setSlot(null);
     setNotice('');
+  }
+
+  function touch<T extends unknown[]>(run: (...args: T) => void) {
+    return (...args: T) => {
+      interacted.current = true;
+      run(...args);
+    };
   }
 
   function chooseProvider(next: ProviderChoice) {
@@ -273,6 +312,13 @@ export function BookingWidget({
     setFormError('');
   }
 
+  function choosePlaces(next: string[] | null) {
+    interacted.current = true;
+    setLocationSelection(next);
+    setDay(null);
+    setSlot(null);
+  }
+
   function editProvider() {
     interacted.current = true;
     setProviderChoice(undefined);
@@ -299,6 +345,7 @@ export function BookingWidget({
     availability.clear();
     choice.reset();
     setProviderChoice(undefined);
+    addons.reset();
     resetWhen();
     setValues((previous) => ({ ...previous, notes: '', bikeType: '', bikeModel: '' }));
   }
@@ -321,6 +368,7 @@ export function BookingWidget({
     try {
       result = await bookAction({
         serviceId: service.id,
+        addonIds: addons.chosenIds,
         // "Iedereen" sends no provider: the server picks who holds the slot
         // and the beheerder assigns. A chosen provider is sent as such.
         providerId,
@@ -347,7 +395,8 @@ export function BookingWidget({
       setConfirmed({
         // The booked catalogue service as the server stored it (e.g. "Jeugdfit").
         serviceName: booked.serviceName || service.name,
-        durationMinutes: service.durationMinutes,
+        addons: (booked.addons.length ? booked.addons : addons.chosen).map((addon) => addon.title),
+        durationMinutes: addons.totals?.minutes ?? service.durationMinutes,
         providerName: booked.assignmentPending
           ? PENDING_PROVIDER_TEXT
           : booked.providerName || (providerNames[slot.providerId] ?? ''),
@@ -387,6 +436,7 @@ export function BookingWidget({
           title={copy.successTitle || 'Je afspraak staat vast'}
           text={copy.successText}
           serviceName={confirmed.serviceName}
+          addons={confirmed.addons}
           durationMinutes={confirmed.durationMinutes}
           providerName={confirmed.providerName}
           startsAt={confirmed.startsAt}
@@ -406,6 +456,7 @@ export function BookingWidget({
   const order: Step[] = [
     ...(providerStep ? (['provider'] as Step[]) : []),
     'service',
+    ...(addons.hasStep ? (['addons'] as Step[]) : []),
     'when',
     'details',
   ];
@@ -416,25 +467,22 @@ export function BookingWidget({
   };
   const numberOf = (id: Step) => order.indexOf(id) + 1;
 
+  const addonSummary =
+    addons.chosen.length === 0
+      ? 'Geen extra’s'
+      : `${addons.chosen.map((addon) => addon.title).join(' + ')} · samen ${formatDuration(
+          addons.totals?.minutes ?? 0,
+        )}${addons.totals?.priceCents != null ? ` · ${formatPrice(addons.totals.priceCents)}` : ''}`;
+
   const slotWhere =
-    slot && showLocation && slot.locationId ? (locationLabels[slot.locationId] ?? '') : '';
+    slot && slot.locationId && (showLocation || placesForService.length > 1)
+      ? (locationLabels[slot.locationId] ?? '')
+      : '';
   const whenSummary = slot
     ? `${shortDate(instantToYmd(slot.startsAt, tz))}, ${instantToTime(slot.startsAt, tz)}${
         slotWhere ? ` · ${slotWhere}` : ''
       }`
     : '';
-
-  let status = '';
-  if (step === 'when') {
-    if (loading) status = 'Vrije momenten laden…';
-    else if (monthState?.status === 'error') status = monthState.message;
-    else if (availableDays.size === 0) status = `Geen vrije momenten meer in ${monthTitle(month)}.`;
-    else if (!day) status = 'Kies een dag met vrije momenten.';
-    else if (daySlots.length === 0)
-      status = `Geen vrije momenten meer op ${longDate(day)}. Kies een andere dag.`;
-    else
-      status = `${daySlots.length} ${daySlots.length === 1 ? 'vrij moment' : 'vrije momenten'} op ${longDate(day)}.`;
-  }
 
   return (
     <div className="studio-booking" ref={rootRef}>
@@ -487,12 +535,32 @@ export function BookingWidget({
             selectedId={serviceId}
             openOffer={choice.openOffer}
             onSelect={choice.choose}
-            onOpenOffer={(slug) => {
-              interacted.current = true;
-              choice.open(slug);
-            }}
+            onOpenOffer={touch(choice.open)}
           />
         </StepItem>
+
+        {addons.hasStep && service ? (
+          <StepItem
+            id="addons"
+            number={numberOf('addons')}
+            title="Iets extra erbij?"
+            state={stateOf('addons')}
+            summary={addonSummary}
+            onEdit={touch(addons.edit)}
+          >
+            <AddonStep
+              options={addons.options}
+              selectedIds={addons.addonIds}
+              base={{
+                name: service.name,
+                durationMinutes: service.durationMinutes,
+                priceCents: service.priceCents,
+              }}
+              onToggle={touch(addons.toggle)}
+              onConfirm={touch(addons.confirm)}
+            />
+          </StepItem>
+        ) : null}
 
         <StepItem
           id="when"
@@ -502,77 +570,36 @@ export function BookingWidget({
           summary={whenSummary}
           onEdit={editWhen}
         >
-          <div className="studio-booking__when">
-            <MonthCalendar
-              month={month}
-              todayYmd={todayYmd}
-              lastYmd={lastYmd}
-              availableDays={availableDays}
-              selectedYmd={day}
-              loading={loading}
-              canPrev={canPrev}
-              canNext={canNext}
-              onPrev={() => goMonth(-1)}
-              onNext={() => goMonth(1)}
-              onSelectDay={chooseDay}
-            />
-
-            <div className="studio-booking__day-panel">
-              {notice ? (
-                <p className="studio-booking__alert" role="alert">
-                  {notice}
-                </p>
-              ) : null}
-              <p className="studio-booking__status" role="status">
-                {status}
-              </p>
-
-              {monthState?.status === 'error' ? (
-                <p>
-                  <button
-                    type="button"
-                    className="studio-btn studio-btn--outline"
-                    onClick={availability.retry}
-                  >
-                    Opnieuw proberen
-                  </button>
-                </p>
-              ) : null}
-
-              {monthState?.status === 'ready' && availableDays.size === 0 && canNext ? (
-                <p>
-                  <button
-                    type="button"
-                    className="studio-btn studio-btn--outline"
-                    onClick={() => goMonth(1)}
-                  >
-                    Bekijk {monthTitle(addMonths(month, 1))}
-                  </button>
-                </p>
-              ) : null}
-
-              {monthState?.status === 'ready' &&
-              availableDays.size === 0 &&
-              !canNext &&
-              copy.phoneHref ? (
-                <p className="studio-booking__hint">
-                  Niets gevonden dat past? Bel ons op <a href={copy.phoneHref}>{copy.phoneLabel}</a>{' '}
-                  en we zoeken samen een moment.
-                </p>
-              ) : null}
-
-              {day && daySlots.length > 0 ? (
-                <SlotList
-                  slots={daySlots}
-                  timezone={tz}
-                  locationLabels={locationLabels}
-                  showLocation={showLocation}
-                  selectedKey={slot ? slotKey(slot) : null}
-                  onSelect={chooseSlot}
-                />
-              ) : null}
-            </div>
-          </div>
+          <WhenPanel
+            where={{
+              locations: placesForService,
+              selected: selectedPlaces,
+              onSelect: choosePlaces,
+            }}
+            calendar={{
+              month,
+              todayYmd,
+              lastYmd,
+              canPrev,
+              canNext,
+              onPrev: () => goMonth(-1),
+              onNext: () => goMonth(1),
+              onSelectDay: chooseDay,
+            }}
+            monthState={monthState}
+            loading={loading}
+            notice={notice}
+            availableDays={availableDays}
+            day={day}
+            daySlots={daySlots}
+            timezone={tz}
+            locationLabels={locationLabels}
+            showLocation={showLocation}
+            slot={slot}
+            onSelectSlot={chooseSlot}
+            onRetry={availability.retry}
+            phone={{ label: copy.phoneLabel, href: copy.phoneHref }}
+          />
         </StepItem>
 
         <StepItem

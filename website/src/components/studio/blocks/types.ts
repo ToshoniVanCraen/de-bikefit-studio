@@ -12,6 +12,8 @@ export type BlockPageContext = {
   slug: string;
   /** `?dienst=` after `parseServiceParam()`; `null` when absent or invalid. */
   requestedService: string | null;
+  /** `?extra=` (an extra's slug) after `parseServiceParam()`; only the booking block reads it. */
+  requestedExtra?: string | null;
 };
 
 /** Every block renderer takes the same five things. */

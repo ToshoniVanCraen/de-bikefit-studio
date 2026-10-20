@@ -30,6 +30,9 @@ function statusBadge(offering: AdminOffering): {
   if (offering.resolved.status === 'unavailable') {
     return { label: `${OFFERING_STATUS_LABELS.unavailable}: geen aanbieder`, tone: 'warning' };
   }
+  if (offering.resolved.status === 'addon') {
+    return { label: OFFERING_STATUS_LABELS.addon, tone: 'secondary' };
+  }
   return { label: 'Op aanvraag (formulier)', tone: 'secondary' };
 }
 

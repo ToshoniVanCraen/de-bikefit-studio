@@ -107,6 +107,8 @@ export type AvailabilityQuery = {
   providerId: string | null;
   fromYmd: string;
   toYmd: string;
+  /** Minutes the ticked extras add to the service's duration (`resolveBookingAddons()`). */
+  extraMinutes?: number;
   /** For tests; defaults to the current time. */
   now?: Date;
   locale?: string;
@@ -350,12 +352,15 @@ export async function getAvailability(query: AvailabilityQuery): Promise<Availab
   }
 
   const db = await getCmsDb();
-  const [service] = await db
+  const [serviceRow] = await db
     .select()
     .from(cmsServices)
     .where(and(eq(cmsServices.id, query.serviceId), eq(cmsServices.isActive, true)))
     .limit(1);
-  if (!service) return { ok: false, message: 'Deze dienst bestaat niet (meer).' };
+  if (!serviceRow) return { ok: false, message: 'Deze dienst bestaat niet (meer).' };
+  // Extras lengthen the appointment: a slot must hold the service plus them.
+  const extraMinutes = Math.max(0, Math.floor(query.extraMinutes ?? 0));
+  const service = { ...serviceRow, durationMinutes: serviceRow.durationMinutes + extraMinutes };
 
   const offerings = (await loadOfferings(service.id)).filter(
     (offering) => !query.providerId || offering.provider.id === query.providerId,

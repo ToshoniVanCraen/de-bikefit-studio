@@ -17,7 +17,9 @@ import {
   type CancelActionResult,
 } from '@/components/studio/booking/types';
 import { isServiceBookableOnline } from '@/lib/cms/offers-content';
+import { MAX_BOOKING_ADDONS } from '@/lib/offers/addons';
 import { clientIpFromHeaders } from '@/lib/request-ip';
+import { resolveBookingAddons } from './addon-resolve';
 import { logBookingFailure } from './booking-log';
 import { getAvailability } from './content';
 import {
@@ -43,6 +45,11 @@ import { submitReview, type SubmitReviewResult } from './reviews';
  * Next's server actions carry their own Origin/Host check, which is what keeps
  * these from being posted cross-site.
  *
+ * Extra's (20 Oct 2026): both actions take the ticked extras as offering ids
+ * and resolve them against what the catalogue offers for that service
+ * (`resolveBookingAddons()`): the minutes and the price come from there, an
+ * id that is not an extra of the service refuses the request.
+ *
  * Offerings (Beheer → Aanbod): a service that is a variant of an offering is
  * only bookable while that offering is shown and booked directly. Both the
  * availability and the booking action refuse a held-back service before
@@ -56,18 +63,21 @@ const BOOK_ERROR = 'Er ging iets mis bij het boeken. Probeer het opnieuw of bel 
 const SLOT_TAKEN = 'Dit moment is net geboekt. Kies een ander moment.';
 const CANCEL_ERROR = 'Er ging iets mis. Probeer het opnieuw of bel ons.';
 const NOT_ONLINE = 'Deze dienst kun je niet online boeken.';
+const ADDON_UNKNOWN = 'Een gekozen extra hoort niet bij deze dienst. Kies de extra’s opnieuw.';
 
 const ymd = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/)
   .default('');
 const id = z.string().trim().max(64).default('');
+const idList = z.array(z.string().trim().min(1).max(64)).max(MAX_BOOKING_ADDONS).default([]);
 
 const availabilityInputSchema = z.object({
   serviceId: id,
   providerId: z.string().trim().max(64).nullable().default(null),
   fromYmd: ymd,
   toYmd: ymd,
+  addonIds: idList,
 });
 
 const text = (max: number) => z.string().trim().max(max).default('');
@@ -78,6 +88,7 @@ const bookInputSchema = z.object({
   providerId: z.string().trim().max(64).nullable().default(null),
   locationId: z.string().trim().max(64).nullable().default(null),
   startsAt: text(40),
+  addonIds: idList,
   name: text(200),
   email: text(254),
   phone: text(60),
@@ -97,6 +108,7 @@ const FIELD_NAMES: Record<string, keyof BookActionInput> = {
   providerId: 'providerId',
   locationId: 'locationId',
   startsAt: 'startsAt',
+  addonIds: 'addonIds',
   customerName: 'name',
   customerEmail: 'email',
   customerPhone: 'phone',
@@ -123,6 +135,7 @@ function toSummary(summary: PublicBookingSummary): BookingSummary {
     timezone: summary.timezone,
     locationLabel: summary.locationLabel,
     status: summary.status,
+    addons: summary.addons,
   };
 }
 
@@ -139,11 +152,18 @@ export async function availabilityAction(
     if (!(await isServiceBookableOnline(parsed.data.serviceId, DEFAULT_LOCALE))) {
       return { ok: false, message: NOT_ONLINE };
     }
+    const addons = await resolveBookingAddons(
+      parsed.data.serviceId,
+      parsed.data.addonIds,
+      DEFAULT_LOCALE,
+    );
+    if (!addons.ok) return { ok: false, message: ADDON_UNKNOWN };
     const result = await getAvailability({
       serviceId: parsed.data.serviceId,
       providerId: parsed.data.providerId || null,
       fromYmd: parsed.data.fromYmd,
       toYmd: parsed.data.toYmd,
+      extraMinutes: addons.extraMinutes,
       locale: DEFAULT_LOCALE,
     });
     if (!result.ok) return { ok: false, message: result.message };
@@ -185,6 +205,7 @@ export async function bookAction(input: BookActionInput): Promise<BookActionResu
         providerId: data.providerId || null,
         locationId: data.locationId || null,
         startsAt: data.startsAt,
+        addonIds: data.addonIds,
         customerName: data.name,
         customerEmail: data.email,
         customerPhone: data.phone,
@@ -225,6 +246,7 @@ export async function bookAction(input: BookActionInput): Promise<BookActionResu
           endsAt: booking.endsAt,
           timezone: booking.timezone,
           where: booking.locationLabel,
+          addons: booking.addons.map((addon) => addon.title),
         }),
       );
     } catch {

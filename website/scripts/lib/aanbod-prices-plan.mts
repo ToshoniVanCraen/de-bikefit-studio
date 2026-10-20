@@ -72,7 +72,7 @@ const AUDIENCE_ORDER: Record<OfferingAudience, number> = Object.fromEntries(
  * keep-alive socket the server had closed meanwhile — "fetch failed"). An SQL
  * error is thrown as is.
  */
-async function withTransportRetry<T>(read: () => Promise<T>): Promise<T> {
+export async function withTransportRetry<T>(read: () => Promise<T>): Promise<T> {
   try {
     return await read();
   } catch (error) {

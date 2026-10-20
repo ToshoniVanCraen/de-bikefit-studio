@@ -23,15 +23,17 @@ import { JsonLd } from './json-ld';
  * `offer-detail.tsx` and does the same). On a top-level page "Home / Aanbod" only repeats the header
  * navigation, so it is left out there (Toshoni's review, 13 Oct 2026).
  *
- * `requestedService` is the validated `?dienst=` value; only the booking
- * block reads it.
+ * `requestedService` is the validated `?dienst=` value and `requestedExtra`
+ * the validated `?extra=` value; only the booking block reads them.
  */
 export function StudioPageView({
   studio,
   requestedService = null,
+  requestedExtra = null,
 }: {
   studio: StudioPage;
   requestedService?: string | null;
+  requestedExtra?: string | null;
 }) {
   const { page, settings, canonical, locale, parents } = studio;
   const origin = absoluteUrl('/').replace(/\/+$/, '');
@@ -92,7 +94,11 @@ export function StudioPageView({
         </nav>
       ) : null}
 
-      <BlockRenderer blocks={blocks} locale={locale} page={{ slug: page.slug, requestedService }} />
+      <BlockRenderer
+        blocks={blocks}
+        locale={locale}
+        page={{ slug: page.slug, requestedService, requestedExtra }}
+      />
     </>
   );
 }

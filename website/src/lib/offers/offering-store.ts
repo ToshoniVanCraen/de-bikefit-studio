@@ -2,7 +2,7 @@ import 'server-only';
 import { asc, eq, inArray } from 'drizzle-orm';
 import { unstable_cache } from 'next/cache';
 import { getCmsDb } from '@/db/cms';
-import { cmsOfferings, cmsOfferingVariants } from '@/db/cms-offering-schema';
+import { cmsOfferingAddons, cmsOfferings, cmsOfferingVariants } from '@/db/cms-offering-schema';
 import { cmsServices, DEFAULT_LOCALE } from '@/db/cms-schema';
 import { BOOKING_TAG } from '@/lib/booking/content';
 import { CMS_TAGS } from '@/lib/cms/content';
@@ -80,6 +80,16 @@ export async function readStoredOfferings(locale: string): Promise<OfferingRecor
         rows.map((row) => row.id),
       ),
     );
+  const links = await db
+    .select()
+    .from(cmsOfferingAddons)
+    .where(
+      inArray(
+        cmsOfferingAddons.offeringId,
+        rows.map((row) => row.id),
+      ),
+    )
+    .orderBy(asc(cmsOfferingAddons.sortOrder));
   return rows.map((row) => ({
     id: row.id,
     locale: row.locale,
@@ -87,6 +97,7 @@ export async function readStoredOfferings(locale: string): Promise<OfferingRecor
     settings: settingsFromRows(
       row,
       variants.filter((variant) => variant.offeringId === row.id),
+      links.filter((link) => link.offeringId === row.id).map((link) => link.addonId),
     ),
     updatedAt: new Date(row.updatedAt).toISOString(),
   }));

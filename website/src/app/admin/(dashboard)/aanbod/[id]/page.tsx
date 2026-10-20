@@ -4,7 +4,11 @@ import { notFound } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { ForbiddenNotice } from '@/components/admin/forbidden';
 import { toLocationOption } from '@/components/admin/booking-rows';
-import { mediaOptions, toOfferingFormValues } from '@/components/admin/offering-admin';
+import {
+  addonCandidates,
+  mediaOptions,
+  toOfferingFormValues,
+} from '@/components/admin/offering-admin';
 import { OfferingForm } from '@/components/admin/offering-form';
 import { PageHeading } from '@/components/admin/shell';
 import { badgeTone, FLASH_TONES } from '@/components/admin/tones';
@@ -31,7 +35,7 @@ export default async function EditOfferingPage({
   const [{ id }, search] = await Promise.all([params, searchParams]);
   const found = await getOfferingForAdmin(id);
   if (!found) notFound();
-  const { offering, services } = found;
+  const { offering, services, offerings } = found;
 
   const [locations, media, rules] = await Promise.all([
     listLocations({ includeInactive: true }),
@@ -100,6 +104,7 @@ export default async function EditOfferingPage({
         locations={locations.map(toLocationOption)}
         media={media}
         defaultBuffer={rules.defaultBufferAfterMinutes}
+        addonCandidates={addonCandidates(offerings, offering.id)}
       />
     </>
   );

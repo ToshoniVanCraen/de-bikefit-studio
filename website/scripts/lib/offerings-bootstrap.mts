@@ -5,7 +5,10 @@
  * self-test. Create-only and idempotent: an existing offering (by locale and
  * slug) is never touched, whatever it holds. Direct database writes, like the
  * rest of the bootstrap (no session, no audit); nothing touches
- * `cms_services`, `cms_provider_services` or `cms_bookings`.
+ * `cms_services`, `cms_provider_services` or `cms_bookings`. The extras of a
+ * created offering (20 Oct 2026: the three columns and the links to the
+ * extras it allows, by slug) are written with it; an existing offering keeps
+ * what it has (`npm run cms:patch-aanbod-extras` fills those in).
  *
  * Plain imports only: this module runs before any request-context stub.
  */
@@ -20,7 +23,7 @@ export type EnsureOfferingsDeps = {
   db: CmsDatabase;
   orm: Pick<Orm, 'and' | 'eq'>;
   schema: Pick<CmsSchema, 'cmsServices' | 'DEFAULT_LOCALE'>;
-  offerings: Pick<OfferingSchema, 'cmsOfferings' | 'cmsOfferingVariants'>;
+  offerings: Pick<OfferingSchema, 'cmsOfferings' | 'cmsOfferingVariants' | 'cmsOfferingAddons'>;
   log: (symbol: string, message: string) => void;
   locale?: string;
 };
@@ -79,6 +82,9 @@ export async function ensureDefaultOfferings(
         isListed: entry.isListed,
         bookingMode: entry.bookingMode,
         variantMode: entry.variantMode,
+        isAddon: entry.isAddon,
+        soldAlone: entry.soldAlone,
+        addonMinutes: entry.addonMinutes,
       })
       .returning({ id: offerings.cmsOfferings.id });
     const linked: string[] = [];
@@ -105,6 +111,38 @@ export async function ensureDefaultOfferings(
         linked.length ? `, services ${linked.join(' + ')}` : ''
       })`,
     );
+  }
+
+  // The extras a created offering allows, by slug: both sides exist by now.
+  const hosts = defaults.filter(
+    (entry) => created.includes(entry.content.slug) && entry.addonSlugs.length > 0,
+  );
+  if (hosts.length > 0) {
+    const rows = await db
+      .select({ id: offerings.cmsOfferings.id, slug: offerings.cmsOfferings.slug })
+      .from(offerings.cmsOfferings)
+      .where(eq(offerings.cmsOfferings.locale, locale));
+    const offeringId = new Map(rows.map((row) => [row.slug, row.id]));
+    for (const entry of hosts) {
+      const hostId = offeringId.get(entry.content.slug);
+      if (!hostId) continue;
+      const linked: string[] = [];
+      for (const slug of entry.addonSlugs) {
+        const addonId = offeringId.get(slug);
+        if (!addonId) {
+          log('!', `offering ${entry.content.slug}: extra ${slug} is missing — not linked`);
+          continue;
+        }
+        await db
+          .insert(offerings.cmsOfferingAddons)
+          .values({ offeringId: hostId, addonId, sortOrder: linked.length })
+          .onConflictDoNothing();
+        linked.push(slug);
+      }
+      if (linked.length) {
+        log('~', `offering ${locale}/${entry.content.slug}: extras ${linked.join(' + ')}`);
+      }
+    }
   }
   return { created, kept };
 }

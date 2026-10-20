@@ -139,9 +139,31 @@ export async function saveOfferingAction(
       });
     }
 
+    // Extra's (20 Oct 2026): the minutes only matter for an extra; "ook apart
+    // te boeken" is only a choice for an extra (anything else is sold alone).
+    const isAddon = boolField(form, 'isAddon');
+    const minutesRaw = field(form, 'addonMinutes');
+    const addonMinutes = minutesRaw ? intIn(minutesRaw, 5, 720) : null;
+    if (minutesRaw && addonMinutes === null) {
+      return actionError('De extra tijd moet een geheel aantal minuten tussen 5 en 720 zijn.');
+    }
+    const addonIds = form
+      .getAll('addonIds')
+      .filter((value): value is string => typeof value === 'string' && value.trim() !== '')
+      .map((value) => value.trim());
+
     const input = {
       content,
-      settings: { isListed: boolField(form, 'isListed'), bookingMode, variantMode, variants },
+      settings: {
+        isListed: boolField(form, 'isListed'),
+        bookingMode,
+        variantMode,
+        variants,
+        isAddon,
+        soldAlone: isAddon ? boolField(form, 'soldAlone') : true,
+        addonMinutes: isAddon ? addonMinutes : null,
+        addonIds,
+      },
     };
     const result = offeringId
       ? await updateOffering(offeringId, input)

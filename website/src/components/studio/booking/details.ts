@@ -143,7 +143,7 @@ export function validateDetails(
 export function toBookInput(
   raw: DetailsValues,
   mode: DetailsMode,
-): Omit<BookActionInput, 'serviceId' | 'providerId' | 'locationId' | 'startsAt'> {
+): Omit<BookActionInput, 'serviceId' | 'providerId' | 'locationId' | 'startsAt' | 'addonIds'> {
   const v = trimmed(raw);
   const bikeDetails = [
     v.bikeType ? `Type: ${v.bikeType}` : '',

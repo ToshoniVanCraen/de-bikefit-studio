@@ -2,13 +2,18 @@ import Link from 'next/link';
 
 import { ForbiddenNotice } from '@/components/admin/forbidden';
 import { toLocationOption } from '@/components/admin/booking-rows';
-import { mediaOptions, toOfferingFormValues } from '@/components/admin/offering-admin';
+import {
+  addonCandidates,
+  mediaOptions,
+  toOfferingFormValues,
+} from '@/components/admin/offering-admin';
 import { OfferingForm } from '@/components/admin/offering-form';
 import { PageHeading } from '@/components/admin/shell';
 import { listLocations } from '@/lib/booking/repo';
 import { getBookingRules } from '@/lib/booking/settings';
 import { requireCmsUser } from '@/lib/cms/auth';
 import { can } from '@/lib/cms/permissions';
+import { listOfferingsForAdmin } from '@/lib/offers/repo';
 
 export const metadata = { title: 'Nieuw aanbod' };
 
@@ -16,10 +21,11 @@ export default async function NewOfferingPage() {
   const user = await requireCmsUser();
   if (!can(user.role, 'offering.manage')) return <ForbiddenNotice what="het aanbod" />;
 
-  const [locations, media, rules] = await Promise.all([
+  const [locations, media, rules, overview] = await Promise.all([
     listLocations({ includeInactive: true }),
     can(user.role, 'media.read') ? mediaOptions() : Promise.resolve([]),
     getBookingRules(),
+    listOfferingsForAdmin(),
   ]);
 
   return (
@@ -41,6 +47,7 @@ export default async function NewOfferingPage() {
         locations={locations.map(toLocationOption)}
         media={media}
         defaultBuffer={rules.defaultBufferAfterMinutes}
+        addonCandidates={addonCandidates(overview.offerings, null)}
       />
     </>
   );

@@ -103,6 +103,10 @@ export function deriveLegacyOffering(
     return {
       settings: {
         isListed: true,
+        isAddon: false,
+        soldAlone: true,
+        addonMinutes: null,
+        addonIds: [],
         bookingMode: 'enquiry',
         variantMode: 'single',
         variants: [{ audience: 'all', serviceId: null, priceCents }],
@@ -130,6 +134,10 @@ export function deriveLegacyOffering(
     return {
       settings: {
         isListed: true,
+        isAddon: false,
+        soldAlone: true,
+        addonMinutes: null,
+        addonIds: [],
         bookingMode: 'enquiry',
         variantMode: 'single',
         variants: [{ audience: 'all', serviceId: null, priceCents: null }],
@@ -144,6 +152,10 @@ export function deriveLegacyOffering(
     return {
       settings: {
         isListed: true,
+        isAddon: false,
+        soldAlone: true,
+        addonMinutes: null,
+        addonIds: [],
         bookingMode: 'direct',
         variantMode: 'single',
         variants: [{ audience: 'all', serviceId: resolved[0].id, priceCents: null }],
@@ -159,6 +171,10 @@ export function deriveLegacyOffering(
     return {
       settings: {
         isListed: true,
+        isAddon: false,
+        soldAlone: true,
+        addonMinutes: null,
+        addonIds: [],
         bookingMode: 'direct',
         variantMode: 'audience',
         variants: [
@@ -177,6 +193,10 @@ export function deriveLegacyOffering(
   return {
     settings: {
       isListed: true,
+      isAddon: false,
+      soldAlone: true,
+      addonMinutes: null,
+      addonIds: [],
       bookingMode: 'direct',
       variantMode: 'single',
       variants: [{ audience: 'all', serviceId: resolved[0].id, priceCents: null }],

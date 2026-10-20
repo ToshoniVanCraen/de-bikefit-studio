@@ -47,13 +47,18 @@ export const AUDIENCE_LABELS: Record<OfferingAudience, string> = {
 /** € 10.000,00: a technical upper bound, not a business rule. */
 export const OFFERING_MAX_PRICE_CENTS = 1_000_000;
 
-export type OfferingStatus = 'bookable' | 'unavailable' | 'enquiry';
+/** At most this many extras linked to one offering. */
+export const OFFERING_MAX_ADDONS = 12;
+
+/** `addon`: not sold alone — only ticked as an extra when booking another offering (20 Oct 2026). */
+export type OfferingStatus = 'bookable' | 'unavailable' | 'enquiry' | 'addon';
 
 /** Shown on cards, the offer page and in Beheer. */
 export const OFFERING_STATUS_LABELS: Record<OfferingStatus, string> = {
   bookable: 'Online te boeken',
   unavailable: 'Tijdelijk niet online te boeken',
   enquiry: 'Op aanvraag',
+  addon: 'Enkel als extra bij een afspraak',
 };
 
 export function audiencesFor(mode: OfferingVariantMode): OfferingAudience[] {
@@ -72,6 +77,14 @@ export type OfferingSettings = {
   variantMode: OfferingVariantMode;
   /** Exactly the audiences of `variantMode`, in that order. */
   variants: OfferingVariant[];
+  /** Can be ticked as an extra when booking an offering that lists it (20 Oct 2026). */
+  isAddon: boolean;
+  /** Booked or asked for on its own; `false` = an extra only (needs `isAddon`). */
+  soldAlone: boolean;
+  /** Minutes an extra adds to the appointment; `null` unless `isAddon`. */
+  addonMinutes: number | null;
+  /** "Extra's bij dit aanbod": ids of the extras a visitor may add, in order. */
+  addonIds: string[];
 };
 
 /** `stored` = a `cms_offerings` row; `legacy` = derived from the offer block (no row yet). */
@@ -128,6 +141,19 @@ export const offeringInputSchema = z
     bookingMode: z.enum(OFFERING_BOOKING_MODES),
     variantMode: z.enum(OFFERING_VARIANT_MODES),
     variants: z.array(variantSchema).max(OFFERING_AUDIENCES.length),
+    isAddon: z.boolean().default(false),
+    soldAlone: z.boolean().default(true),
+    addonMinutes: z
+      .number()
+      .int('De extra tijd moet een geheel aantal minuten zijn.')
+      .min(5, 'De extra tijd is minstens 5 minuten.')
+      .max(720, 'De extra tijd is maximaal 12 uur.')
+      .nullable()
+      .default(null),
+    addonIds: z
+      .array(z.string().trim().min(1).max(64, 'Ongeldige extra.'))
+      .max(OFFERING_MAX_ADDONS, `Maximaal ${OFFERING_MAX_ADDONS} extra’s per aanbod.`)
+      .default([]),
   })
   .superRefine((value, ctx) => {
     const expected = audiencesFor(value.variantMode);
@@ -160,6 +186,28 @@ export const offeringInputSchema = z
         code: 'custom',
         message: 'Volwassene en Jeugd hebben elk een eigen dienst nodig (eigen duur en formulier).',
       });
+    }
+    if (value.isAddon) {
+      if (value.addonMinutes == null) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'Vul in hoeveel minuten deze extra bij een afspraak komt.',
+        });
+      }
+      if (value.variants.some((variant) => variant.priceCents == null)) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'Een extra heeft een prijs nodig; zonder prijs kan ze niet mee geboekt worden.',
+        });
+      }
+    } else if (!value.soldAlone) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Een aanbod dat niet apart te boeken is, moet een extra zijn.',
+      });
+    }
+    if (new Set(value.addonIds).size !== value.addonIds.length) {
+      ctx.addIssue({ code: 'custom', message: 'Een extra staat dubbel in de lijst.' });
     }
   });
 
@@ -196,6 +244,10 @@ export function validateOfferingInput(
           serviceId: variant.serviceId || null,
           priceCents: variant.priceCents,
         })),
+        isAddon: data.isAddon,
+        soldAlone: data.isAddon ? data.soldAlone : true,
+        addonMinutes: data.isAddon ? data.addonMinutes : null,
+        addonIds: data.addonIds,
       },
       services,
     },
@@ -209,19 +261,38 @@ export function validateOfferingInput(
  * in the table until the next save rewrites the variants).
  */
 export function settingsFromRows(
-  row: { isListed: boolean; bookingMode: string; variantMode: string },
+  row: {
+    isListed: boolean;
+    bookingMode: string;
+    variantMode: string;
+    isAddon?: boolean;
+    soldAlone?: boolean;
+    addonMinutes?: number | null;
+  },
   variantRows: ReadonlyArray<{
     audience: string;
     serviceId: string | null;
     priceCents: number | null;
   }>,
+  /** The linked extras (`cms_offering_addons`), in order. */
+  addonIds: readonly string[] = [],
 ): OfferingSettings {
   const bookingMode: OfferingBookingMode = row.bookingMode === 'direct' ? 'direct' : 'enquiry';
   const variantMode: OfferingVariantMode = row.variantMode === 'audience' ? 'audience' : 'single';
+  const isAddon = row.isAddon === true;
+  const minutes = row.addonMinutes;
   return {
     isListed: row.isListed,
     bookingMode,
     variantMode,
+    isAddon,
+    // An offering that is neither an extra nor sold alone would be unreachable: it reads as sold alone.
+    soldAlone: isAddon ? row.soldAlone !== false : true,
+    addonMinutes:
+      isAddon && typeof minutes === 'number' && Number.isInteger(minutes) && minutes >= 5
+        ? minutes
+        : null,
+    addonIds: [...new Set(addonIds)],
     variants: audiencesFor(variantMode).map((audience) => {
       const found = variantRows.find((entry) => entry.audience === audience);
       const price = found?.priceCents ?? null;
@@ -276,6 +347,10 @@ export type ResolvedOffering = {
   variantMode: OfferingVariantMode;
   status: OfferingStatus;
   variants: ResolvedVariant[];
+  isAddon: boolean;
+  soldAlone: boolean;
+  addonMinutes: number | null;
+  addonIds: string[];
 };
 
 export function resolveOffering(input: {
@@ -304,11 +379,15 @@ export function resolveOffering(input: {
       bookable: direct && active && Boolean(service) && input.bookableServiceIds.has(service!.id),
     };
   });
-  const status: OfferingStatus = !direct
-    ? 'enquiry'
-    : variants.some((variant) => variant.bookable)
-      ? 'bookable'
-      : 'unavailable';
+  // An extra that is not sold alone is never booked on its own, whatever its booking mode.
+  const addonOnly = settings.isAddon === true && settings.soldAlone === false;
+  const status: OfferingStatus = addonOnly
+    ? 'addon'
+    : !direct
+      ? 'enquiry'
+      : variants.some((variant) => variant.bookable)
+        ? 'bookable'
+        : 'unavailable';
   return {
     source: input.source,
     isListed: settings.isListed,
@@ -316,6 +395,10 @@ export function resolveOffering(input: {
     variantMode: settings.variantMode,
     status,
     variants,
+    isAddon: settings.isAddon === true,
+    soldAlone: !addonOnly,
+    addonMinutes: settings.addonMinutes ?? null,
+    addonIds: [...(settings.addonIds ?? [])],
   };
 }
 
@@ -387,7 +470,7 @@ export function offeringBookingSlugs(
 export function withheldServiceIds(
   offerings: ReadonlyArray<{
     visible: boolean;
-    settings: Pick<OfferingSettings, 'bookingMode' | 'variants'>;
+    settings: Pick<OfferingSettings, 'bookingMode' | 'variants'> & { soldAlone?: boolean };
   }>,
 ): Set<string> {
   const claimed = new Set<string>();
@@ -396,7 +479,11 @@ export function withheldServiceIds(
     for (const variant of offering.settings.variants) {
       if (!variant.serviceId) continue;
       claimed.add(variant.serviceId);
-      if (offering.visible && offering.settings.bookingMode === 'direct') {
+      if (
+        offering.visible &&
+        offering.settings.bookingMode === 'direct' &&
+        offering.settings.soldAlone !== false
+      ) {
         offered.add(variant.serviceId);
       }
     }

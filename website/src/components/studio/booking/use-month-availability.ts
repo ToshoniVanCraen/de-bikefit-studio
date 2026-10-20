@@ -8,17 +8,28 @@ export type MonthState =
 
 const LOAD_ERROR = 'De agenda kon niet geladen worden. Probeer het opnieuw.';
 
-export function monthKey(serviceId: string, providerId: string | null, month: Ym): string {
-  return `${serviceId}|${providerId ?? '*'}|${month}`;
+/** The extras as one stable key: sorted ids, comma-separated ('' = none). */
+export function addonKeyOf(addonIds: readonly string[]): string {
+  return [...addonIds].sort().join(',');
+}
+
+export function monthKey(
+  serviceId: string,
+  providerId: string | null,
+  month: Ym,
+  addonKey = '',
+): string {
+  return `${serviceId}|${addonKey || '-'}|${providerId ?? '*'}|${month}`;
 }
 
 /**
- * Availability per (service, provider or "Iedereen", month), fetched through
+ * Availability per (service, extras, provider or "Iedereen", month), fetched through
  * `availabilityAction` when the "when" step shows it and kept in a small
  * in-memory cache for the lifetime of the page. Split out of the widget.
  */
 export function useMonthAvailability({
   serviceId,
+  addonIds,
   providerId,
   month,
   active,
@@ -26,6 +37,8 @@ export function useMonthAvailability({
   lastYmd,
 }: {
   serviceId: string | null;
+  /** The extras ticked (offering ids): the slots must hold the service plus them. */
+  addonIds: string[];
   providerId: string | null;
   month: Ym;
   /** Fetch only while the calendar step is the active one. */
@@ -34,7 +47,8 @@ export function useMonthAvailability({
   lastYmd: Ymd;
 }) {
   const [months, setMonths] = useState<Record<string, MonthState>>({});
-  const key = serviceId ? monthKey(serviceId, providerId, month) : null;
+  const addonKey = addonKeyOf(addonIds);
+  const key = serviceId ? monthKey(serviceId, providerId, month, addonKey) : null;
   const monthState = key ? months[key] : undefined;
   const needsFetch = active && key !== null && monthState === undefined;
 
@@ -45,9 +59,13 @@ export function useMonthAvailability({
     const request =
       fromYmd > toYmd
         ? Promise.resolve<AvailabilityActionResult>({ ok: true, slots: [] })
-        : availabilityAction({ serviceId, providerId, fromYmd, toYmd }).catch(
-            (): AvailabilityActionResult => ({ ok: false, message: LOAD_ERROR }),
-          );
+        : availabilityAction({
+            serviceId,
+            providerId,
+            fromYmd,
+            toYmd,
+            addonIds: addonKey ? addonKey.split(',') : [],
+          }).catch((): AvailabilityActionResult => ({ ok: false, message: LOAD_ERROR }));
     void request.then((result) => {
       setMonths((previous) => ({
         ...previous,
@@ -56,7 +74,7 @@ export function useMonthAvailability({
           : { status: 'error', message: result.message || LOAD_ERROR },
       }));
     });
-  }, [needsFetch, key, serviceId, providerId, month, todayYmd, lastYmd]);
+  }, [needsFetch, key, serviceId, addonKey, providerId, month, todayYmd, lastYmd]);
 
   const forget = (which: string | null) => {
     if (!which) return;

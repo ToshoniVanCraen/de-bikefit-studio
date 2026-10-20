@@ -26,6 +26,13 @@ import type { OfferingContent } from './offering-content';
  * (offer pages and cards) and, for the fit that is booked online, through
  * the services' price in `src/lib/booking/defaults.ts` (the widget).
  *
+ * Extra's (Toshoni, 20 Oct 2026): voetanalyse, zadelanalyse and het afstellen
+ * van schoenplaatjes are sold on their own AND can be ticked as an extra when
+ * booking a bikefit (their minutes and price are added); *Bikefit – tweede
+ * fiets* is an extra only, never booked alone (the same-type price and time;
+ * another type is settled on site). Both bikefits list those four extras. An
+ * existing database gets this with `npm run cms:patch-aanbod-extras`.
+ *
  * Booking: *Bikefit – huidige fiets* is booked directly as Volwassenenfit
  * (Volwassene) and Jeugdfit (Jeugd); the eight others are asked for through
  * the enquiry form until Toshoni confirms a provider for them. An existing
@@ -44,12 +51,28 @@ export type DefaultOfferingVariant = {
   priceCents: number | null;
 };
 
-export type DefaultOffering = {
+/** The extra side of a default offering (20 Oct 2026); see `OfferingSettings`. */
+export type DefaultOfferingExtras = {
+  isAddon: boolean;
+  soldAlone: boolean;
+  addonMinutes: number | null;
+  /** Slugs of the extras a visitor may add when booking this offering, in order. */
+  addonSlugs: string[];
+};
+
+export type DefaultOffering = DefaultOfferingExtras & {
   content: OfferingContent;
   isListed: boolean;
   bookingMode: OfferingBookingMode;
   variantMode: OfferingVariantMode;
   variants: DefaultOfferingVariant[];
+};
+
+const NOT_AN_EXTRA: DefaultOfferingExtras = {
+  isAddon: false,
+  soldAlone: true,
+  addonMinutes: null,
+  addonSlugs: [],
 };
 
 /** The three temporary AI images (`docs/editorial-images.md`): one per category, the lactate test apart. */
@@ -68,6 +91,7 @@ function offer(
     category: Exclude<OfferCategory, 'overige'>;
   },
   booking: Pick<DefaultOffering, 'bookingMode' | 'variantMode' | 'variants'>,
+  extras: Partial<DefaultOfferingExtras> = {},
 ): DefaultOffering {
   return {
     content: {
@@ -77,6 +101,8 @@ function offer(
       image: offerImage(content.slug, content.category),
     },
     isListed: true,
+    ...NOT_AN_EXTRA,
+    ...extras,
     ...booking,
   };
 }
@@ -112,6 +138,13 @@ const FOLLOW_UP_INCLUDED =
   'Probleemopvolging tot zes maanden na je fit is inbegrepen. Onder 16: € 150 zonder opvolging, € 275 met.';
 const SECOND_VISIT_EXTRA = 'Een tweede bezoek na meer dan zes maanden: € 75.';
 const SECOND_BIKE_EXTRA = 'Een tweede fiets erbij: vanaf € 75.';
+/** The extras a visitor may tick when booking a bikefit, in this order (Toshoni, 20 Oct 2026). */
+export const BIKEFIT_ADDON_SLUGS = [
+  'bikefit-tweede-fiets',
+  'voetanalyse',
+  'zadelanalyse',
+  'afstellen-schoenplaatjes',
+] as const;
 /** Why a single analysis is often not enough (Toshoni, 20 Oct 2026), per analysis. */
 function oneAnalysisNote(what: string): string {
   return `Een losse analyse is vaak niet genoeg: wie één element aanpast, verandert de hele fietspositie. Daarom zit ${what} in elke bikefit.`;
@@ -152,6 +185,7 @@ export const DEFAULT_OFFERS: DefaultOffering[] = [
         { audience: 'youth', serviceSlug: null, priceCents: PRICES.bikefitUnder16 },
       ],
     },
+    { addonSlugs: [...BIKEFIT_ADDON_SLUGS] },
   ),
   offer(
     {
@@ -187,6 +221,7 @@ export const DEFAULT_OFFERS: DefaultOffering[] = [
         { audience: 'youth', serviceSlug: 'jeugdfit', priceCents: PRICES.bikefitUnder16 },
       ],
     },
+    { addonSlugs: [...BIKEFIT_ADDON_SLUGS] },
   ),
   offer(
     {
@@ -231,6 +266,8 @@ export const DEFAULT_OFFERS: DefaultOffering[] = [
         'Tweede fiets afstemmen tijdens je bikefit: € 75 voor hetzelfde type fiets (30 minuten extra), € 150 voor een ander type (1 uur extra).',
     },
     enquiry(PRICES.secondBikeSameType),
+    // An extra only: ticked when booking a bikefit, 30 min and € 75 for the same type.
+    { isAddon: true, soldAlone: false, addonMinutes: 30 },
   ),
   offer(
     {
@@ -255,6 +292,7 @@ export const DEFAULT_OFFERS: DefaultOffering[] = [
         'Voetanalyse voor fietsers: voetstand, ondersteuning, pasvorm van je schoenen en drukpunten, met persoonlijk advies. € 85, 30 minuten.',
     },
     enquiry(PRICES.foot),
+    { isAddon: true, addonMinutes: 30 },
   ),
   offer(
     {
@@ -281,6 +319,7 @@ export const DEFAULT_OFFERS: DefaultOffering[] = [
         'Zadelanalyse: we bekijken je zadel, houding en ondersteuning en testen samen een positie die beter bij jou past. € 60, 1 uur.',
     },
     enquiry(PRICES.saddle),
+    { isAddon: true, addonMinutes: 60 },
   ),
   offer(
     {
@@ -308,6 +347,7 @@ export const DEFAULT_OFFERS: DefaultOffering[] = [
         'Schoenplaatjes laten afstellen: we kijken je schoenen en plaatjes na, stellen ze af en controleren het resultaat samen. € 15, 15 minuten.',
     },
     enquiry(PRICES.cleats),
+    { isAddon: true, addonMinutes: 15 },
   ),
   offer(
     {
