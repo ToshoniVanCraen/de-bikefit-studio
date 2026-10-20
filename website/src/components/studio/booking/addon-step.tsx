@@ -9,8 +9,11 @@ import {
 /**
  * Step "Extra's" (20 Oct 2026) — the extras Beheer → Aanbod lists for the
  * chosen offering, as checkboxes with what each adds in time and money, a
- * running total, and one button to go on (with or without extras). Only
- * shown when the chosen service has extras; the widget derives the step.
+ * running total, and one button to go on (with or without extras). An extra
+ * with choices ("Bikefit – tweede fiets": zelfde type / ander type) shows as
+ * a small group; ticking one choice unticks the other (the hook enforces it,
+ * the server refuses two). Only shown when the chosen service has extras;
+ * the widget derives the step.
  */
 export function AddonStep({
   options,
@@ -23,11 +26,11 @@ export function AddonStep({
   selectedIds: string[];
   /** The chosen service: its duration and (variant) price. */
   base: { name: string; durationMinutes: number; priceCents: number | null };
-  onToggle: (offeringId: string) => void;
+  onToggle: (id: string) => void;
   onConfirm: () => void;
 }) {
   const baseId = useId();
-  const chosen = options.filter((option) => selectedIds.includes(option.offeringId));
+  const chosen = options.filter((option) => selectedIds.includes(option.id));
   const totals = addonTotals(base, chosen);
 
   return (
@@ -36,20 +39,28 @@ export function AddonStep({
         Wil je er iets bij? Je afspraak wordt dan langer en we rekenen het erbij.
       </p>
       <ul className="studio-booking__addons" aria-label="Extra’s">
-        {options.map((option) => {
-          const checked = selectedIds.includes(option.offeringId);
-          const inputId = `${baseId}-${option.offeringId}`;
+        {options.map((option, index) => {
+          const checked = selectedIds.includes(option.id);
+          const inputId = `${baseId}-${index}`;
+          const startsGroup =
+            option.groupTitle !== null && options[index - 1]?.groupTitle !== option.groupTitle;
           return (
-            <li key={option.offeringId}>
+            <li key={option.id}>
+              {startsGroup ? (
+                <p className="studio-booking__addon-group" aria-hidden="true">
+                  {option.groupTitle} — kies één
+                </p>
+              ) : null}
               <label className="studio-booking__addon" htmlFor={inputId} data-checked={checked}>
                 <input
                   id={inputId}
                   type="checkbox"
                   checked={checked}
-                  onChange={() => onToggle(option.offeringId)}
+                  aria-label={option.title}
+                  onChange={() => onToggle(option.id)}
                 />
                 <span>
-                  <span className="studio-booking__addon-title">{option.title}</span>
+                  <span className="studio-booking__addon-title">{option.label}</span>
                   <span className="studio-booking__addon-meta">{addonMetaLabel(option)}</span>
                 </span>
               </label>

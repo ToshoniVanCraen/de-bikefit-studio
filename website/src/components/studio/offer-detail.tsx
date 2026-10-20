@@ -187,9 +187,11 @@ function OfferDetail({
             <StudioLink href={host.path}>{host.title}</StudioLink>
           </span>
         ))}
-        {offering.addonMinutes != null
-          ? ` (${formatDuration(offering.addonMinutes)} extra, ${offer.priceLabel})`
-          : ''}
+        {offering.addonOptions.length > 0
+          ? ` (${offer.priceLabel})`
+          : offering.addonMinutes != null
+            ? ` (${formatDuration(offering.addonMinutes)} extra, ${offer.priceLabel})`
+            : ''}
         .
       </p>
     ) : null;

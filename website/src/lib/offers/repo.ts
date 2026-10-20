@@ -324,6 +324,7 @@ function describeAddons(settings: OfferingSettings): string {
   const parts: string[] = [];
   if (settings.isAddon) parts.push(`extra van ${settings.addonMinutes ?? '?'} min`);
   if (!settings.soldAlone) parts.push('enkel als extra');
+  if (settings.addonOptions.length > 0) parts.push(`${settings.addonOptions.length} keuzes`);
   if (settings.addonIds.length > 0) parts.push(`${settings.addonIds.length} extra's`);
   return parts.length > 0 ? `, ${parts.join(', ')}` : '';
 }
@@ -396,6 +397,7 @@ async function writeOffering(
     isAddon: settings.isAddon,
     soldAlone: settings.soldAlone,
     addonMinutes: settings.addonMinutes,
+    addonOptions: settings.addonOptions,
     updatedBy: actor.id,
     updatedAt: now,
   };

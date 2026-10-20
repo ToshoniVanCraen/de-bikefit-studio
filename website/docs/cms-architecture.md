@@ -1783,7 +1783,8 @@ Three columns on `cms_offerings` (`is_addon`, `sold_alone`, `addon_minutes`), th
 `cms_booking_addons` (migration 0015). An offering marked *Als extra te boeken* needs its extra
 time and a price per variant; one that is not *Ook apart te boeken* has the status `addon`
 (listed, served, never booked alone; its page sends the visitor to the offering it belongs to).
-The host decides which extras it allows (*Extra's bij dit aanbod*; `syncOfferingAddons()` in
+An extra may hold choices (`addon_options` jsonb, migration 0016: key, label, minutes, price), each
+its own option in the widget; the visitor picks one. The host decides which extras it allows (*Extra's bij dit aanbod*; `syncOfferingAddons()` in
 `src/lib/offers/repo-addons.ts`). The booking side, the widget step, the location choice and
 the rollout: `booking-architecture.md` §18.
 

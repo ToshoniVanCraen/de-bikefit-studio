@@ -5,34 +5,43 @@
  *
  *   extras    voetanalyse, zadelanalyse, afstellen-schoenplaatjes: as extra
  *             to book (+30 / +60 / +15 min), still sold alone;
- *             bikefit-tweede-fiets: an extra only (+30 min), never alone
+ *             bikefit-tweede-fiets: an extra only, with two choices the
+ *             visitor picks from (zelfde type 30 min € 75, ander type 1 u
+ *             € 150; `addon_options`, migration 0016)
  *   links     bikefit-nieuwe-fiets and bikefit-huidige-fiets allow those four
  *             extras, in that order (`cms_offering_addons`)
  *
  * Never touched: the copy, prices and variants of any offering, pages,
- * settings, services, providers, bookings. Only the three extra columns of
- * `cms_offerings` and the link table; the row counts of offerings, services
- * and bookings are checked before and after.
+ * settings, services, providers, bookings. Only the extra columns of
+ * `cms_offerings` (`is_addon`, `sold_alone`, `addon_minutes`,
+ * `addon_options`) and the link table; the row counts of offerings,
+ * services and bookings are checked before and after.
  *
  *   plan     read-only; refuses (`!`) when an offering is missing (run
  *            cms:patch-aanbod-prijzen first), when its extra columns were
- *            changed in Beheer since migration 0015, or when it already has
- *            its own extras
- *   apply    writes a JSON backup FIRST (the extra columns and links of every
- *            offering it changes), then the columns and links, verifies with
- *            a second plan and the public catalogue, audits
- *            `patch.aanbod-extras.apply`
- *   restore  puts the backed-up columns and links back
+ *            changed in Beheer since migration 0015, when it already has its
+ *            own extras or its own choices
+ *   apply    writes a JSON backup FIRST (the extra columns, choices and links
+ *            of every offering it changes), then the columns, choices and
+ *            links, verifies with a second plan and the public catalogue,
+ *            audits `patch.aanbod-extras.apply`
+ *   restore  puts the backed-up columns, choices and links back
+ *
+ * Idempotent per field: a database that had the first run (20 Oct, 0015)
+ * gets only the choices of bikefit-tweede-fiets on the second (0016).
  *
  * Dry run: no session, no audit entry, planned against `readOnlyDb()`.
- * Writing modes load their modules before the first query (the Neon lesson
- * of the prices patch), open one short-lived admin session and always
- * revoke it.
+ * Writing modes load their modules (the write side AND the catalogue the
+ * verify reads) before the first query — the Neon lesson of 20 Oct 2026:
+ * compiling that graph inside the session left the first read on a
+ * keep-alive socket the server had closed — open one short-lived admin
+ * session and always revoke it.
  */
 import { z } from 'zod';
 
 import { cmsOfferingAddons, cmsOfferings } from '@/db/cms-offering-schema';
 import { DEFAULT_OFFERS, type DefaultOffering } from '@/lib/offers/defaults';
+import { parseAddonChoices, type AddonChoice } from '@/lib/offers/offering';
 import { withTransportRetry } from './aanbod-prices-plan.mjs';
 import { stable, writeBackup, type PlanDeps, type RolloutDeps } from './aanbod-rollout.mjs';
 import {
@@ -48,12 +57,13 @@ const OFFERING_CACHE_TAGS = ['cms', 'cms:offerings', 'booking'];
 // Targets and plan
 // ---------------------------------------------------------------------------
 
-/** What the patch sets on one offering: the three extra columns and the linked extras (slugs). */
+/** What the patch sets on one offering: the extra columns, its choices and the linked extras (slugs). */
 export type ExtrasTarget = {
   slug: string;
   isAddon: boolean;
   soldAlone: boolean;
   addonMinutes: number | null;
+  addonOptions: AddonChoice[];
   addonSlugs: string[];
 };
 
@@ -72,6 +82,7 @@ export function extrasTargets(
         entry.isAddon ||
         !entry.soldAlone ||
         entry.addonMinutes != null ||
+        entry.addonOptions.length > 0 ||
         entry.addonSlugs.length > 0,
     )
     .map((entry) => ({
@@ -79,6 +90,7 @@ export function extrasTargets(
       isAddon: entry.isAddon,
       soldAlone: entry.soldAlone,
       addonMinutes: entry.addonMinutes,
+      addonOptions: entry.addonOptions.map((choice) => ({ ...choice })),
       addonSlugs: [...entry.addonSlugs],
     }));
 }
@@ -86,6 +98,7 @@ export function extrasTargets(
 export type StoredExtras = ExtraColumns & {
   id: string;
   slug: string;
+  addonOptions: AddonChoice[];
   /** The linked extras, in order. */
   addonIds: string[];
   addonSlugs: string[];
@@ -100,6 +113,8 @@ export type ExtrasPlanEntry = {
   blockers: string[];
   /** The columns to write, when they change. */
   columns: ExtraColumns | null;
+  /** The choices to write, when they change. */
+  options: AddonChoice[] | null;
   /** The link ids to write, when they change. */
   linkIds: string[] | null;
 };
@@ -118,7 +133,13 @@ function describeColumns(columns: ExtraColumns): string {
   ].join(', ');
 }
 
-/** Every offering of the locale with its extra columns and links, by slug. */
+function describeChoices(choices: readonly AddonChoice[]): string {
+  return choices
+    .map((choice) => `${choice.key} (${choice.minutes} min, ${choice.priceCents} cent)`)
+    .join(', ');
+}
+
+/** Every offering of the locale with its extra columns, choices and links, by slug. */
 async function readAllExtras(deps: PlanDeps): Promise<Map<string, StoredExtras>> {
   const { asc, eq, inArray } = deps.orm;
   const rows = await withTransportRetry(() =>
@@ -129,6 +150,7 @@ async function readAllExtras(deps: PlanDeps): Promise<Map<string, StoredExtras>>
         isAddon: cmsOfferings.isAddon,
         soldAlone: cmsOfferings.soldAlone,
         addonMinutes: cmsOfferings.addonMinutes,
+        addonOptions: cmsOfferings.addonOptions,
       })
       .from(cmsOfferings)
       .where(eq(cmsOfferings.locale, deps.locale)),
@@ -151,7 +173,12 @@ async function readAllExtras(deps: PlanDeps): Promise<Map<string, StoredExtras>>
   for (const row of rows) {
     const own = links.filter((link) => link.offeringId === row.id);
     stored.set(row.slug, {
-      ...row,
+      id: row.id,
+      slug: row.slug,
+      isAddon: row.isAddon,
+      soldAlone: row.soldAlone,
+      addonMinutes: row.addonMinutes,
+      addonOptions: parseAddonChoices(row.addonOptions),
       addonIds: own.map((link) => link.addonId),
       addonSlugs: own.map((link) => slugOf.get(link.addonId) ?? link.addonId),
     });
@@ -161,9 +188,6 @@ async function readAllExtras(deps: PlanDeps): Promise<Map<string, StoredExtras>>
 
 /** Row counts that must not move: offerings, services, bookings (links are what the patch writes). */
 export async function guardCountsExtras(deps: PlanDeps): Promise<Record<string, number>> {
-  const count = async (table: Parameters<typeof deps.db.select>[0] extends never ? never : never) =>
-    void table;
-  void count;
   const [offerings, services, bookings, links] = await Promise.all([
     deps.db.select({ id: cmsOfferings.id }).from(cmsOfferings),
     deps.db.select({ id: deps.schema.cmsServices.id }).from(deps.schema.cmsServices),
@@ -185,6 +209,7 @@ export async function planAanbodExtras(deps: PlanDeps): Promise<ExtrasPlan> {
     const changes: string[] = [];
     const blockers: string[] = [];
     let columns: ExtraColumns | null = null;
+    let options: AddonChoice[] | null = null;
     let linkIds: string[] | null = null;
     if (!row) {
       blockers.push(`offering ${target.slug} is missing — run cms:patch-aanbod-prijzen first`);
@@ -196,6 +221,7 @@ export async function planAanbodExtras(deps: PlanDeps): Promise<ExtrasPlan> {
         changes,
         blockers,
         columns,
+        options,
         linkIds,
       };
     }
@@ -216,6 +242,16 @@ export async function planAanbodExtras(deps: PlanDeps): Promise<ExtrasPlan> {
       } else {
         blockers.push(
           `offering ${target.slug}: the extra settings were changed in Beheer (${describeColumns(current)}) — not touched`,
+        );
+      }
+    }
+    if (stable(row.addonOptions) !== stable(target.addonOptions)) {
+      if (row.addonOptions.length === 0) {
+        options = target.addonOptions;
+        changes.push(`keuzes: ${describeChoices(target.addonOptions)}`);
+      } else {
+        blockers.push(
+          `offering ${target.slug}: has its own keuzes (${describeChoices(row.addonOptions)}) — not touched`,
         );
       }
     }
@@ -242,7 +278,17 @@ export async function planAanbodExtras(deps: PlanDeps): Promise<ExtrasPlan> {
     }
     const action: ExtrasPlanEntry['action'] =
       blockers.length > 0 ? 'blocked' : changes.length > 0 ? 'update' : 'none';
-    return { slug: target.slug, action, stored: row, target, changes, blockers, columns, linkIds };
+    return {
+      slug: target.slug,
+      action,
+      stored: row,
+      target,
+      changes,
+      blockers,
+      columns,
+      options,
+      linkIds,
+    };
   });
   return { locale: deps.locale, entries, guards: await guardCountsExtras(deps) };
 }
@@ -272,6 +318,13 @@ export function printExtrasPlan(plan: ExtrasPlan, log: PlanDeps['log']): void {
 // Backup
 // ---------------------------------------------------------------------------
 
+const choiceSchema = z.object({
+  key: z.string(),
+  label: z.string(),
+  minutes: z.number().int(),
+  priceCents: z.number().int(),
+});
+
 export const aanbodExtrasBackupSchema = z.object({
   kind: z.literal('aanbod-extras-backup'),
   version: z.literal(1),
@@ -285,6 +338,8 @@ export const aanbodExtrasBackupSchema = z.object({
       isAddon: z.boolean(),
       soldAlone: z.boolean(),
       addonMinutes: z.number().int().nullable(),
+      /** Absent in backups of the first (0015) run: read as no choices. */
+      addonOptions: z.array(choiceSchema).default([]),
       addonIds: z.array(z.string()),
     }),
   ),
@@ -302,8 +357,9 @@ function buildBackup(plan: ExtrasPlan, driver: string): AanbodExtrasBackup {
     offerings: plan.entries
       .filter((entry) => entry.action === 'update' && entry.stored)
       .map((entry) => {
-        const { id, slug, isAddon, soldAlone, addonMinutes, addonIds } = entry.stored!;
-        return { id, slug, isAddon, soldAlone, addonMinutes, addonIds };
+        const { id, slug, isAddon, soldAlone, addonMinutes, addonOptions, addonIds } =
+          entry.stored!;
+        return { id, slug, isAddon, soldAlone, addonMinutes, addonOptions, addonIds };
       }),
     guards: plan.guards,
   });
@@ -356,14 +412,19 @@ export async function applyAanbodExtras(
   const backupFile = backupPath.split(/[\\/]/).pop() ?? backupPath;
   log('✓', `backup written: ${backupPath}`);
 
-  // 2. The columns and the links, one offering at a time, each audited.
+  // 2. The columns, the choices and the links, one offering at a time, each audited.
   const updated = plan.entries.filter((entry) => entry.action === 'update');
   for (const entry of updated) {
     const id = entry.stored!.id;
-    if (entry.columns) {
+    if (entry.columns || entry.options) {
       await deps.db
         .update(cmsOfferings)
-        .set({ ...entry.columns, updatedBy: deps.actor.id, updatedAt: new Date() })
+        .set({
+          ...(entry.columns ?? {}),
+          ...(entry.options ? { addonOptions: entry.options } : {}),
+          updatedBy: deps.actor.id,
+          updatedAt: new Date(),
+        })
         .where(eq(cmsOfferings.id, id));
     }
     if (entry.linkIds) await writeLinks(deps, id, entry.linkIds);
@@ -410,7 +471,8 @@ export async function verifyAanbodExtras(deps: PlanDeps): Promise<string[]> {
     await new Promise((resolve) => setTimeout(resolve, 750));
     catalogue = await loadOfferCatalogue(deps.locale);
   }
-  for (const target of extrasTargets()) {
+  const targets = extrasTargets();
+  for (const target of targets) {
     const live = catalogue.bySlug[target.slug];
     if (!live) {
       problems.push(`offering ${target.slug} is not in the public catalogue`);
@@ -419,14 +481,24 @@ export async function verifyAanbodExtras(deps: PlanDeps): Promise<string[]> {
     if (!target.soldAlone && live.offering.status !== 'addon') {
       problems.push(`offering ${target.slug} should read as an extra only`);
     }
+    if (live.offering.addonOptions.length !== target.addonOptions.length) {
+      problems.push(
+        `offering ${target.slug} has ${live.offering.addonOptions.length} keuzes, expected ${target.addonOptions.length}`,
+      );
+    }
     if (target.addonSlugs.length === 0) continue;
     if (live.offering.bookingMode !== 'direct' || !live.offering.soldAlone) continue;
+    // One option per extra without choices, one per choice otherwise.
+    const expected = target.addonSlugs.reduce((sum, slug) => {
+      const addon = targets.find((entry) => entry.slug === slug);
+      return sum + Math.max(1, addon?.addonOptions.length ?? 1);
+    }, 0);
     for (const variant of live.offering.variants) {
       if (!variant.serviceId) continue;
       const offered = catalogue.addonsByService[variant.serviceId]?.length ?? 0;
-      if (offered !== target.addonSlugs.length) {
+      if (offered !== expected) {
         problems.push(
-          `service of ${target.slug} (${variant.audience}) offers ${offered} extra's, expected ${target.addonSlugs.length}`,
+          `service of ${target.slug} (${variant.audience}) offers ${offered} options, expected ${expected}`,
         );
       }
     }
@@ -444,6 +516,7 @@ export async function restoreAanbodExtras(deps: RolloutDeps, backup: AanbodExtra
         isAddon: entry.isAddon,
         soldAlone: entry.soldAlone,
         addonMinutes: entry.addonMinutes,
+        addonOptions: entry.addonOptions,
         updatedAt: new Date(),
       })
       .where(eq(cmsOfferings.id, entry.id));
@@ -476,11 +549,7 @@ export async function runAanbodExtrasPatch(
     log,
   };
   // The write side AND the catalogue the verify reads are loaded before the
-  // first query: importing the offers content pulls in the booking content and
-  // Google's auth library, seconds of compiling; done inside the session (20 Oct
-  // 2026, Neon Staging) that pause left the verify's first read on a keep-alive
-  // socket the server had closed, and the apply ended on "not in the public
-  // catalogue" after every write had landed.
+  // first query (see the header: the Neon keep-alive pause of 20 Oct 2026).
   const writeSide = writing
     ? { repo: await import('@/lib/cms/repo'), auth: await import('@/lib/cms/auth') }
     : null;

@@ -184,11 +184,18 @@ async function settingsFor(deps: PlanDeps, stored: StoredOffering, slug: string)
       service,
     });
   }
+  // The extras (20 Oct 2026) are not this patch's business: carried through as stored.
+  const { readAddonLinks } = await import('@/lib/offers/repo-addons');
   return {
     isListed: stored.row.isListed,
     bookingMode: stored.row.bookingMode,
     variantMode: change.to.variantMode,
     variants,
+    isAddon: stored.row.isAddon,
+    soldAlone: stored.row.soldAlone,
+    addonMinutes: stored.row.addonMinutes,
+    addonOptions: stored.row.addonOptions,
+    addonIds: await readAddonLinks(deps.db, stored.row.id),
   };
 }
 

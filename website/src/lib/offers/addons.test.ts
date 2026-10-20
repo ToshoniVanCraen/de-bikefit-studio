@@ -1,11 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { formatPrice } from '@/lib/booking/format';
 import {
+  addonChoiceId,
+  addonChoicesDurationLabel,
+  addonChoicesPriceLabel,
   addonMetaLabel,
   addonOptionsFor,
   addonPriceFor,
   addonTotals,
   pickAddons,
+  preselectAddonIds,
+  toggleAddonId,
   totalsLabel,
   type AddonSource,
 } from './addons';
@@ -17,6 +22,7 @@ function source(partial: Partial<AddonSource> & { id: string }): AddonSource {
       isListed: true,
       isAddon: true,
       addonMinutes: 30,
+      addonOptions: [],
       variants: [{ audience: 'all', serviceId: null, priceCents: 8500 }],
     },
     ...partial,
@@ -31,22 +37,43 @@ const saddle = source({
     isListed: true,
     isAddon: true,
     addonMinutes: 60,
+    addonOptions: [],
     variants: [{ audience: 'all', serviceId: null, priceCents: 6000 }],
   },
 });
 const perAudience = source({
-  id: 'tweede',
+  id: 'tweede-bezoek',
   settings: {
     isListed: true,
     isAddon: true,
     addonMinutes: 45,
+    addonOptions: [],
     variants: [
       { audience: 'adult', serviceId: null, priceCents: 7500 },
       { audience: 'youth', serviceId: null, priceCents: null },
     ],
   },
 });
-const host = { id: 'bikefit', settings: { addonIds: ['tweede', 'voet', 'zadel'] } };
+/** An extra with two choices (Bikefit – tweede fiets). */
+const secondBike = source({
+  id: 'tweede',
+  content: { slug: 'bikefit-tweede-fiets', title: 'Bikefit – tweede fiets' },
+  settings: {
+    isListed: true,
+    isAddon: true,
+    addonMinutes: 30,
+    addonOptions: [
+      { key: 'zelfde-type', label: 'Zelfde type fiets', minutes: 30, priceCents: 7500 },
+      { key: 'ander-type', label: 'Ander type fiets', minutes: 60, priceCents: 15000 },
+    ],
+    variants: [{ audience: 'all', serviceId: null, priceCents: 7500 }],
+  },
+});
+const host = {
+  id: 'bikefit',
+  settings: { addonIds: ['tweede', 'tweede-bezoek', 'voet', 'zadel'] },
+};
+const SOURCES = [foot, saddle, perAudience, secondBike];
 
 describe('addonPriceFor', () => {
   it('takes the audience variant, else the single option, else the first priced one', () => {
@@ -62,6 +89,7 @@ describe('addonPriceFor', () => {
             isListed: true,
             isAddon: true,
             addonMinutes: 10,
+            addonOptions: [],
             variants: [{ audience: 'all', serviceId: null, priceCents: null }],
           },
         }),
@@ -72,13 +100,35 @@ describe('addonPriceFor', () => {
 });
 
 describe('addonOptionsFor', () => {
-  it("lists the host's extras in the host's order, priced for the audience, labelled", () => {
-    const options = addonOptionsFor(host, 'adult', [foot, saddle, perAudience]);
-    expect(options.map((option) => option.slug)).toEqual(['tweede', 'voetanalyse', 'zadelanalyse']);
-    expect(options[0]).toEqual({
+  it("lists the host's extras in the host's order; an extra with choices gives one option per choice", () => {
+    const options = addonOptionsFor(host, 'adult', SOURCES);
+    expect(options.map((option) => option.id)).toEqual([
+      addonChoiceId('tweede', 'zelfde-type'),
+      addonChoiceId('tweede', 'ander-type'),
+      'tweede-bezoek',
+      'voet',
+      'zadel',
+    ]);
+    expect(options[1]).toEqual({
+      id: 'tweede#ander-type',
       offeringId: 'tweede',
-      slug: 'tweede',
-      title: 'tweede',
+      optionKey: 'ander-type',
+      slug: 'bikefit-tweede-fiets',
+      title: 'Bikefit – tweede fiets – Ander type fiets',
+      groupTitle: 'Bikefit – tweede fiets',
+      label: 'Ander type fiets',
+      minutes: 60,
+      priceCents: 15000,
+      priceLabel: formatPrice(15000),
+    });
+    expect(options[2]).toEqual({
+      id: 'tweede-bezoek',
+      offeringId: 'tweede-bezoek',
+      optionKey: null,
+      slug: 'tweede-bezoek',
+      title: 'tweede-bezoek',
+      groupTitle: null,
+      label: 'tweede-bezoek',
       minutes: 45,
       priceCents: 7500,
       priceLabel: formatPrice(7500),
@@ -128,7 +178,7 @@ describe('addonTotals and labels', () => {
     });
   });
 
-  it('writes the meta and totals the way the widget shows them', () => {
+  it('writes the meta, the totals and the choice lines the way the site shows them', () => {
     expect(addonMetaLabel({ minutes: 30, priceCents: 8500 })).toBe(
       `+ 30 min · + ${formatPrice(8500)}`,
     );
@@ -136,17 +186,49 @@ describe('addonTotals and labels', () => {
       `Samen 2 u 30 min · ${formatPrice(36000)}`,
     );
     expect(totalsLabel({ minutes: 150, priceCents: null })).toBe('Samen 2 u 30 min');
+    expect(addonChoicesPriceLabel(secondBike.settings.addonOptions)).toBe(
+      `Zelfde type fiets ${formatPrice(7500)} · Ander type fiets ${formatPrice(15000)}`,
+    );
+    expect(addonChoicesDurationLabel(secondBike.settings.addonOptions)).toBe(
+      'Zelfde type fiets: 30 min · Ander type fiets: 1 uur',
+    );
   });
 });
 
-describe('pickAddons', () => {
-  const options = addonOptionsFor(host, 'adult', [foot, saddle, perAudience]);
+describe('pickAddons, toggleAddonId, preselectAddonIds', () => {
+  const options = addonOptionsFor(host, 'adult', SOURCES);
+  const same = addonChoiceId('tweede', 'zelfde-type');
+  const other = addonChoiceId('tweede', 'ander-type');
 
-  it('keeps option order, de-duplicates, and refuses an id that is not an option', () => {
-    const picked = pickAddons(options, ['zadel', 'voet', 'voet']);
+  it('keeps option order, de-duplicates, refuses an unknown id and two choices of one extra', () => {
+    const picked = pickAddons(options, ['zadel', 'voet', 'voet', other]);
     expect(picked.ok).toBe(true);
-    if (picked.ok) expect(picked.addons.map((a) => a.offeringId)).toEqual(['voet', 'zadel']);
-    expect(pickAddons(options, ['voet', 'lactaat'])).toEqual({ ok: false, unknown: ['lactaat'] });
+    if (picked.ok) expect(picked.addons.map((a) => a.id)).toEqual([other, 'voet', 'zadel']);
+    expect(pickAddons(options, ['voet', 'lactaat'])).toEqual({
+      ok: false,
+      reason: 'unknown',
+      ids: ['lactaat'],
+    });
+    expect(pickAddons(options, [same, other])).toEqual({
+      ok: false,
+      reason: 'twice',
+      ids: ['tweede'],
+    });
     expect(pickAddons(options, [])).toEqual({ ok: true, addons: [] });
+  });
+
+  it('a choice replaces its sibling; an unknown id changes nothing', () => {
+    expect(toggleAddonId(options, [], same)).toEqual([same]);
+    expect(toggleAddonId(options, [same, 'voet'], other)).toEqual(['voet', other]);
+    expect(toggleAddonId(options, ['voet', other], other)).toEqual(['voet']);
+    expect(toggleAddonId(options, ['voet'], 'nope')).toEqual(['voet']);
+  });
+
+  it('?extra= ticks the first choice of a named extra, once per extra', () => {
+    expect(preselectAddonIds(options, ['bikefit-tweede-fiets', 'voetanalyse', 'x'])).toEqual([
+      same,
+      'voet',
+    ]);
+    expect(preselectAddonIds(options, [])).toEqual([]);
   });
 });

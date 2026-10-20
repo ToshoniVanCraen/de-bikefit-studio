@@ -1548,6 +1548,17 @@
     flex-direction: column;
     gap: var(--ds-space-2xs);
   }
+  .studio-booking__addon-group {
+    margin: var(--ds-space-xs) 0 var(--ds-space-3xs);
+    font-family: var(--ds-font-display);
+    font-size: var(--ds-text-micro);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--ds-color-fg-subtle);
+  }
+  .studio-booking__addons > li:first-child .studio-booking__addon-group {
+    margin-top: 0;
+  }
   .studio-booking__addon {
     display: grid;
     grid-template-columns: auto 1fr;

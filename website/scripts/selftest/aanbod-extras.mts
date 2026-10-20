@@ -100,37 +100,36 @@ export async function aanbodExtrasSection(ctx: {
         .where(action ? eq(schema.cmsAuditLog.action, action) : undefined)
     ).length;
 
-  // --- 0: migration 0015 ------------------------------------------------------
-  const migrationSql = await readFile(
-    resolve(process.cwd(), 'drizzle', '0015_cms_offering_addons.sql'),
-    'utf8',
-  );
-  const statements = migrationSql
-    .split('--> statement-breakpoint')
-    .map((statement) => statement.replace(/^--.*$/gm, '').trim())
-    .filter(Boolean);
-  check(
-    'migration 0015: every statement guarded; no INSERT/UPDATE/DELETE/DROP TABLE',
-    statements.every(
-      (statement) =>
-        /^CREATE (UNIQUE )?(TABLE|INDEX) IF NOT EXISTS/.test(statement) ||
-        /^ALTER TABLE "cms_offerings" ADD COLUMN IF NOT EXISTS/.test(statement) ||
-        /^DO \$\$ BEGIN\s+ALTER TABLE "cms_(booking|offering)_addons" ADD CONSTRAINT[\s\S]*duplicate_object/.test(
-          statement,
+  // --- 0: migrations 0015 + 0016 ---------------------------------------------------
+  for (const file of ['0015_cms_offering_addons.sql', '0016_cms_offering_addon_options.sql']) {
+    const migrationSql = await readFile(resolve(process.cwd(), 'drizzle', file), 'utf8');
+    const statements = migrationSql
+      .split('--> statement-breakpoint')
+      .map((statement) => statement.replace(/^--.*$/gm, '').trim())
+      .filter(Boolean);
+    check(
+      `migration ${file.slice(0, 4)}: every statement guarded; no INSERT/UPDATE/DELETE/DROP TABLE`,
+      statements.every(
+        (statement) =>
+          /^CREATE (UNIQUE )?(TABLE|INDEX) IF NOT EXISTS/.test(statement) ||
+          /^ALTER TABLE "cms_offerings" ADD COLUMN IF NOT EXISTS/.test(statement) ||
+          /^DO \$\$ BEGIN\s+ALTER TABLE "cms_(booking|offering)_addons" ADD CONSTRAINT[\s\S]*duplicate_object/.test(
+            statement,
+          ),
+      ) &&
+        !/\b(INSERT\s+INTO|UPDATE\s+"|DELETE\s+FROM|DROP\s+TABLE|TRUNCATE)\b/i.test(
+          statements.join('\n'),
         ),
-    ) &&
-      !/\b(INSERT\s+INTO|UPDATE\s+"|DELETE\s+FROM|DROP\s+TABLE|TRUNCATE)\b/i.test(
-        statements.join('\n'),
-      ),
-    `${statements.length} statements`,
-  );
-  let rerun = 'ok';
-  try {
-    for (const statement of statements) await db.execute(sql.raw(statement));
-  } catch (error) {
-    rerun = error instanceof Error ? error.message : String(error);
+      `${statements.length} statements`,
+    );
+    let rerun = 'ok';
+    try {
+      for (const statement of statements) await db.execute(sql.raw(statement));
+    } catch (error) {
+      rerun = error instanceof Error ? error.message : String(error);
+    }
+    check(`migration ${file.slice(0, 4)}: re-running it is a no-op`, rerun === 'ok', rerun);
   }
-  check('migration 0015: re-running it is a no-op', rerun === 'ok', rerun);
 
   // --- 1: the bootstrap offerings carry the extras ---------------------------------
   const seeded = await ensureDefaultOfferings({
@@ -158,6 +157,8 @@ export async function aanbodExtrasSection(ctx: {
       tweede?.isAddon === true &&
       tweede.soldAlone === false &&
       tweede.addonMinutes === 30 &&
+      tweede.addonOptions.length === 2 &&
+      tweede.addonOptions[1]?.key === 'ander-type' &&
       (await linkSlugs('bikefit-huidige-fiets')).join(',') ===
         'bikefit-tweede-fiets,voetanalyse,zadelanalyse,afstellen-schoenplaatjes' &&
       (await linkSlugs('bikefit-nieuwe-fiets')).length === 4 &&
@@ -167,9 +168,12 @@ export async function aanbodExtrasSection(ctx: {
   const catalogue = await loadOfferCatalogue(locale);
   const options = adultFit ? (catalogue.addonsByService[adultFit.id] ?? []) : [];
   check(
-    'catalogue: the fit offers the four extras in order, timed and priced',
+    'catalogue: the fit offers five options in order (tweede fiets as two choices), timed and priced',
     options.map((option) => `${option.slug}:${option.minutes}:${option.priceCents}`).join('|') ===
-      'bikefit-tweede-fiets:30:7500|voetanalyse:30:8500|zadelanalyse:60:6000|afstellen-schoenplaatjes:15:1500',
+      'bikefit-tweede-fiets:30:7500|bikefit-tweede-fiets:60:15000|voetanalyse:30:8500|zadelanalyse:60:6000|afstellen-schoenplaatjes:15:1500' &&
+      options[0].id === `${options[0].offeringId}#zelfde-type` &&
+      options[1].label === 'Ander type fiets' &&
+      options[2].id === options[2].offeringId,
     options.map((option) => option.slug).join(','),
   );
   const tweedeLive = catalogue.bySlug['bikefit-tweede-fiets'];
@@ -197,7 +201,7 @@ export async function aanbodExtrasSection(ctx: {
           serviceId: adultFit.id,
           providerId: null,
           ...window,
-          addonIds: [voetOption.offeringId],
+          addonIds: [voetOption.id],
         })
       : null;
   check(
@@ -231,6 +235,21 @@ export async function aanbodExtrasSection(ctx: {
     notAnExtra?.ok === false && notAnExtra.message.includes('extra'),
     JSON.stringify(notAnExtra),
   );
+  const tweedeChoices = options.filter((option) => option.slug === 'bikefit-tweede-fiets');
+  const twice =
+    adultFit && tweedeChoices.length === 2
+      ? await availabilityAction({
+          serviceId: adultFit.id,
+          providerId: null,
+          ...window,
+          addonIds: tweedeChoices.map((option) => option.id),
+        })
+      : null;
+  check(
+    'availability: two choices of the same extra are refused',
+    twice?.ok === false,
+    JSON.stringify(twice),
+  );
 
   // --- 3: a booking with an extra ----------------------------------------------------
   const slot = longer?.ok ? longer.slots[0] : null;
@@ -242,7 +261,7 @@ export async function aanbodExtrasSection(ctx: {
             providerId: null,
             locationId: slot.locationId,
             startsAt: slot.startsAt,
-            addonIds: [voetOption.offeringId],
+            addonIds: [voetOption.id],
             customerName: 'Extra Tester',
             customerEmail: 'extra-tester@example.com',
             customerPhone: '0470 00 00 00',
@@ -322,7 +341,7 @@ export async function aanbodExtrasSection(ctx: {
   // --- 4: the patch on a database as migration 0015 leaves it ----------------------
   await db
     .update(cmsOfferings)
-    .set({ isAddon: false, soldAlone: true, addonMinutes: null })
+    .set({ isAddon: false, soldAlone: true, addonMinutes: null, addonOptions: [] })
     .where(eq(cmsOfferings.locale, locale));
   await db.delete(cmsOfferingAddons);
   const auditBefore = await auditCount();
@@ -350,6 +369,7 @@ export async function aanbodExtrasSection(ctx: {
       voetAfter?.isAddon === true &&
       voetAfter.addonMinutes === 30 &&
       tweedeAfter?.soldAlone === false &&
+      tweedeAfter.addonOptions.length === 2 &&
       (await linkSlugs('bikefit-huidige-fiets')).join(',') ===
         'bikefit-tweede-fiets,voetanalyse,zadelanalyse,afstellen-schoenplaatjes' &&
       (await linkSlugs('bikefit-nieuwe-fiets')).length === 4 &&
@@ -368,6 +388,7 @@ export async function aanbodExtrasSection(ctx: {
       'restore: the bare state of migration 0015 is back',
       (await offeringRow('voetanalyse'))?.isAddon === false &&
         (await offeringRow('bikefit-tweede-fiets'))?.soldAlone === true &&
+        (await offeringRow('bikefit-tweede-fiets'))?.addonOptions.length === 0 &&
         (await linkSlugs('bikefit-huidige-fiets')).length === 0,
       lines.join(' | '),
     );

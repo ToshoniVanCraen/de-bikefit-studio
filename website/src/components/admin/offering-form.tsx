@@ -29,6 +29,7 @@ import { OFFER_CATEGORIES, OFFER_CATEGORY_LABELS, OFFER_CTA_LABEL } from '@/lib/
 import {
   AUDIENCE_LABELS,
   audiencesFor,
+  type AddonChoice,
   type OfferingAudience,
   type OfferingBookingMode,
   type OfferingVariantMode,
@@ -59,6 +60,7 @@ export type OfferingFormValues = {
   soldAlone: boolean;
   addonMinutes: number | null;
   addonIds: string[];
+  addonOptions: AddonChoice[];
 };
 
 /**
@@ -285,6 +287,7 @@ export function OfferingForm({
             soldAlone: offering.soldAlone,
             addonMinutes: offering.addonMinutes,
             addonIds: offering.addonIds,
+            addonOptions: offering.addonOptions,
           }}
           candidates={addonCandidates}
         />

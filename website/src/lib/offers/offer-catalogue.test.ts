@@ -79,6 +79,7 @@ function record(entry: DefaultOffering, settings: Partial<OfferingSettings> = {}
       addonMinutes: entry.addonMinutes,
       // Links by slug → by the ids this fixture gives the offerings.
       addonIds: entry.addonSlugs.map((slug) => `off-${slug}`),
+      addonOptions: entry.addonOptions,
       ...settings,
     },
     updatedAt: '2026-10-17T08:00:00.000Z',
@@ -231,11 +232,23 @@ describe('buildOfferCatalogue: what Beheer → Aanbod controls', () => {
       `${option.slug}:${option.minutes}:${option.priceCents}`;
     expect(catalogue.addonsByService[ADULT]?.map(line)).toEqual([
       'bikefit-tweede-fiets:30:7500',
+      'bikefit-tweede-fiets:60:15000',
       'voetanalyse:30:8500',
       'zadelanalyse:60:6000',
       'afstellen-schoenplaatjes:15:1500',
     ]);
-    expect(catalogue.addonsByService[YOUTH]).toHaveLength(4);
+    // Tweede fiets is one extra with two choices: one id per choice, grouped under its title.
+    expect(
+      catalogue.addonsByService[ADULT]?.slice(0, 2).map((o) => `${o.optionKey}:${o.label}`),
+    ).toEqual(['zelfde-type:Zelfde type fiets', 'ander-type:Ander type fiets']);
+    expect(catalogue.addonsByService[ADULT]?.[0].id).toBe('off-bikefit-tweede-fiets#zelfde-type');
+    expect(catalogue.addonsByService[YOUTH]).toHaveLength(5);
+    expect(card(catalogue, 'bikefit-tweede-fiets')?.priceLabel).toBe(
+      `Zelfde type fiets ${formatPrice(7500)} · Ander type fiets ${formatPrice(15000)}`,
+    );
+    expect(card(catalogue, 'bikefit-tweede-fiets')?.durationLabel).toBe(
+      'Zelfde type fiets: 30 min · Ander type fiets: 1 uur',
+    );
     // The enquiry bikefit lists the extras too, but offers nothing through the widget.
     expect(Object.keys(catalogue.addonsByService)).toEqual([ADULT, YOUTH]);
     const tweede = catalogue.bySlug['bikefit-tweede-fiets'];
@@ -258,6 +271,7 @@ describe('buildOfferCatalogue: what Beheer → Aanbod controls', () => {
       ),
     );
     expect(hidden.addonsByService[ADULT]?.map((option) => option.slug)).toEqual([
+      'bikefit-tweede-fiets',
       'bikefit-tweede-fiets',
       'zadelanalyse',
       'afstellen-schoenplaatjes',
