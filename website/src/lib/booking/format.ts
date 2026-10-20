@@ -31,6 +31,20 @@ export function formatLocation(location: LocationLike | null | undefined): Forma
 }
 
 /**
+ * One line of postal address from the contact settings (Instellingen →
+ * Contact): "Straat 1, 9400 Ninove"; '' while nothing is filled in. The same
+ * rule as a location's address in {@link formatLocation}.
+ */
+export function formatPostalAddress(input: {
+  addressLines: readonly string[];
+  postalCode: string;
+  city: string;
+}): string {
+  const cityLine = [input.postalCode.trim(), input.city.trim()].filter(Boolean).join(' ');
+  return [...input.addressLines.map((line) => line.trim()), cityLine].filter(Boolean).join(', ');
+}
+
+/**
  * `4500` → `'€ 45,00'` (nl-BE). Booking prices are cents; the legacy webshop's
  * decimal-euro prices use `formatPrice` in `src/lib/format.ts` instead.
  */

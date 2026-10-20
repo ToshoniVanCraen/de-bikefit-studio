@@ -31,7 +31,7 @@ import {
   bookingReassignedEmail,
 } from '@/lib/email/templates-assignment';
 import { assignmentRecipients } from './assignment-recipients';
-import { formatLocation } from './format';
+import { formatLocation, formatPostalAddress } from './format';
 import { parseBookingRules } from './settings';
 
 /**
@@ -129,6 +129,7 @@ async function emailData(
     locationKind: ctx.location?.kind ?? null,
     locationAddressLines: formatted.addressLines,
     contactPhoneLabel: settings.contact.phoneLabel || null,
+    studioAddress: formatPostalAddress(settings.contact) || null,
     confirmationText: rules.confirmationText,
     cancelDeadline: new Date(
       new Date(booking.startsAt).getTime() - rules.cancelUntilHours * 60 * 60_000,

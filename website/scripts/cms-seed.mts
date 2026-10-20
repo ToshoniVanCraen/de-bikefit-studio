@@ -129,7 +129,7 @@ const FAQ_ITEMS = [
   {
     question: 'Hoe lang duurt een bikefit?',
     answer:
-      'Reken op 90 minuten voor een standaard bikefit voor volwassenen. Een jeugdfit is korter — ongeveer 60 minuten. Complexe gevallen, eerste keren, of fits na een blessure kunnen tot twee uur duren. We haasten ons niet — als het klaar is, is het klaar.',
+      'Reken op {{duur:volwassenenfit}} voor een bikefit voor volwassenen en {{duur:jeugdfit}} voor een jeugdfit. We haasten ons niet — als het klaar is, is het klaar.',
   },
   {
     question: 'Moet ik nieuwe onderdelen kopen?',
