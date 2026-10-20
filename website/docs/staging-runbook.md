@@ -1391,3 +1391,13 @@ of §22. Architecture: `docs/booking-architecture.md` §18.
 
 **Rollback:** `npm run cms:patch-aanbod-extras -- --restore <backup.json> --expect-host '<host>'`;
 migration 0015 is additive and may stay.
+
+**If the apply ends with `verification failed: … is not in the public catalogue` right after the
+six `~` lines** (staging, 20 Oct 2026): the writes had landed; the script's own catalogue read
+failed on the transport (`[aanbod] offerings_unavailable { error: 'Error' }` — Drizzle's query
+error sets no name) after it compiled the offers content module graph for the first time. A dry
+run then says `nothing to do`, and the site is not affected. Since PR #35 the script loads that
+graph before its first query, reads the catalogue a second time, and the store logs the error's
+class chain (`Error>NeonDbError>TypeError`) and no longer caches an empty answer. The
+`patch.aanbod-extras.apply` audit row is missing from such a run; the six `offering.update` rows
+are there.
