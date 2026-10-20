@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   assertWriteTarget,
   databaseHost,
+  describeError,
   rejectBooleanFlagValues,
   rejectPositionals,
   rejectUnknownOptions,
@@ -162,5 +163,19 @@ describe('databaseHost and assertWriteTarget (unchanged)', () => {
     expect(messageOf(() => assertWriteTarget('neon-http', 'db.example', 'other.example'))).toBe(
       '--expect-host does not match DATABASE_URL host; nothing changed',
     );
+  });
+});
+
+describe('describeError', () => {
+  it('prints the message, every cause with its code, and the call site', () => {
+    const driver = Object.assign(new Error('relation "x" does not exist'), { code: '42P01' });
+    driver.name = 'NeonDbError';
+    const query = new Error('Failed query: select 1', { cause: driver });
+    const text = describeError(query, 2);
+    expect(text).toContain('Failed query: select 1');
+    expect(text).toContain('cause: NeonDbError: relation "x" does not exist (code 42P01)');
+    expect(text).toContain('at:');
+    expect(describeError('plain string')).toBe('plain string');
+    expect(describeError(new Error('no cause'))).not.toContain('cause:');
   });
 });
