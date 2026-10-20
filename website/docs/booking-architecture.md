@@ -1165,3 +1165,77 @@ purged with the booking's retention (`cms:retention` — to be extended to `cms_
 **Tests.** `follow-ups-policy.test.ts`, `cron-auth.test.ts`, `templates-followups.test.ts`;
 self-test section 19 (`scripts/selftest/follow-ups.mts`) runs a dry run, the run with an
 injected sender, the link, the submit, the admin decisions and the clean-up.
+
+## 18. Extra's (add-ons) and the location choice (20 Oct 2026)
+
+Toshoni's brief: some offerings can be ticked as an **extra** when booking another offering
+(the time and the price add up); an extra is sold on its own or only as an extra; the offering
+that is booked decides which extras it allows; "Kies een dag en uur" names the place the visitor
+books for, with its address, and with several places lets them choose. Migration 0015
+(additive): `cms_offerings.is_addon`, `sold_alone`, `addon_minutes`; `cms_offering_addons`
+(host → extra, ordered); `cms_booking_addons` (per booking a snapshot of each extra: title,
+minutes, price).
+
+**Model.** `OfferingSettings` gained `isAddon`, `soldAlone`, `addonMinutes` and `addonIds`
+(`src/lib/offers/offering.ts`); the schema refuses an extra without minutes or without a price on
+every variant, and an offering that is neither sold alone nor an extra. `resolveOffering()`
+gives an offering that is not sold alone the status `addon` ("Enkel als extra bij een
+afspraak"): listed on `/aanbod` and served at `/aanbod/<slug>`, no booking service of its own,
+held back from `/afspraak`. `src/lib/offers/addons.ts` (pure) turns a host's `addonIds` into
+`BookingAddonOption`s for one audience (`addonOptionsFor()`: the extra's price for that
+audience, else its single option, else its first price; a hidden, un-marked, un-timed or
+un-priced extra is left out), adds them up (`addonTotals()`) and checks a visitor's choice
+against the options (`pickAddons()`). The catalogue (`buildOfferCatalogue()`) exposes
+`addonsByService` (per service of a shown, direct, sold-alone offering) and per extra its
+`addonHosts` (the shown offerings that list it).
+
+**Beheer → Aanbod.** The "Extra's" card: *Als extra te boeken* with *Extra tijd (minuten)*, *Ook
+apart te boeken of aan te vragen* (only meaningful for an extra; off = extra only), and *Extra's
+bij dit aanbod* (every other offering marked as an extra, in overview order). Saved by
+`writeOffering()` → `syncOfferingAddons()` (`repo-addons.ts`: every id must be an extra of the
+locale, never the offering itself; upsert, then prune).
+
+**The widget.** When the chosen service has extras, a step "Iets extra erbij?" (checkboxes with
+"+ 30 min · + € 85,00", a running total "Samen 2 u 30 min · € 360,00", "Verder" or "Verder
+zonder extra's") comes before the calendar; changing the extras after a day was chosen clears
+the day and time. Availability is fetched per (service, extras, provider, month) with
+`addonIds`; the server resolves them (`resolveBookingAddons()`,
+`src/lib/booking/addon-resolve.ts`) and computes the slots for the service's duration plus the
+extras' minutes (`getAvailability({ extraMinutes })`). `bookAction` → `createPublicBooking()`
+resolves them again, re-checks the slot for the longer appointment, stores `ends_at`
+accordingly and one snapshot row per extra (`insertBookingAddons()`); an id that is no extra of
+the service refuses the request ("Een gekozen extra hoort niet bij deze dienst."). The minutes
+and prices never come from the client. `?extra=<slug>` (validated like `?dienst=`,
+`EXTRA_PARAM`) ticks an extra in advance; the page of an extra that is not sold alone links to
+`/afspraak?dienst=<host>&extra=<slug>` of its first bookable host ("Boek samen met …"), else
+shows its enquiry form.
+
+**Downstream.** The confirmation panel, `/afspraak/bevestigd` (the signed ref carries the
+extras' titles), every mail (an "Extra's" row with minutes; the duration is the booked span,
+`bookedMinutes()`), the ICS description, the Google event (title "Volwassenenfit + Voetanalyse —
+…", an "Extra's:" line) and the admin list (`BookingListItem.addons`, under the service) show
+the extras. Prices stay out of the mails, as before.
+
+**Where.** `BookingLocationOption` carries the location's `addressLines` (Beheer → Locaties).
+`locationsForService()` (`location-choice.ts`) lists the places a fit for the chosen service may
+be at: a pinned service's place, else the places of each provider offering it (their hours'
+locations and their default), else the place resolved for them. One place: "Je boekt voor
+<naam>" with its address; several: toggles "Alle locaties" / each place, the month's slots
+narrowed to the chosen ones (`filterSlotsByLocation()`), the address of each chosen place
+underneath. A place without a free moment in a month simply shows none. The slot's own location
+still decides the address question and what is stored.
+
+**Rollout.** `npm run cms:patch-aanbod-extras` (`scripts/lib/aanbod-extras-patch.mts`): dry run,
+`--apply --expect-host`, `--restore`; sets the three columns and the links of the six offerings
+from the defaults, refuses an offering whose extra settings were changed in Beheer or that has
+links of its own. Runbook §23.
+
+**Tests.** `addons.test.ts`, `location-choice.test.ts`, `offering.test.ts`,
+`offer-catalogue.test.ts`; self-test 17c (migration guards, bootstrap, catalogue, availability
+and a booking with an extra, the mail, the admin list, the patch with restore and the Beheer
+guard).
+
+**Assumptions to confirm with Toshoni.** *Bikefit – tweede fiets* is seeded as one extra: € 75 and
+30 min (the same-type case); another bike type (€ 150, 1 u) is settled on site. Voetanalyse,
+zadelanalyse and schoenplaatjes are offered as extras to a bikefit although the fit's text says
+they are included.

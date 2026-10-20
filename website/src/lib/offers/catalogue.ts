@@ -64,6 +64,8 @@ export const OFFER_EXTRAS_NOTE =
 export const BOOKING_PAGE_PATH = '/afspraak';
 /** Query parameter that carries the chosen offer (or booking service) slug. */
 export const SERVICE_PARAM = 'dienst';
+/** Query parameter that preselects an extra (an add-on offering's slug) in the widget. */
+export const EXTRA_PARAM = 'extra';
 
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
@@ -90,9 +92,13 @@ export function showsOfferPrices(pageSlug: string): boolean {
   return normalized.startsWith(prefix) && SLUG_PATTERN.test(normalized.slice(prefix.length));
 }
 
-/** `/afspraak?dienst=<slug>#boeken` — the booking block's section anchor. */
-export function offerBookingHref(offerSlug: string): string {
-  return `${BOOKING_PAGE_PATH}?${SERVICE_PARAM}=${encodeURIComponent(offerSlug)}#boeken`;
+/**
+ * `/afspraak?dienst=<slug>#boeken` — the booking block's section anchor;
+ * with `extraSlug`, `&extra=<slug>` ticks that extra in the widget.
+ */
+export function offerBookingHref(offerSlug: string, extraSlug?: string): string {
+  const extra = extraSlug ? `&${EXTRA_PARAM}=${encodeURIComponent(extraSlug)}` : '';
+  return `${BOOKING_PAGE_PATH}?${SERVICE_PARAM}=${encodeURIComponent(offerSlug)}${extra}#boeken`;
 }
 
 export function offerDurationLabel(duration: string): string {

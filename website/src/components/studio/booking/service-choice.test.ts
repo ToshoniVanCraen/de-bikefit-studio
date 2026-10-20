@@ -19,6 +19,8 @@ function service(partial: Partial<BookingServiceOption> & { id: string }): Booki
     requiresGuardian: false,
     location: null,
     priceLabel: '',
+    priceCents: null,
+    addons: [],
     ...partial,
   };
 }

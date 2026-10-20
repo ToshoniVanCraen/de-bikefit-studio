@@ -5,7 +5,12 @@ import { StudioPageView } from '@/components/studio/page-view';
 import { findRedirect, getPublishedPage, getSiteSettings } from '@/lib/cms/content';
 import { getPublishedOffer } from '@/lib/cms/offers-content';
 import { redirectTarget } from '@/lib/cms/redirect-target';
-import { OFFER_PAGE_PREFIX, parseServiceParam, SERVICE_PARAM } from '@/lib/offers/catalogue';
+import {
+  OFFER_PAGE_PREFIX,
+  parseServiceParam,
+  EXTRA_PARAM,
+  SERVICE_PARAM,
+} from '@/lib/offers/catalogue';
 import { defaultLocale } from '@/lib/studio/locale';
 import { buildOfferMetadata, buildPageMetadata, notFoundMetadata } from '@/lib/studio/seo';
 import { getStudioPage } from '@/lib/studio/site';
@@ -89,7 +94,11 @@ export default async function OfferRoute({
   const studio = await getStudioPage(defaultLocale, path);
   if (studio) {
     return (
-      <StudioPageView studio={studio} requestedService={parseServiceParam(query[SERVICE_PARAM])} />
+      <StudioPageView
+        studio={studio}
+        requestedService={parseServiceParam(query[SERVICE_PARAM])}
+        requestedExtra={parseServiceParam(query[EXTRA_PARAM])}
+      />
     );
   }
 

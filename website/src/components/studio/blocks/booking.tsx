@@ -42,6 +42,10 @@ import type { BlockProps } from './types';
  * services no offer links to stay directly selectable. The chosen SERVICE is
  * what is booked, with its own duration, availability and guardian rule.
  *
+ * Extra's (20 Oct 2026): per service the catalogue says which extras a
+ * visitor may tick (`addonsByService`); `?extra=<slug>` (validated by the
+ * route as `page.requestedExtra`) ticks one in advance.
+ *
  * Beheer → Aanbod decides which offer links which services: a service that is
  * a variant of an offering is offered only through that offering while it is
  * shown and booked directly (`withheldServiceIds`, also enforced by the
@@ -88,11 +92,14 @@ export async function BookingBlock({
         .filter((service) => !withheld.has(service.id))
         .map((service) => {
           const variant = display[service.id];
-          if (!variant) return service;
+          const addons = catalogue.addonsByService[service.id] ?? [];
+          if (!variant) return { ...service, addons };
           return {
             ...service,
             choiceLabel: variant.label || service.choiceLabel,
             priceLabel: variant.priceLabel,
+            priceCents: variant.priceCents,
+            addons,
           };
         }),
     };
@@ -177,6 +184,7 @@ export async function BookingBlock({
         phoneHref,
       },
       initialServiceId,
+      initialAddonSlugs: page.requestedExtra ? [page.requestedExtra] : [],
       context,
       notice,
     };

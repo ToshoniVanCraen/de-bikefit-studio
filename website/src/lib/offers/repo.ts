@@ -32,6 +32,7 @@ import {
   type OfferingRecord,
 } from './offering-content';
 import { OFFERING_TAG, readStoredOfferings } from './offering-store';
+import { syncOfferingAddons } from './repo-addons';
 
 /**
  * Beheer → Aanbod: the admin read and write API for offerings (17 Oct 2026:
@@ -160,10 +161,15 @@ export async function listOfferingsForAdmin(
 export async function getOfferingForAdmin(
   offeringId: string,
   locale: string = DEFAULT_LOCALE,
-): Promise<{ offering: AdminOffering; services: AdminOfferingService[] } | null> {
+): Promise<{
+  offering: AdminOffering;
+  services: AdminOfferingService[];
+  /** Every offering, for the "Extra's bij dit aanbod" list. */
+  offerings: AdminOffering[];
+} | null> {
   const overview = await listOfferingsForAdmin(locale);
   const offering = overview.offerings.find((entry) => entry.id === offeringId);
-  return offering ? { offering, services: overview.services } : null;
+  return offering ? { offering, services: overview.services, offerings: overview.offerings } : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -313,6 +319,15 @@ function describeSettings(settings: OfferingSettings): string {
     .join(' / ')}`;
 }
 
+/** ", extra van 30 min, enkel als extra, 4 extra's" — empty for an offering without any of it. */
+function describeAddons(settings: OfferingSettings): string {
+  const parts: string[] = [];
+  if (settings.isAddon) parts.push(`extra van ${settings.addonMinutes ?? '?'} min`);
+  if (!settings.soldAlone) parts.push('enkel als extra');
+  if (settings.addonIds.length > 0) parts.push(`${settings.addonIds.length} extra's`);
+  return parts.length > 0 ? `, ${parts.join(', ')}` : '';
+}
+
 /**
  * Creates or updates one offering (`offering.manage`): the copy, the
  * settings, the variant rows and — for every variant with service facts —
@@ -378,6 +393,9 @@ async function writeOffering(
     isListed: settings.isListed,
     bookingMode: settings.bookingMode,
     variantMode: settings.variantMode,
+    isAddon: settings.isAddon,
+    soldAlone: settings.soldAlone,
+    addonMinutes: settings.addonMinutes,
     updatedBy: actor.id,
     updatedAt: now,
   };
@@ -434,12 +452,14 @@ async function writeOffering(
       ),
     ),
   );
+  const linked = await syncOfferingAddons(db, { offeringId, locale, addonIds: settings.addonIds });
+  if (!linked.ok) return linked;
 
   await recordAudit(db, actor, {
     action: existingId ? 'offering.update' : 'offering.create',
     entityType: 'cms_offering',
     entityId: offeringId,
-    summary: `${content.data.title}: ${describeSettings(settings)}`,
+    summary: `${content.data.title}: ${describeSettings(settings)}${describeAddons(settings)}`,
     metadata: { slug: content.data.slug, settings, services: written },
   });
   bust(

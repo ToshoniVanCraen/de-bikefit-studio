@@ -1357,3 +1357,37 @@ admin session, after the session row had been written, and the first read then w
 keep-alive socket Neon had closed meanwhile. The apply now loads its modules before its first
 query and the plan's reads are sent a second time after one transport failure. Nothing is written
 before the plan and the backup, so a failed run is safe to repeat.
+
+## 23. Extra's and the location choice (20 Oct 2026, migration 0015)
+
+Migration 0015 is additive (three columns on `cms_offerings`, `cms_offering_addons`,
+`cms_booking_addons`; guarded, re-runnable). Apply it BEFORE deploying the build that contains
+it (the build selects the columns on every offering read). The extras of the nine offerings then
+come from `npm run cms:patch-aanbod-extras` (self-test section 17c), which needs the offerings
+of §22. Architecture: `docs/booking-architecture.md` §18.
+
+| What | Before | After |
+| --- | --- | --- |
+| Voetanalyse, Zadelanalyse, Afstellen schoenplaatjes | sold alone | also an extra to tick when booking a bikefit: +30 / +60 / +15 min at their price, still sold alone |
+| Bikefit – tweede fiets | asked for | an extra only (+30 min, € 75), never booked alone; its page links to the bikefit |
+| Bikefit – aankoop nieuwe fiets, Bikefit – huidige fiets | — | allow those four extras, in that order |
+
+1. Snapshot, `npm run db:migrate` (journal 16 → 0015), deploy (release gate, READY).
+2. **Dry run:** `DATABASE_URL='<staging pooled url>' npm run cms:patch-aanbod-extras` — expected
+   six `~ offering <slug> — …` lines, the guard counts, `dry run: run again with --apply to
+   write`. **Stop and report on any `!` line** (an offering missing → §22 first; changed in
+   Beheer → leave it).
+3. **Apply:** `… -- --apply --expect-host '<host>' --backup-dir <dir>` — `✓ backup written`, six
+   `~` lines, `✓ offerings and the public catalogue verified`, `✓ apply complete`; audit
+   `patch.aanbod-extras.apply`.
+4. Dry run again: `dry run: nothing to do`.
+5. **Verify** after the 5-minute cache window: `/aanbod` lists *Bikefit – tweede fiets* as "Enkel
+   als extra bij een afspraak" and its page says "Boek samen met Bikefit – huidige fiets";
+   `/afspraak?dienst=bikefit-huidige-fiets` shows, after Volwassene, the step "Iets extra erbij?"
+   with four extras and a running total, and "Kies een dag en uur" names the studio with its
+   address (fill in the street under Beheer → Locaties; until then only the name shows). Logged
+   in: `/admin/aanbod/<id>` shows the "Extra's" card; a booking with an extra lists it under
+   Afspraken.
+
+**Rollback:** `npm run cms:patch-aanbod-extras -- --restore <backup.json> --expect-host '<host>'`;
+migration 0015 is additive and may stay.

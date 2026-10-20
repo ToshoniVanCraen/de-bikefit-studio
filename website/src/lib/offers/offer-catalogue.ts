@@ -1,4 +1,5 @@
 import { formatPrice } from '@/lib/booking/format';
+import { addonOptionsFor, type BookingAddonOption } from './addons';
 import { offerFromOffering, sortOffers, type CatalogueOffer } from './catalogue';
 import {
   resolveOffering,
@@ -21,10 +22,15 @@ import type { OfferingContent, OfferingRecord } from './offering-content';
  * back from `/afspraak`.
  */
 
+/** A shown offering this extra can be added to, and whether that one is bookable online right now. */
+export type AddonHost = { slug: string; title: string; path: string; bookable: boolean };
+
 export type CatalogueOfferEntry = {
   offer: CatalogueOffer;
   offering: ResolvedOffering;
   content: OfferingContent;
+  /** For an extra: the shown offerings that list it (in overview order). */
+  addonHosts: AddonHost[];
 };
 
 export type VariantDisplay = {
@@ -32,6 +38,8 @@ export type VariantDisplay = {
   label: string;
   /** "€ 150,00", or '' for "Prijs op aanvraag". */
   priceLabel: string;
+  /** The variant's price in cents; `null` for "Prijs op aanvraag". */
+  priceCents: number | null;
 };
 
 export type OfferCatalogue = {
@@ -48,6 +56,12 @@ export type OfferCatalogue = {
    * shown, directly bookable offering it is a variant of.
    */
   variantDisplay: Record<string, VariantDisplay>;
+  /**
+   * For the booking widget and the booking actions: the extras a visitor may
+   * add when booking a service, priced for that variant's audience
+   * (`addonOptionsFor()`). Only for services of shown, direct offerings.
+   */
+  addonsByService: Record<string, BookingAddonOption[]>;
 };
 
 export function buildOfferCatalogue(input: {
@@ -71,6 +85,7 @@ export function buildOfferCatalogue(input: {
       offer: offerFromOffering(record, offering),
       offering,
       content: record.content,
+      addonHosts: [],
     };
     bySlug[record.content.slug] = entry;
     visibility.push({ visible: record.settings.isListed, settings: record.settings });
@@ -93,8 +108,44 @@ export function buildOfferCatalogue(input: {
       variantDisplay[variant.serviceId] = {
         label: variant.label,
         priceLabel: variant.priceCents != null ? formatPrice(variant.priceCents) : '',
+        priceCents: variant.priceCents,
       };
     }
+  }
+
+  // Extras: per bookable service the options of its offering, and per extra
+  // the shown offerings that list it (so its page can send the visitor there).
+  const recordsById = new Map(input.offerings.map((record) => [record.id, record]));
+  const entriesById = new Map(
+    Object.values(bySlug).map((entry) => [entry.offer.id, entry] as const),
+  );
+  const addonsByService: Record<string, BookingAddonOption[]> = {};
+  for (const entry of listed) {
+    const record = recordsById.get(entry.offer.id);
+    if (!record) continue;
+    for (const addonId of entry.offering.addonIds) {
+      const addon = entriesById.get(addonId);
+      if (!addon || !addon.offering.isListed || !addon.offering.isAddon) continue;
+      addon.addonHosts.push({
+        slug: entry.offer.slug,
+        title: entry.offer.title,
+        path: entry.offer.path,
+        bookable: entry.offering.status === 'bookable',
+      });
+    }
+    if (entry.offering.bookingMode !== 'direct' || !entry.offering.soldAlone) continue;
+    for (const variant of entry.offering.variants) {
+      if (!variant.serviceId || addonsByService[variant.serviceId]) continue;
+      const options = addonOptionsFor(record, variant.audience, input.offerings);
+      if (options.length > 0) addonsByService[variant.serviceId] = options;
+    }
+  }
+  for (const entry of Object.values(bySlug)) {
+    entry.addonHosts.sort(
+      (a, b) =>
+        (order.get(a.slug) ?? Number.MAX_SAFE_INTEGER) -
+        (order.get(b.slug) ?? Number.MAX_SAFE_INTEGER),
+    );
   }
 
   return {
@@ -103,5 +154,6 @@ export function buildOfferCatalogue(input: {
     hiddenSlugs,
     withheldServiceIds: [...withheldServiceIds(visibility)],
     variantDisplay,
+    addonsByService,
   };
 }

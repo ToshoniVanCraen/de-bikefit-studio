@@ -184,12 +184,13 @@ export async function offeringsSection(ctx: {
     `${first.created.length} created, ${seeded.offers.length} shown, hidden ${seeded.hiddenSlugs.join(',')}`,
   );
   check(
-    'bootstrap: Bikefit – huidige fiets is bookable as Volwassenenfit + Jeugdfit (section-14 durations, priced variants); the rest on request',
+    'bootstrap: Bikefit – huidige fiets is bookable as Volwassenenfit + Jeugdfit (section-14 durations, priced variants); seven on request, tweede fiets an extra only',
     huidige?.status === 'bookable' &&
       huidige.bookingServiceSlugs.join() === 'volwassenenfit,jeugdfit' &&
       huidige.durationLabel === 'Volwassene: 1 u 30 min · Jeugd: 1 uur' &&
       huidige.priceLabel === `Volwassene ${formatPrice(27500)} · Jeugd ${formatPrice(15000)}` &&
-      seeded.offers.filter((offer) => offer.status === 'enquiry').length === 8,
+      seeded.offers.filter((offer) => offer.status === 'enquiry').length === 7 &&
+      seeded.offers.find((offer) => offer.slug === 'bikefit-tweede-fiets')?.status === 'addon',
     JSON.stringify(huidige),
   );
   const withheld = new Set(seeded.withheldServiceIds);

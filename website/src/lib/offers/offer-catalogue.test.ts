@@ -74,6 +74,11 @@ function record(entry: DefaultOffering, settings: Partial<OfferingSettings> = {}
         serviceId: variant.serviceSlug ? `svc-${variant.serviceSlug}` : null,
         priceCents: variant.priceCents,
       })),
+      isAddon: entry.isAddon,
+      soldAlone: entry.soldAlone,
+      addonMinutes: entry.addonMinutes,
+      // Links by slug → by the ids this fixture gives the offerings.
+      addonIds: entry.addonSlugs.map((slug) => `off-${slug}`),
       ...settings,
     },
     updatedAt: '2026-10-17T08:00:00.000Z',
@@ -115,7 +120,9 @@ describe('buildOfferCatalogue: the seeded offer', () => {
       durationLabel: 'Volwassene: 2 uur · Jeugd: 2 uur',
       priceLabel: `Volwassene ${formatPrice(27500)} · Jeugd ${formatPrice(15000)}`,
     });
-    expect(catalogue.offers.filter((offer) => offer.status === 'enquiry')).toHaveLength(8);
+    // Seven asked for; tweede fiets (20 Oct 2026) is an extra only.
+    expect(catalogue.offers.filter((offer) => offer.status === 'enquiry')).toHaveLength(7);
+    expect(card(catalogue, 'bikefit-tweede-fiets')?.status).toBe('addon');
     expect(card(catalogue, 'lactaattest')?.durationLabel).toBe('Duur in overleg');
   });
 
@@ -139,6 +146,7 @@ describe('buildOfferCatalogue: the seeded offer', () => {
     expect(catalogue.variantDisplay[ADULT]).toEqual({
       label: 'Volwassene',
       priceLabel: formatPrice(27500),
+      priceCents: 27500,
     });
     // Retired for real means deactivated: then it is not among the public services at all.
     const withoutRetired = services.filter((service) => service.id !== HOME);
@@ -212,9 +220,56 @@ describe('buildOfferCatalogue: what Beheer → Aanbod controls', () => {
       `Volwassene ${formatPrice(15000)} · Jeugd op aanvraag`,
     );
     expect(catalogue.variantDisplay).toEqual({
-      [ADULT]: { label: 'Volwassene', priceLabel: formatPrice(15000) },
-      [YOUTH]: { label: 'Jeugd', priceLabel: '' },
+      [ADULT]: { label: 'Volwassene', priceLabel: formatPrice(15000), priceCents: 15000 },
+      [YOUTH]: { label: 'Jeugd', priceLabel: '', priceCents: null },
     });
+  });
+
+  it("extra's: the fit offers the four extras per audience; an extra names its hosts; an extra only has no slugs", () => {
+    const catalogue = build();
+    const line = (option: { slug: string; minutes: number; priceCents: number }) =>
+      `${option.slug}:${option.minutes}:${option.priceCents}`;
+    expect(catalogue.addonsByService[ADULT]?.map(line)).toEqual([
+      'bikefit-tweede-fiets:30:7500',
+      'voetanalyse:30:8500',
+      'zadelanalyse:60:6000',
+      'afstellen-schoenplaatjes:15:1500',
+    ]);
+    expect(catalogue.addonsByService[YOUTH]).toHaveLength(4);
+    // The enquiry bikefit lists the extras too, but offers nothing through the widget.
+    expect(Object.keys(catalogue.addonsByService)).toEqual([ADULT, YOUTH]);
+    const tweede = catalogue.bySlug['bikefit-tweede-fiets'];
+    expect(tweede.offering.status).toBe('addon');
+    expect(tweede.offer.bookingServiceSlugs).toEqual([]);
+    expect(tweede.addonHosts.map((host) => `${host.slug}:${host.bookable}`)).toEqual([
+      'bikefit-nieuwe-fiets:false',
+      'bikefit-huidige-fiets:true',
+    ]);
+    expect(catalogue.bySlug['voetanalyse'].offering.status).toBe('enquiry');
+    expect(catalogue.bySlug['lactaattest'].addonHosts).toEqual([]);
+  });
+
+  it("extra's: a hidden extra is left out; a host switched to enquiry offers none", () => {
+    const hidden = build(
+      SEEDED.map((record) =>
+        record.content.slug === 'voetanalyse'
+          ? { ...record, settings: { ...record.settings, isListed: false } }
+          : record,
+      ),
+    );
+    expect(hidden.addonsByService[ADULT]?.map((option) => option.slug)).toEqual([
+      'bikefit-tweede-fiets',
+      'zadelanalyse',
+      'afstellen-schoenplaatjes',
+    ]);
+    const enquiryHost = build(
+      SEEDED.map((record) =>
+        record.content.slug === 'bikefit-huidige-fiets'
+          ? { ...record, settings: { ...record.settings, bookingMode: 'enquiry' as const } }
+          : record,
+      ),
+    );
+    expect(enquiryHost.addonsByService[ADULT]).toBeUndefined();
   });
 
   it('a single-option enquiry with a price shows it', () => {

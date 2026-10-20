@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { SiteSettings } from '@/lib/cms/blocks';
 import { OFFER_ENQUIRY_ANCHOR, OFFER_ENQUIRY_CTA_LABEL } from '@/lib/offer-enquiry/input';
+import { formatDuration } from '@/lib/booking/format';
 import { OFFER_CATEGORY_LABELS, OFFER_INDEX_PATH, offerBookingHref } from '@/lib/offers/catalogue';
 import type { CatalogueOfferEntry } from '@/lib/offers/offer-catalogue';
 import {
@@ -127,8 +128,16 @@ function OfferDetail({
   phoneLabel: string;
   phoneHref: string;
 }) {
-  const { offer, offering, content } = entry;
+  const { offer, offering, content, addonHosts } = entry;
   const variants = offering.variants;
+  // An extra that is not sold alone: its button books the first offering that
+  // lists it and is bookable, with the extra ticked. Without one, the enquiry
+  // form (when the offering is set to it), else nothing to click.
+  const bookableHost =
+    status === 'addon' ? (addonHosts.find((host) => host.bookable) ?? null) : null;
+  const showEnquiry =
+    status === 'enquiry' ||
+    (status === 'addon' && !bookableHost && offering.bookingMode === 'enquiry');
   const partlyUnavailable =
     status === 'bookable' && variants.length > 1 && variants.some((variant) => !variant.bookable);
   const withImage = hasImage(content.image);
@@ -139,7 +148,11 @@ function OfferDetail({
       <StudioButtonLink href={offerBookingHref(content.slug)} variant="primary">
         {offeringCtaLabel(content)}
       </StudioButtonLink>
-    ) : status === 'enquiry' ? (
+    ) : bookableHost ? (
+      <StudioButtonLink href={offerBookingHref(bookableHost.slug, content.slug)} variant="primary">
+        Boek samen met {bookableHost.title}
+      </StudioButtonLink>
+    ) : showEnquiry ? (
       <StudioButtonLink href={`#${OFFER_ENQUIRY_ANCHOR}`} variant="primary">
         {OFFER_ENQUIRY_CTA_LABEL}
       </StudioButtonLink>
@@ -161,6 +174,23 @@ function OfferDetail({
             Bel ons gerust op <a href={phoneHref}>{phoneLabel}</a>.
           </>
         ) : null}
+      </p>
+    ) : null;
+
+  const addonNote =
+    offering.isAddon && addonHosts.length > 0 ? (
+      <p className="studio-offer__status-note">
+        {status === 'addon' ? 'Deze extra boek je samen met ' : 'Ook te boeken als extra bij '}
+        {addonHosts.map((host, index) => (
+          <span key={host.slug}>
+            {index === 0 ? '' : index === addonHosts.length - 1 ? ' of ' : ', '}
+            <StudioLink href={host.path}>{host.title}</StudioLink>
+          </span>
+        ))}
+        {offering.addonMinutes != null
+          ? ` (${formatDuration(offering.addonMinutes)} extra, ${offer.priceLabel})`
+          : ''}
+        .
       </p>
     ) : null;
 
@@ -199,6 +229,7 @@ function OfferDetail({
             </dl>
             <div className="studio-hero__actions studio-stack">{action}</div>
             {unavailableNote}
+            {addonNote}
             {partlyUnavailable ? <PartlyUnavailable variants={variants} /> : null}
           </div>
           {withImage ? (
@@ -260,7 +291,7 @@ function OfferDetail({
             ) : null}
           </div>
 
-          {status === 'enquiry' ? (
+          {showEnquiry ? (
             <div className="studio-offer__enquiry" id={OFFER_ENQUIRY_ANCHOR}>
               <OfferEnquiryForm
                 offerSlug={content.slug}
@@ -276,7 +307,7 @@ function OfferDetail({
           ) : null}
 
           <div className="studio-offer__actions">
-            {status === 'enquiry' ? null : action}
+            {showEnquiry ? null : action}
             <StudioLink href={OFFER_INDEX_PATH} className="studio-offer__back">
               Terug naar het aanbod
             </StudioLink>

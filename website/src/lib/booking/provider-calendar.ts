@@ -22,6 +22,7 @@ import {
   type GoogleBusyInterval,
 } from './google';
 import { formatLocation } from './format';
+import { addonLines, listBookingAddons } from './booking-addons';
 import { describeProviderError } from './provider-calendar-errors';
 
 /**
@@ -187,6 +188,8 @@ export async function createProviderEvent(
     ? await db.select().from(cmsLocations).where(eq(cmsLocations.id, booking.locationId)).limit(1)
     : [];
 
+  const addons = (await listBookingAddons(db, [booking.id])).get(booking.id) ?? [];
+
   const where =
     location?.kind === 'customer'
       ? (booking.customerAddress ?? '')
@@ -202,6 +205,7 @@ export async function createProviderEvent(
     booking.guardianName ? `Ouder/voogd: ${booking.guardianName}` : '',
     booking.guardianPhone ? `Telefoon ouder/voogd: ${booking.guardianPhone}` : '',
     booking.bikeDetails ? `Fiets: ${booking.bikeDetails}` : '',
+    addons.length ? `Extra’s: ${addonLines(addons).join(', ')}` : '',
     booking.notes ? `Opmerkingen: ${booking.notes}` : '',
   ].filter(Boolean);
   if (options.tentative) {
@@ -214,7 +218,9 @@ export async function createProviderEvent(
       accessToken,
       calendarId: provider.googleCalendarId || 'primary',
       event: {
-        summary: `${options.tentative ? 'Toe te wijzen: ' : ''}${service?.name ?? 'Afspraak'} — ${booking.customerName}`,
+        summary: `${options.tentative ? 'Toe te wijzen: ' : ''}${service?.name ?? 'Afspraak'}${
+          addons.length ? ` + ${addons.map((addon) => addon.title).join(', ')}` : ''
+        } — ${booking.customerName}`,
         description: lines.join('\n'),
         location: where || undefined,
         start: new Date(booking.startsAt).toISOString(),

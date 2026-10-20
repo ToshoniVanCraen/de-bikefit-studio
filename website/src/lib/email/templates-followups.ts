@@ -2,6 +2,7 @@ import { formatDateShort, formatTime } from '@/lib/booking/time';
 import { formatDuration } from '@/lib/booking/format';
 import { REVIEW_LINK_DAYS } from '@/lib/booking/follow-ups-policy';
 import {
+  extrasRow,
   BRING_ALONG,
   button,
   layout,
@@ -33,6 +34,7 @@ export function bookingReminderEmail(data: BookingEmailData): RenderedEmail {
   const heading = 'Je afspraak komt eraan';
   const rows: Row[] = [
     ['Wat', `${data.serviceName} (${formatDuration(data.durationMinutes)})`],
+    extrasRow(data),
     ['Wanneer', whenLabel(data)],
     ['Bij', data.providerName],
     ['Waar', whereLines(data).join('\n')],

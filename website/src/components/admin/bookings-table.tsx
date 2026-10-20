@@ -28,6 +28,8 @@ export type BookingRow = {
   isPast: boolean;
   serviceId: string;
   serviceName: string;
+  /** Titles of the extras booked with it. */
+  addons: string[];
   providerId: string;
   providerName: string;
   /** `pending`: made as "Iedereen"; the provider only holds the slot until a beheerder assigns it. */
@@ -235,7 +237,14 @@ export function BookingsTable({
                 <span className="font-medium">{booking.when}</span>
                 <span className="block text-xs text-muted-foreground">tot {booking.endTime}</span>
               </td>
-              <td className="p-3">{booking.serviceName}</td>
+              <td className="p-3">
+                {booking.serviceName}
+                {booking.addons.length > 0 ? (
+                  <span className="block text-xs text-muted-foreground">
+                    + {booking.addons.join(', ')}
+                  </span>
+                ) : null}
+              </td>
               {showProvider ? (
                 <td className="p-3">
                   {booking.assignment === 'pending' ? (

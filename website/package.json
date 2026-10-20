@@ -26,6 +26,7 @@
     "cms:patch-booking-cta": "tsx scripts/cms-patch-booking-cta.mts",
     "cms:patch-page-cleanup": "tsx scripts/cms-patch-page-cleanup.mts",
     "cms:patch-aanbod-prijzen": "tsx scripts/cms-patch-aanbod-prijzen.mts",
+    "cms:patch-aanbod-extras": "tsx scripts/cms-patch-aanbod-extras.mts",
     "brand:icons": "tsx scripts/brand-icons.mts",
     "cms:migrate-aanbod": "tsx scripts/cms-migrate-aanbod.mts",
     "cms:selftest": "tsx scripts/cms-selftest.mts",

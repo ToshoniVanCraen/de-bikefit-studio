@@ -79,6 +79,7 @@ const BOOK_INPUT: BookActionInput = {
   providerId: null,
   locationId: null,
   startsAt: '2026-10-20T08:00:00.000Z',
+  addonIds: [],
   name: CUSTOMER_NAME,
   email: CUSTOMER_EMAIL,
   phone: CUSTOMER_PHONE,
@@ -102,6 +103,7 @@ const SUMMARY = {
   timezone: 'Europe/Brussels',
   locationLabel: 'De Bikefit Studio',
   status: 'confirmed' as const,
+  addons: [] as { title: string; minutes: number }[],
 };
 
 /** What `createPublicBooking()` resolves with once the booking is made. */

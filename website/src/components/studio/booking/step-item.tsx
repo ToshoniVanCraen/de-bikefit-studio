@@ -6,7 +6,7 @@ import { BookingHeading } from './heading-level';
  * Split out of `booking-widget.tsx`.
  */
 
-export type BookingStep = 'service' | 'provider' | 'when' | 'details' | 'done';
+export type BookingStep = 'service' | 'provider' | 'addons' | 'when' | 'details' | 'done';
 export type StepState = 'done' | 'active' | 'upcoming';
 
 export function StepItem({

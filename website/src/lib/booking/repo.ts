@@ -1,4 +1,5 @@
 import 'server-only';
+import { listBookingAddons } from './booking-addons';
 import { and, asc, desc, eq, gte, inArray, lt, ne, notInArray, sql, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
 import { getCmsDb } from '@/db/cms';
@@ -951,6 +952,8 @@ export type BookingListItem = Omit<CmsBooking, 'cancelTokenHash'> & {
   providerName: string;
   locationName: string | null;
   locationKind: CmsLocationKind | null;
+  /** The extras booked with it (snapshot), in order. */
+  addons: { title: string; minutes: number; priceCents: number | null }[];
 };
 
 type BookingAccess = { actor: CmsUserPublic; all: boolean; ownProviderId: string | null };
@@ -974,13 +977,16 @@ function bookingSelect() {
   };
 }
 
-function toListItem(row: {
-  booking: CmsBooking;
-  serviceName: string;
-  providerName: string;
-  locationName: string | null;
-  locationKind: CmsLocationKind | null;
-}): BookingListItem {
+function toListItem(
+  row: {
+    booking: CmsBooking;
+    serviceName: string;
+    providerName: string;
+    locationName: string | null;
+    locationKind: CmsLocationKind | null;
+  },
+  addons: BookingListItem['addons'] = [],
+): BookingListItem {
   const copy: Partial<CmsBooking> = { ...row.booking };
   delete copy.cancelTokenHash;
   return {
@@ -989,6 +995,7 @@ function toListItem(row: {
     providerName: row.providerName,
     locationName: row.locationName ?? null,
     locationKind: row.locationKind ?? null,
+    addons,
   };
 }
 
@@ -1029,7 +1036,11 @@ export async function listBookings(filters: BookingListFilters = {}): Promise<Bo
     .where(conditions.length ? and(...conditions) : undefined)
     .orderBy(range === 'upcoming' ? asc(cmsBookings.startsAt) : desc(cmsBookings.startsAt))
     .limit(Math.min(Math.max(filters.limit ?? 200, 1), 1000));
-  return rows.map(toListItem);
+  const addons = await listBookingAddons(
+    db,
+    rows.map((row) => row.booking.id),
+  );
+  return rows.map((row) => toListItem(row, addons.get(row.booking.id) ?? []));
 }
 
 async function loadBookingItem(bookingId: string): Promise<BookingListItem | null> {
@@ -1042,7 +1053,9 @@ async function loadBookingItem(bookingId: string): Promise<BookingListItem | nul
     .leftJoin(cmsLocations, eq(cmsLocations.id, cmsBookings.locationId))
     .where(eq(cmsBookings.id, bookingId))
     .limit(1);
-  return row ? toListItem(row) : null;
+  if (!row) return null;
+  const addons = await listBookingAddons(db, [row.booking.id]);
+  return toListItem(row, addons.get(row.booking.id) ?? []);
 }
 
 /** One booking, scope-checked (`booking.read`, or own with `booking.read.own`). */

@@ -8,6 +8,7 @@ import { durationLabel, instantToTime, instantToYmd, longDate } from './dates';
  */
 export function BookingSummaryList({
   serviceName,
+  addons = [],
   durationMinutes,
   startsAt,
   endsAt,
@@ -17,6 +18,9 @@ export function BookingSummaryList({
   children,
 }: {
   serviceName: string;
+  /** Titles of the extras booked with it; each on its own line under "Wat". */
+  addons?: string[];
+  /** The whole appointment, extras included. */
   durationMinutes: number | null;
   startsAt: string;
   endsAt: string;
@@ -33,6 +37,11 @@ export function BookingSummaryList({
           <dd>
             {serviceName}
             {durationMinutes ? ` · ${durationLabel(durationMinutes)}` : ''}
+            {addons.map((addon) => (
+              <span key={addon} className="studio-booking__summary-extra">
+                + {addon}
+              </span>
+            ))}
           </dd>
         </div>
       ) : null}

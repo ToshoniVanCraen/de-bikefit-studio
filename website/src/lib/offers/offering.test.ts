@@ -3,6 +3,7 @@ import { DEFAULT_SERVICES } from '@/lib/booking/defaults';
 import { formatPrice } from '@/lib/booking/format';
 import { DEFAULT_OFFERS } from './defaults';
 import {
+  OFFERING_STATUS_LABELS,
   offeringBookingSlugs,
   offeringDurationLabel,
   offeringPriceLabel,
@@ -10,6 +11,7 @@ import {
   settingsFromRows,
   validateOfferingInput,
   withheldServiceIds,
+  type OfferingInput,
   type OfferingServiceInfo,
   type OfferingSettings,
 } from './offering';
@@ -81,6 +83,10 @@ const FACTS = {
 
 const audienceDirect: OfferingSettings = {
   isListed: true,
+  isAddon: false,
+  soldAlone: true,
+  addonMinutes: null,
+  addonIds: [],
   bookingMode: 'direct',
   variantMode: 'audience',
   variants: [
@@ -145,6 +151,10 @@ describe('validateOfferingInput (Beheer → Aanbod)', () => {
   it('an enquiry needs no service', () => {
     const result = validateOfferingInput({
       isListed: true,
+      isAddon: false,
+      soldAlone: true,
+      addonMinutes: null,
+      addonIds: [],
       bookingMode: 'enquiry',
       variantMode: 'single',
       variants: [{ audience: 'all', serviceId: null, priceCents: 9900 }],
@@ -169,6 +179,10 @@ describe('validateOfferingInput (Beheer → Aanbod)', () => {
     expect(
       validateOfferingInput({
         isListed: true,
+        isAddon: false,
+        soldAlone: true,
+        addonMinutes: null,
+        addonIds: [],
         bookingMode: 'enquiry',
         variantMode: 'single',
         variants: [{ audience: 'all', serviceId: null, priceCents: 0 }],
@@ -187,6 +201,10 @@ describe('settingsFromRows (stored rows, read defensively)', () => {
       ]),
     ).toEqual({
       isListed: false,
+      isAddon: false,
+      soldAlone: true,
+      addonMinutes: null,
+      addonIds: [],
       bookingMode: 'direct',
       variantMode: 'audience',
       variants: [
@@ -204,6 +222,10 @@ describe('settingsFromRows (stored rows, read defensively)', () => {
       ]),
     ).toEqual({
       isListed: true,
+      isAddon: false,
+      soldAlone: true,
+      addonMinutes: null,
+      addonIds: [],
       bookingMode: 'enquiry',
       variantMode: 'single',
       variants: [{ audience: 'all', serviceId: ADULT, priceCents: null }],
@@ -228,6 +250,10 @@ describe('deriveLegacyOffering (the settings an offer page had before Beheer →
       ).toEqual({
         settings: {
           isListed: true,
+          isAddon: false,
+          soldAlone: true,
+          addonMinutes: null,
+          addonIds: [],
           bookingMode: 'enquiry',
           variantMode: 'single',
           variants: [{ audience: 'all', serviceId: null, priceCents: null }],
@@ -348,6 +374,10 @@ describe('resolveOffering and its labels', () => {
     const enquiry = resolveOffering({
       settings: {
         isListed: true,
+        isAddon: false,
+        soldAlone: true,
+        addonMinutes: null,
+        addonIds: [],
         bookingMode: 'enquiry',
         variantMode: 'single',
         variants: [{ audience: 'all', serviceId: ADULT, priceCents: 12000 }],
@@ -394,6 +424,10 @@ describe('resolveOffering and its labels', () => {
 describe('withheldServiceIds (a variant is booked through its offering only)', () => {
   const enquiryWithService: OfferingSettings = {
     isListed: true,
+    isAddon: false,
+    soldAlone: true,
+    addonMinutes: null,
+    addonIds: [],
     bookingMode: 'enquiry',
     variantMode: 'single',
     variants: [{ audience: 'all', serviceId: 'svc-gezinspakket', priceCents: null }],
@@ -419,5 +453,97 @@ describe('withheldServiceIds (a variant is booked through its offering only)', (
 
   it('services no offering uses are never held back', () => {
     expect(withheldServiceIds([])).toEqual(new Set());
+  });
+});
+
+describe("extra's (20 Oct 2026)", () => {
+  const single = (overrides: Partial<OfferingInput> = {}) =>
+    validateOfferingInput({
+      isListed: true,
+      bookingMode: 'enquiry',
+      variantMode: 'single',
+      variants: [{ audience: 'all', serviceId: null, priceCents: 8500, service: null }],
+      ...overrides,
+    });
+
+  it('an extra needs its minutes and a price; an offering not sold alone must be an extra', () => {
+    expect(single({ isAddon: true, addonMinutes: 30 }).ok).toBe(true);
+    expect(single({ isAddon: true })).toMatchObject({
+      ok: false,
+      message: expect.stringContaining('minuten'),
+    });
+    expect(
+      single({
+        isAddon: true,
+        addonMinutes: 30,
+        variants: [{ audience: 'all', serviceId: null, priceCents: null, service: null }],
+      }),
+    ).toMatchObject({ ok: false, message: expect.stringContaining('prijs') });
+    expect(single({ soldAlone: false })).toMatchObject({
+      ok: false,
+      message: expect.stringContaining('extra'),
+    });
+    expect(single({ addonIds: ['a', 'a'] }).ok).toBe(false);
+    const ok = single({ isAddon: true, addonMinutes: 30, soldAlone: false, addonIds: ['a', 'b'] });
+    expect(ok.ok && ok.data.settings).toMatchObject({
+      isAddon: true,
+      soldAlone: false,
+      addonMinutes: 30,
+      addonIds: ['a', 'b'],
+    });
+    // Not an extra: the minutes are dropped and it is sold alone.
+    const plain = single({ addonMinutes: 45 });
+    expect(plain.ok && plain.data.settings).toMatchObject({
+      isAddon: false,
+      soldAlone: true,
+      addonMinutes: null,
+    });
+  });
+
+  it('rows read defensively; an extra only resolves to the status addon without booking slugs', () => {
+    const settings = settingsFromRows(
+      {
+        isListed: true,
+        bookingMode: 'direct',
+        variantMode: 'single',
+        isAddon: true,
+        soldAlone: false,
+        addonMinutes: 30,
+      },
+      [{ audience: 'all', serviceId: ADULT, priceCents: 7500 }],
+      ['x', 'x', 'y'],
+    );
+    expect(settings).toMatchObject({
+      isAddon: true,
+      soldAlone: false,
+      addonMinutes: 30,
+      addonIds: ['x', 'y'],
+    });
+    // Neither an extra nor sold alone would be unreachable: it reads as sold alone, minutes dropped.
+    expect(
+      settingsFromRows(
+        {
+          isListed: true,
+          bookingMode: 'enquiry',
+          variantMode: 'single',
+          isAddon: false,
+          soldAlone: false,
+          addonMinutes: 30,
+        },
+        [],
+      ),
+    ).toMatchObject({ isAddon: false, soldAlone: true, addonMinutes: null, addonIds: [] });
+    const resolved = resolveOffering({
+      settings,
+      source: 'stored',
+      services: SERVICES,
+      bookableServiceIds: new Set([ADULT]),
+    });
+    expect(resolved.status).toBe('addon');
+    expect(resolved.soldAlone).toBe(false);
+    expect(offeringBookingSlugs(resolved)).toEqual([]);
+    expect(OFFERING_STATUS_LABELS.addon).toBe('Enkel als extra bij een afspraak');
+    // An extra only is held back from /afspraak even while direct and offered.
+    expect(withheldServiceIds([{ visible: true, settings }])).toEqual(new Set([ADULT]));
   });
 });

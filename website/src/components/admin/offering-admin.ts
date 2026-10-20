@@ -1,9 +1,11 @@
 import 'server-only';
 
 import type { MediaOption } from '@/components/admin/media-picker';
+import type { AddonCandidate } from '@/components/admin/offering-addons-fields';
 import type { OfferingFormValues } from '@/components/admin/offering-form';
 import { DEFAULT_LOCALE } from '@/db/cms-schema';
 import { listMedia } from '@/lib/cms/repo';
+import { offeringPriceLabel } from '@/lib/offers/offering';
 import { EMPTY_OFFERING_CONTENT } from '@/lib/offers/offering-content';
 import type { AdminOffering, AdminOfferingService } from '@/lib/offers/repo';
 
@@ -24,6 +26,10 @@ export function toOfferingFormValues(
       bookingMode: 'enquiry',
       variantMode: 'single',
       variants: [],
+      isAddon: false,
+      soldAlone: true,
+      addonMinutes: null,
+      addonIds: [],
     };
   }
   return {
@@ -32,6 +38,10 @@ export function toOfferingFormValues(
     isListed: offering.settings.isListed,
     bookingMode: offering.settings.bookingMode,
     variantMode: offering.settings.variantMode,
+    isAddon: offering.settings.isAddon,
+    soldAlone: offering.settings.soldAlone,
+    addonMinutes: offering.settings.addonMinutes,
+    addonIds: offering.settings.addonIds,
     variants: offering.settings.variants.map((variant) => {
       const service = variant.serviceId
         ? (services.find((entry) => entry.id === variant.serviceId) ?? null)
@@ -48,6 +58,21 @@ export function toOfferingFormValues(
       };
     }),
   };
+}
+
+/** The offerings marked as an extra (every other one), for "Extra's bij dit aanbod". */
+export function addonCandidates(
+  offerings: readonly AdminOffering[],
+  exceptId: string | null,
+): AddonCandidate[] {
+  return offerings
+    .filter((offering) => offering.settings.isAddon && offering.id !== exceptId)
+    .map((offering) => ({
+      id: offering.id,
+      title: offering.content.title,
+      minutes: offering.settings.addonMinutes,
+      priceLabel: offeringPriceLabel(offering.resolved),
+    }));
 }
 
 /** The media library as the picker takes it. */

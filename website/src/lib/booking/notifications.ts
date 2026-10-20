@@ -1,6 +1,7 @@
 import 'server-only';
 import { and, eq } from 'drizzle-orm';
 import { getCmsDb } from '@/db/cms';
+import type { CmsBookingAddon } from '@/db/cms-offering-schema';
 import {
   cmsBookings,
   cmsLocations,
@@ -31,6 +32,7 @@ import {
   bookingReassignedEmail,
 } from '@/lib/email/templates-assignment';
 import { assignmentRecipients } from './assignment-recipients';
+import { addonLines, listBookingAddons } from './booking-addons';
 import { formatLocation, formatPostalAddress } from './format';
 import { parseBookingRules } from './settings';
 
@@ -53,7 +55,17 @@ export type BookingContext = {
   provider: CmsProvider;
   providerLoginEmail: string;
   location: CmsLocation | null;
+  /** The extras booked with it (snapshot), in order. */
+  addons: CmsBookingAddon[];
 };
+
+/** The booked span in minutes (extras included); `null` when the row is inconsistent. */
+function bookedMinutes(booking: Pick<CmsBooking, 'startsAt' | 'endsAt'>): number | null {
+  const minutes = Math.round(
+    (new Date(booking.endsAt).getTime() - new Date(booking.startsAt).getTime()) / 60_000,
+  );
+  return minutes > 0 ? minutes : null;
+}
 
 export type BookingMailResults = {
   customer: SendEmailResult | null;
@@ -91,7 +103,8 @@ export async function loadBookingContext(bookingId: string): Promise<BookingCont
         .where(eq(cmsLocations.id, row.booking.locationId))
         .limit(1)
     : [];
-  return { ...row, location: location ?? null };
+  const addons = (await listBookingAddons(db, [row.booking.id])).get(row.booking.id) ?? [];
+  return { ...row, location: location ?? null, addons };
 }
 
 export async function emailData(
@@ -107,7 +120,8 @@ export async function emailData(
     siteName: settings.site.name || 'De Bikefit Studio',
     siteUrl: siteUrl(),
     serviceName: ctx.service.name,
-    durationMinutes: ctx.service.durationMinutes,
+    addons: ctx.addons.map(({ title, minutes }) => ({ title, minutes })),
+    durationMinutes: bookedMinutes(booking) ?? ctx.service.durationMinutes,
     providerName: pending ? '' : ctx.provider.displayName,
     assignmentPending: pending,
     heldBy: pending ? ctx.provider.displayName : null,
@@ -166,6 +180,7 @@ function icsFor(ctx: BookingContext, data: BookingEmailData, method: 'PUBLISH' |
     summary: `${data.serviceName} — ${data.siteName}`,
     description: [
       data.providerName ? `${data.serviceName} bij ${data.providerName}.` : `${data.serviceName}.`,
+      data.addons?.length ? `Extra’s: ${addonLines(data.addons).join(', ')}` : '',
       data.cancelUrl ? `Annuleren: ${data.cancelUrl}` : '',
     ]
       .filter(Boolean)

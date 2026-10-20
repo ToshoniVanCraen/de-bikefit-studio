@@ -594,6 +594,17 @@ async function main() {
     backupDir: resolve(process.cwd(), DATA_DIR, 'rollout-backups'),
   });
 
+  // 17c: extra's (add-ons) — catalogue, availability, a booking with an extra, the patch.
+  const { aanbodExtrasSection } = await import('./selftest/aanbod-extras.mjs');
+  await aanbodExtrasSection({
+    db,
+    check,
+    section,
+    cookieJar,
+    backupDir: resolve(process.cwd(), DATA_DIR, 'rollout-backups'),
+    admin: user,
+  });
+
   const { cadeaubonSection } = await import('./selftest/cadeaubon.mjs');
   await cadeaubonSection({ db, admin: user, check, section, cookieJar });
 

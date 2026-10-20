@@ -10,6 +10,7 @@ export function Confirmation({
   title,
   text,
   serviceName,
+  addons,
   durationMinutes,
   providerName,
   startsAt,
@@ -25,6 +26,7 @@ export function Confirmation({
   title: string;
   text: string;
   serviceName: string;
+  addons: string[];
   durationMinutes: number;
   providerName: string;
   startsAt: string;
@@ -51,6 +53,7 @@ export function Confirmation({
 
       <BookingSummaryList
         serviceName={serviceName}
+        addons={addons}
         durationMinutes={durationMinutes}
         startsAt={startsAt}
         endsAt={endsAt}

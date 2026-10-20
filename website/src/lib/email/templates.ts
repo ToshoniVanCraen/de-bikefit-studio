@@ -21,7 +21,10 @@ export type BookingEmailData = {
   siteName: string;
   siteUrl: string;
   serviceName: string;
+  /** The whole appointment in minutes, extras included. */
   durationMinutes: number;
+  /** The extras booked with it (20 Oct 2026); absent or empty = none. */
+  addons?: { title: string; minutes: number }[];
   providerName: string;
   customerName: string;
   customerEmail: string;
@@ -72,6 +75,16 @@ export const PALETTE = {
 };
 
 export type Row = [label: string, value: string | null | undefined];
+
+/** The "Extra’s" row: every extra booked, with its minutes, one per line; skipped without any. */
+export function extrasRow(data: Pick<BookingEmailData, 'addons'>): Row {
+  return [
+    'Extra’s',
+    data.addons?.length
+      ? data.addons.map((addon) => `${addon.title} (${formatDuration(addon.minutes)})`).join('\n')
+      : null,
+  ];
+}
 
 export function whenLabel(data: BookingEmailData): string {
   return `${formatDateLong(data.startsAt, data.timezone)}, ${formatTimeRange(data.startsAt, data.endsAt, data.timezone)}`;
@@ -191,6 +204,7 @@ export function bookingConfirmationEmail(data: BookingEmailData): RenderedEmail 
   const heading = 'Je afspraak staat vast';
   const rows: Row[] = [
     ['Wat', `${data.serviceName} (${formatDuration(data.durationMinutes)})`],
+    extrasRow(data),
     ['Wanneer', whenLabel(data)],
     ['Bij', data.providerName],
     ['Waar', whereLines(data).join('\n')],
@@ -264,6 +278,7 @@ export function providerNotificationEmail(data: BookingEmailData): RenderedEmail
   const heading = 'Nieuwe afspraak';
   const rows: Row[] = [
     ['Dienst', `${data.serviceName} (${formatDuration(data.durationMinutes)})`],
+    extrasRow(data),
     ['Wanneer', whenLabel(data)],
     ['Waar', whereLines(data).join('\n')],
     ['Klant', data.customerName],

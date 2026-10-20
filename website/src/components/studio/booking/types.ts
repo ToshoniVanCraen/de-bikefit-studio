@@ -8,9 +8,10 @@
  * the booking time zone (`Europe/Brussels`).
  */
 
+import type { BookingAddonOption } from '@/lib/offers/addons';
 import type { BookingChoice } from '@/lib/offers/catalogue';
 
-export type { BookingChoice };
+export type { BookingAddonOption, BookingChoice };
 
 /** "Met wie" while the beheerder still has to assign the booking (the customer hears by e-mail). */
 export const PENDING_PROVIDER_TEXT = 'Dat laten we je nog per e-mail weten.';
@@ -35,6 +36,10 @@ export type BookingServiceOption = {
   location: BookingLocationOption | null;
   /** The service's own price ("€ 45,00"), empty unless the admin chose to show it. Never an offer's price. */
   priceLabel: string;
+  /** The amount behind `priceLabel` in cents (the variant's under an offer); `null` = unknown. */
+  priceCents: number | null;
+  /** The extras a visitor may tick with this service (Beheer → Aanbod); empty = no step. */
+  addons: BookingAddonOption[];
 };
 
 export type BookingLocationOption = {
@@ -42,6 +47,8 @@ export type BookingLocationOption = {
   kind: BookingLocationKind;
   /** e.g. "De Bikefit Studio, Ninove" or "Bij jou thuis". */
   label: string;
+  /** Street and city lines from Beheer → Locaties; empty when none is filled in (or at home). */
+  addressLines: string[];
 };
 
 export type BookingProviderOption = {
@@ -95,6 +102,8 @@ export type BookingWidgetProps = {
   context?: BookingWidgetContext | null;
   /** A short notice above the steps, e.g. when `?dienst=` named nothing we know. */
   notice?: string;
+  /** Extras (offering slugs, from `?extra=`) ticked in advance for the first service that offers them. */
+  initialAddonSlugs?: string[];
 };
 
 export type BookingSlot = {
@@ -113,6 +122,8 @@ export type AvailabilityActionInput = {
   providerId: string | null;
   fromYmd: string;
   toYmd: string;
+  /** The extras ticked (offering ids): the slots must hold the service plus them. */
+  addonIds?: string[];
 };
 
 export type AvailabilityActionResult =
@@ -125,6 +136,8 @@ export type BookActionInput = {
   /** The chosen slot's location (so two locations at one start stay apart). */
   locationId: string | null;
   startsAt: string;
+  /** The extras ticked (offering ids); the server prices and times them from the catalogue. */
+  addonIds: string[];
   /** The person being fitted (the child for a jeugdfit). */
   name: string;
   /** Contact e-mail/phone: the customer's own, or the parent's for a jeugdfit. */
@@ -175,6 +188,8 @@ export type BookingSummary = {
   /** Studio label, or the name of a `customer` location ("Bij jou thuis"). */
   locationLabel: string;
   status: string;
+  /** The extras booked with it, as stored. */
+  addons: { title: string; minutes: number }[];
 };
 
 export type CancelActionResult = {

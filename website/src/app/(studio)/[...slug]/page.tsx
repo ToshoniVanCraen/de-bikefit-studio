@@ -3,7 +3,7 @@ import { notFound, permanentRedirect, redirect } from 'next/navigation';
 import { StudioPageView } from '@/components/studio/page-view';
 import { findRedirect, getSiteSettings } from '@/lib/cms/content';
 import { redirectTarget } from '@/lib/cms/redirect-target';
-import { parseServiceParam, SERVICE_PARAM } from '@/lib/offers/catalogue';
+import { parseServiceParam, EXTRA_PARAM, SERVICE_PARAM } from '@/lib/offers/catalogue';
 import { defaultLocale, slugFromSegments } from '@/lib/studio/locale';
 import { buildPageMetadata, notFoundMetadata } from '@/lib/studio/seo';
 import { getStudioPage } from '@/lib/studio/site';
@@ -63,7 +63,14 @@ export default async function StudioCatchAllPage({
     // `?dienst=<slug>` preselects a service in the booking block (/afspraak);
     // anything that is not a well-formed slug is dropped here, at the boundary.
     const requestedService = parseServiceParam(query[SERVICE_PARAM]);
-    return <StudioPageView studio={studio} requestedService={requestedService} />;
+    const requestedExtra = parseServiceParam(query[EXTRA_PARAM]);
+    return (
+      <StudioPageView
+        studio={studio}
+        requestedService={requestedService}
+        requestedExtra={requestedExtra}
+      />
+    );
   }
 
   const match = await findRedirect(`/${path}`);
