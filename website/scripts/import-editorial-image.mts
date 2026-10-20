@@ -2,7 +2,7 @@
  * Imports one delivered editorial image into the site.
  *
  *   npm run images:import -- --slot flemish-lane --src "/path/to/delivered.png" \
- *     [--alt "Dutch alt text"] [--prompt "generation prompt"] [--version 2]
+ *     [--alt "Dutch alt text"] [--prompt "generation prompt"] [--version 2] [--real]
  *
  * Slots: the keys of `src/lib/studio/editorial-images.json` (flemish-lane,
  * fitting-session, coach-junior). The script:
@@ -14,8 +14,11 @@
  *     manifest. Existing files are never overwritten: bump `--version`.
  *
  * Afterwards the seed content picks the image up (`editorialImage()`), and a
- * `cms:rollout-aanbod` dry run shows the pages that will get it. Only for
- * generated images of generic people: never import one as a team portrait.
+ * `cms:rollout-aanbod` dry run shows the pages that will get it. `--real`
+ * marks the slot as a real photograph (`generated: false`, no prompt): since
+ * 20 Oct 2026 a slot may hold one, with the people's consent. A generated
+ * image is never imported as a team portrait (`scripts/team-portrait.mts`
+ * is for those, and only takes real photos).
  *
  * Uses `sharp`, which ships with Next.js; no extra dependency.
  */
@@ -105,6 +108,7 @@ async function main() {
 
   const alt = option(args, '--alt');
   const prompt = option(args, '--prompt');
+  const real = args.includes('--real');
   manifest.images[slot] = {
     ...entry,
     file,
@@ -112,9 +116,10 @@ async function main() {
     height: info.height,
     bytes: info.size,
     alt: alt ?? entry.alt,
+    generated: real ? false : entry.generated,
     source: basename(src),
     sourceSha256: sha256,
-    prompt: prompt ?? entry.prompt,
+    prompt: real ? null : (prompt ?? entry.prompt),
     importedAt: new Date().toISOString(),
   };
   await writeFile(MANIFEST, `${JSON.stringify(manifest, null, 2)}\n`);
