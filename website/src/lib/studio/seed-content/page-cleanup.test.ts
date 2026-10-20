@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { sanitizeRichTextHtml } from '@/lib/cms/actions/sanitize';
 import { validateBlocks } from '@/lib/cms/blocks';
+import { editorialImage } from '@/lib/studio/editorial-images';
 import {
   AANBOD_PAGES,
   FOOTER_MENU,
@@ -48,6 +49,21 @@ function withTodaysPhone<T>(value: T): T {
  * is the 13 Oct state, so the comparison keeps today's members only and reads
  * each with today's portrait and note; name, role and bio are still compared.
  */
+/**
+ * Since 20 Oct 2026 "Jonge fietsers groeien" on /voor-wie shows Rutger's own
+ * photo with a young rider instead of the AI image; the patch itself is the
+ * 13 Oct state, so the comparison reads that block with today's image.
+ */
+function withTodaysVoorWieImage<T extends { type: string; data: Record<string, unknown> }>(
+  blocks: T[],
+): T[] {
+  return blocks.map((block) =>
+    block.type === 'imageText' && block.data.title === 'Jonge fietsers groeien'
+      ? { ...block, data: { ...block.data, image: editorialImage('rutger-jeugd') } }
+      : block,
+  );
+}
+
 function withTodaysTeam<T extends { type: string; data: Record<string, unknown> }>(
   blocks: T[],
 ): T[] {
@@ -133,9 +149,9 @@ describe('page cleanup patch (review 13 Oct 2026)', () => {
                 : block,
             )
           : result.next;
-      expect(withTodaysTeam(withTodaysDurations(withTodaysPhone(next)))).toEqual(
-        stored(targetPage(spec.slug).blocks),
-      );
+      expect(
+        withTodaysVoorWieImage(withTodaysTeam(withTodaysDurations(withTodaysPhone(next)))),
+      ).toEqual(stored(targetPage(spec.slug).blocks));
       expect(pageCleanupProblems(spec.slug, stored(old.blocks)).length).toBeGreaterThan(0);
       expect(pageCleanupProblems(spec.slug, result.next)).toEqual([]);
 

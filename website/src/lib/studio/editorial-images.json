@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "note": "Editorial AI images (generated, fictional generic people; never a portrait of a team member) for the public site. Written by scripts/import-editorial-image.mts; provenance and prompts in docs/editorial-images.md, replacement tracked in docs/content-placeholders.md. `file` null = not delivered, the site shows the decorative panel.",
+  "note": "Editorial images for the public site: three generated AI images of 13 Oct 2026 (fictional generic people; never a portrait of a team member) and, since 20 Oct 2026, real photographs imported with --real (generated: false, no prompt). Written by scripts/import-editorial-image.mts; provenance in docs/editorial-images.md, replacement tracked in docs/content-placeholders.md. `file` null = not delivered, the site shows the decorative panel.",
   "images": {
     "flemish-cyclists": {
       "subject": "Drie fietsers op een Vlaamse landweg",
@@ -40,6 +40,19 @@
       "sourceSha256": "dcd5fb3fe785a77ef229ac065bad3177ab08953fff94b659b48f850fc98def26",
       "prompt": "Use case: photorealistic-natural. Asset type: landscape 3:2 editorial image for a warm Belgian cycling coaching website, junior support and approachable guidance. A teenage cyclist, about 15 years old, wearing a properly fastened cycling helmet and modest unbranded burgundy and black cycling kit, pauses beside a correctly proportioned road bicycle while an adult coach in neutral cream and olive casual sports clothing listens and explains something with an open hand. They stand beside a quiet Flemish countryside lane with hedgerows and soft rolling fields, a parent slightly behind with their own bicycle, warm supportive scene about confidence and learning, not competitive pressure. Natural candid interaction, no awkward stock-photo pose, genuine relaxed expressions. Warm late afternoon light, rich natural photographic texture, restrained colors harmonious with burgundy/cream website. Horizontal photograph with clear separation of bicycle frames and people, coherent anatomy and realistic hands. Generic fictional people, do not depict a named real coach. No text, logos, watermark or race sponsors.",
       "importedAt": "2026-10-13T09:58:56.774Z"
+    },
+    "rutger-jeugd": {
+      "subject": "Rutger met een jonge fietser (echte foto, Toshoni, 20 okt 2026)",
+      "file": "rutger-jeugd-v1.webp",
+      "width": 1067,
+      "height": 1600,
+      "bytes": 155484,
+      "alt": "Rutger Roelandts in fietskledij naast zijn racefiets, met een jonge fietser naast hem en besneeuwde bergen op de achtergrond",
+      "generated": false,
+      "source": "rutger-jeugd.jpg",
+      "sourceSha256": "2b3cc2d6708347e69600d97e3c1793d09283455e4a9738834e46c5ae41d755b3",
+      "prompt": null,
+      "importedAt": "2026-10-20T12:17:34.686Z"
     }
   }
 }

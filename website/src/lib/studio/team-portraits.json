@@ -4,17 +4,22 @@
   "portraits": {
     "rutger-roelandts": {
       "name": "Rutger Roelandts",
-      "file": null,
-      "width": null,
-      "height": null,
-      "bytes": null,
+      "file": "rutger-roelandts-v1.webp",
+      "width": 1066,
+      "height": 1333,
+      "bytes": 118450,
       "alt": "Rutger Roelandts in fietskledij naast zijn racefiets, met een jonge fietser naast hem en besneeuwde bergen op de achtergrond",
-      "source": null,
-      "sourceSha256": null,
-      "crop": null,
-      "treatment": null,
+      "source": "rutger-portret.jpg",
+      "sourceSha256": "ade98949d426aa1849f3dde49ca4e11bf6fd074075c8685ef3200eeafca306ec",
+      "crop": {
+        "left": 0,
+        "top": 6,
+        "width": 1066,
+        "height": 1333
+      },
+      "treatment": "saturation 0.88 · warm cast (R ×1.03, B ×0.96) · linear 0.94 +10",
       "consent": "Photo handed over by Toshoni on 20 Oct 2026 for the team page (chat).",
-      "importedAt": null
+      "importedAt": "2026-10-20T12:17:01.806Z"
     }
   }
 }

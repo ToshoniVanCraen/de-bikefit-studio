@@ -34,12 +34,12 @@ datum).
 | P | Prijzen | 9 | 0 | 1 | 0 | 8 |
 | D | Duur | 9 | 2 | 0 | 0 | 7 |
 | E | Inhoud, extra's, pakketten | 10 | 1 | 9 | 0 | 0 |
-| T | Team | 5 | 2 | 2 | 1 | 0 |
-| B | AI-beelden en lege beeldvakken | 5 | 5 | 0 | 0 | 0 |
+| T | Team | 5 | 1 | 2 | 1 | 1 |
+| B | AI-beelden en lege beeldvakken | 6 | 5 | 0 | 0 | 1 |
 | K | Online boeken per dienst | 6 | 2 | 1 | 0 | 3 |
 | G | Bestaande hiaten in aangeraakte inhoud | 7 | 2 | 1 | 2 | 2 |
 | C | Cadeaubon (bestelformulier) | 4 | 3 | 1 | 0 | 0 |
-| | **Totaal** | **55** | **17** | **15** | **3** | **20** |
+| | **Totaal** | **56** | **16** | **15** | **3** | **22** |
 
 ## 1. Prijzen (P)
 
@@ -146,7 +146,7 @@ verwijzing in het blok.
 | T-01 | Rutger Roelandts — Bio | twee alinea's, ingekorte eigen tekst uit `content/about.html` §1 (eerder op `/over-ons`), o.a. "Negentien jaar competitie" | akkoord van Rutger op de korte versie | te bevestigen |
 | T-02 | Rutger Roelandts — Rol | "Oprichter" (volgt uit zijn eigen tekst) | bevestigen | te bevestigen |
 | T-03 | Rutger Roelandts — Kwalificaties | niets vermeld | diploma's of opleidingen, enkel met bron | open |
-| T-04 | Rutger Roelandts — Afbeelding | leeg → initialen "RR" | echte portretfoto (geen AI-beeld), met akkoord | open |
+| T-04 | Rutger Roelandts — Afbeelding | eigen foto, `public/images/team/rutger-roelandts-v1.webp` (4:5, aangeleverd door Toshoni op 20 okt 2026 via de mediabibliotheek, `npm run images:portrait`) | — | afgerond 2026-10-20 |
 | T-13 | Algemene claim: `/aanbod` → blok *Hero* → **Ondertitel** ("uitsluitend met ervaren, gediplomeerde professionals"); `/ons-team` → *Hero* → **Ondertitel** en home → blok *Oproep* → **Tekst** ("de nodige diploma's") | aangeleverd door Toshoni | blijft algemeen; geen individuele diploma's noemen zonder bron | bevestigd |
 
 ## 5. Beelden: AI-gegenereerd, tijdelijk of leeg (B)
@@ -170,9 +170,10 @@ Vervangen kan op twee manieren:
 | --- | --- | --- | --- | --- |
 | B-01 | `flemish-cyclists` → `public/images/editorial/flemish-cyclists-v1.webp` | home → *Hero* ("Meer plezier."); `/bikefit` → *Beeld + tekst* "Waarom is een bikefit belangrijk?"; `/aanbod/lactaattest` → *Dienst (aanbod)* | echte foto van fietsers, beeldrechten en toestemming geregeld | open |
 | B-02 | `bikefit-studio` → `public/images/editorial/bikefit-studio-v1.webp` | home → *Beeld + tekst* "Jij blijft het vertrekpunt"; `/bikefit` → *Beeld + tekst* "Meten om beter te kijken"; *Dienst (aanbod)* op `/aanbod/bikefit-nieuwe-fiets`, `/aanbod/bikefit-huidige-fiets`, `/aanbod/voetanalyse`, `/aanbod/zadelanalyse`, `/aanbod/afstellen-schoenplaatjes` | echte foto van een bikefit in de studio | open |
-| B-03 | `junior-coaching` → `public/images/editorial/junior-coaching-v1.webp` | home → *Beeld + tekst* "Voor elke fietser"; `/voor-wie` → *Beeld + tekst* "Jonge fietsers groeien"; `/aanbod/coaching` → *Dienst (aanbod)* | echte foto, schriftelijke toestemming van ouders bij minderjarigen | open |
+| B-03 | `junior-coaching` → `public/images/editorial/junior-coaching-v1.webp` | home → *Beeld + tekst* "Voor elke fietser"; `/aanbod/coaching` → *Dienst (aanbod)* (tot 20 okt 2026 ook `/voor-wie`, nu B-06) | echte foto, schriftelijke toestemming van ouders bij minderjarigen | open |
 | B-04 | geen (leeg) | `/bikefit` → *Beeld + tekst* "Kan een bikefit ook bij mij thuis?" (donker, beeld links) | echte foto van een fit op locatie, of bewust leeg laten; hangt af van K-04 en G-07 | open |
 | B-05 | geen (leeg) | `/bikefit` → *Beeld + tekst* "Kinderen groeien. De pasvorm groeit niet mee." (beeld rechts) | echte foto van een jonge fietser, schriftelijke toestemming van ouders; of B-03 hergebruiken | open |
+| B-06 | `rutger-jeugd` → `public/images/editorial/rutger-jeugd-v1.webp` (echte foto, Toshoni, 20 okt 2026) | `/voor-wie` → *Beeld + tekst* "Jonge fietsers groeien" | — | afgerond 2026-10-20 |
 
 ## 6. Online boeken per dienst (K)
 
