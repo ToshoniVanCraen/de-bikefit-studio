@@ -290,9 +290,12 @@
   }
 
   /* ---- team ------------------------------------------------------------- */
+  /* auto-fill, not auto-fit: with one member (Rutger alone since 20 Oct 2026)
+     auto-fit collapsed the empty columns and the single card, portrait
+     included, stretched across the whole container on desktop. */
   .studio-team {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
     gap: var(--ds-space-2xl) var(--ds-space-xl);
     list-style: none;
     margin: 0;
@@ -307,6 +310,8 @@
     position: relative;
     overflow: hidden;
     aspect-ratio: 4 / 5;
+    width: 100%;
+    max-width: 420px;
     margin-bottom: var(--ds-space-sm);
     display: flex;
     align-items: center;
