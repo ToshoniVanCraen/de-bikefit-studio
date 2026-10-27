@@ -14,6 +14,12 @@
  *   ~ page /afspraak — 3 change(s), then publish
  *   ~ provider Toshoni — 3 offering(s) removed: volwassenenfit, jeugdfit, …
  *   = guards: pages 12, blocks 80, offerings 9, variants 11, services 5, bookings 2, …
+ *
+ * The provider line names Toshoni by the display name of the profile
+ * `isToshoni` found ("Toshoni" on production, "Toshoni Van Craen" on staging),
+ * never by his login. Only a database without any provider prints
+ * `= provider Toshoni — no providers in this database`; providers without (or
+ * with two) Toshoni are a blocker.
  */
 import { type CorrectiesPlan, type PagePlan } from './aanbod-correcties-plan.mjs';
 import type { Counts } from './aanbod-correcties-world.mjs';
@@ -80,12 +86,16 @@ export function printCorrectiesPlan(plan: CorrectiesPlan, log: Log): void {
   }
   for (const offering of plan.offerings) show(log, offering, `offering ${offering.slug}`);
 
+  // Toshoni by `isToshoni` (his login or one of his names); the line names his display name only.
+  // Not found among providers, or found twice, is a blocker (`!`, printed with the others).
   const { provider } = plan.provider;
   if (!provider) {
-    log('=', 'provider Toshoni — no such provider');
+    if (plan.provider.blockers.length === 0) {
+      log('=', 'provider Toshoni — no providers in this database: nothing to remove');
+    }
   } else {
     show(log, plan.provider, `provider ${provider.displayName}`, 'no offerings left');
-    if (plan.provider.rows.length > 0) {
+    if (plan.provider.action === 'update') {
       log(
         '→',
         `provider list: cached for up to 5 minutes, so ${provider.displayName} leaves the options within that time`,

@@ -20,7 +20,14 @@ export type PageRowFull = CmsSchema['cmsPages']['$inferSelect'];
 export type BlockRowFull = CmsSchema['cmsBlocks']['$inferSelect'];
 export type LocationRowFull = CmsSchema['cmsLocations']['$inferSelect'];
 export type ServiceRowFull = CmsSchema['cmsServices']['$inferSelect'];
-export type ProviderRowFull = CmsSchema['cmsProviders']['$inferSelect'] & { userActive: boolean };
+/**
+ * A provider with what his login says: whether it is active, and the login itself
+ * (`cms_users.email`), which only `isToshoni` compares; nothing prints it.
+ */
+export type ProviderRowFull = CmsSchema['cmsProviders']['$inferSelect'] & {
+  userActive: boolean;
+  userEmail: string;
+};
 export type OfferingRowFull = typeof cmsOfferings.$inferSelect;
 export type VariantRowFull = typeof cmsOfferingVariants.$inferSelect;
 
@@ -83,7 +90,11 @@ export async function readWorld(deps: PlanDeps): Promise<World> {
       db.select().from(cmsOfferings).where(eq(cmsOfferings.locale, locale)),
       db.select().from(schema.cmsServices).where(eq(schema.cmsServices.locale, locale)),
       db
-        .select({ provider: schema.cmsProviders, userActive: schema.cmsUsers.isActive })
+        .select({
+          provider: schema.cmsProviders,
+          userActive: schema.cmsUsers.isActive,
+          userEmail: schema.cmsUsers.email,
+        })
         .from(schema.cmsProviders)
         .innerJoin(schema.cmsUsers, eq(schema.cmsUsers.id, schema.cmsProviders.userId)),
       db
@@ -138,7 +149,11 @@ export async function readWorld(deps: PlanDeps): Promise<World> {
     offerings,
     variants,
     services,
-    providers: providerRows.map((entry) => ({ ...entry.provider, userActive: entry.userActive })),
+    providers: providerRows.map((entry) => ({
+      ...entry.provider,
+      userActive: entry.userActive,
+      userEmail: entry.userEmail,
+    })),
     subscriptions,
     counts: {
       pages: ids[0].length,

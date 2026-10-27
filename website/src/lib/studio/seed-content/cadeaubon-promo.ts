@@ -4,6 +4,7 @@ import {
 } from '@/lib/gift-voucher/amounts';
 import { GIFT_VOUCHER_PAGE_SLUG } from '@/lib/gift-voucher/order';
 import { CADEAUBON_CARD, CADEAUBON_PAGE, CADEAUBON_PATH } from './cadeaubon';
+import type { PageTextGuard } from './page-cleanup';
 import type { SeedBlock, SeedNavigationItem } from './shared';
 
 /**
@@ -55,7 +56,7 @@ export type CadeaubonPromo = {
     blockType: string;
     blockEdits: readonly CadeaubonTextEdit[];
     blockAdditions: Readonly<Record<string, unknown>>;
-    metaDescription: { from: string; to: string };
+    metaDescription: PageTextGuard;
   };
   aanbodCard: {
     slug: string;

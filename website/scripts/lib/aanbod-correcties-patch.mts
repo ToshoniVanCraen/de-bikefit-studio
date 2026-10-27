@@ -26,10 +26,12 @@
  *
  *   plan     read-only; every field holds the target (`=`), the value it had
  *            before (`~`), or an admin's own (`!`, which refuses the apply)
- *   apply    writes a JSON backup FIRST (every row it touches), then the
- *            sections in the order above through the real repos, verifies on
- *            the public readers with a second plan and the row counts, audits
- *            an entry per entity and `patch.aanbod-correcties.apply`
+ *   apply    plans first on `readOnlyDb()`: a blocked plan (or one with nothing
+ *            to do) stops before any write, not even a session row; then writes
+ *            a JSON backup FIRST (every row it touches), then the sections in the
+ *            order above through the real repos, verifies on the public readers
+ *            with a second plan and the row counts, audits an entry per entity
+ *            and `patch.aanbod-correcties.apply`
  *   restore  puts every backed-up row back and removes what the apply created
  *
  * Idempotent: a second run finds nothing to do. Dry run: no session, no audit
@@ -44,6 +46,7 @@ import {
   correctiesBlockers,
   correctiesHasChanges,
   planCorrecties,
+  type CorrectiesPlan,
 } from './aanbod-correcties-plan.mjs';
 import { describeCountChanges, printCorrectiesPlan } from './aanbod-correcties-print.mjs';
 import { restoreCorrecties } from './aanbod-correcties-restore.mjs';
@@ -59,16 +62,23 @@ import {
 
 export type AanbodCorrectiesApplyResult = { changed: boolean; backupPath: string | null };
 
+/** Throws the refusal of a plan with blockers: every `!` line, as the dry run prints them. */
+function refuseIfBlocked(plan: CorrectiesPlan): void {
+  const blockers = correctiesBlockers(plan);
+  if (blockers.length > 0) throw new Error(`patch refused:\n  - ${blockers.join('\n  - ')}`);
+}
+
+const NOTHING_TO_DO = 'nothing to do: the corrections of 27 Oct 2026 are already applied';
+
 export async function applyAanbodCorrecties(
   deps: CorrectiesDeps,
   options: { backupDir: string; driver: string },
 ): Promise<AanbodCorrectiesApplyResult> {
   const { log } = deps;
   const plan = planCorrecties(await readWorld(deps));
-  const blockers = correctiesBlockers(plan);
-  if (blockers.length > 0) throw new Error(`patch refused:\n  - ${blockers.join('\n  - ')}`);
+  refuseIfBlocked(plan);
   if (!correctiesHasChanges(plan)) {
-    log('=', 'nothing to do: the corrections of 27 Oct 2026 are already applied');
+    log('=', NOTHING_TO_DO);
     return { changed: false, backupPath: null };
   }
 
@@ -163,6 +173,19 @@ export async function runAanbodCorrectiesPatch(
   await import('@/lib/cms/content');
   await import('@/lib/booking/content');
   const actor = await findActor(planDeps);
+
+  // An apply that has to refuse (or has nothing to do) stops here, before ANY write:
+  // planned on the read-only handle, so no session row, no backup, no audit entry.
+  // The apply plans again inside its session; what changed in between is caught there.
+  if (options.restore === null) {
+    const precheck = planCorrecties(await readWorld({ ...planDeps, db: readOnlyDb(context.db) }));
+    refuseIfBlocked(precheck);
+    if (!correctiesHasChanges(precheck)) {
+      log('=', NOTHING_TO_DO);
+      log('=', 'nothing written');
+      return;
+    }
+  }
 
   await withAdminSession(context, actor.id, 'cms-patch-aanbod-correcties', async () => {
     const deps: CorrectiesDeps = { ...planDeps, ...writeSide, actor };

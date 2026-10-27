@@ -22,7 +22,6 @@ import {
 } from './aanbod-correcties-plan.mjs';
 import { describeCounts } from './aanbod-correcties-print.mjs';
 import { sameValue } from './aanbod-correcties-targets.mjs';
-import { isFirstProvider } from './aanbod-correcties-youth.mjs';
 import { readWorld, type Counts } from './aanbod-correcties-world.mjs';
 import type { PlanDeps } from './aanbod-rollout.mjs';
 import {
@@ -172,10 +171,11 @@ export async function verifyCorrecties(deps: PlanDeps, expected: Counts): Promis
     }
   }
 
-  // Toshoni no longer shows as an Aanbieder.
-  const providers = await listPublicProviders();
-  if (providers.some((provider) => isFirstProvider(provider.displayName))) {
-    problems.push('providers: Toshoni is still in the public provider list');
+  // Toshoni no longer shows as an Aanbieder: the provider the second plan finds by the
+  // same identity (`isToshoni`), looked up by id; two matches are a blocker of that plan.
+  const toshoni = plan.provider.provider;
+  if (toshoni && (await listPublicProviders()).some((provider) => provider.id === toshoni.id)) {
+    problems.push(`providers: ${toshoni.displayName} is still in the public provider list`);
   }
   return problems;
 }

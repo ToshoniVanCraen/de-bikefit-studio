@@ -19,7 +19,13 @@
  *     provider, an editor's unpublished draft, a service text of neither state;
  *     a service text the repo left (20 Oct 2026) and a package service the
  *     bootstrap made are accepted (`aanbod-correcties-guards.mts`);
- *  6. clean-up: every table is put back, and checked.
+ *  6. the state staging held on 27 Oct 2026: the first seed's meta description
+ *     on `/afspraak` is accepted; "Toshoni Van Craen" (the login of
+ *     `cms:seed-booking`) as the only provider of the fits blocks the dry run,
+ *     and the apply refuses before any write; with a replacement provider it
+ *     applies, verifies, finds nothing on a second run and restores
+ *     (`aanbod-correcties-staging.mts`);
+ *  7. clean-up: every table is put back, and checked.
  *
  * Imported lazily by `cms-selftest.mts` after its request-context stubs.
  */
@@ -44,6 +50,7 @@ import { runAanbodCorrectiesPatch } from '../lib/aanbod-correcties-patch.mjs';
 import { sameValue } from '../lib/aanbod-correcties-targets.mjs';
 import { seedBefore } from './aanbod-correcties-fixture.mjs';
 import { guardChecks } from './aanbod-correcties-guards.mjs';
+import { stagingChecks } from './aanbod-correcties-staging.mjs';
 import {
   createCorrectiesKit,
   fingerprint,
@@ -411,8 +418,11 @@ export async function aanbodCorrectiesSection(ctx: CorrectiesSectionContext) {
 
     // --- 5: what must block, and what must not -----------------------------------------------------
     await guardChecks({ ctx, kit, fx, afterApply });
+
+    // --- 6: the state staging held on 27 Oct 2026 --------------------------------------------------
+    await stagingChecks({ ctx, kit, original });
   } finally {
-    // --- 6: clean-up -------------------------------------------------------------------------------
+    // --- 7: clean-up -------------------------------------------------------------------------------
     await restoreState(db, schema, original);
     cookieJar.delete('cms_session');
   }

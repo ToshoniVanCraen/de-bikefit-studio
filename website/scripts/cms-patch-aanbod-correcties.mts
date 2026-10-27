@@ -17,9 +17,12 @@
  *                            the sections in order, verified on the public
  *                            readers; refuses (`!`) a field that holds neither
  *                            the old nor the new value (an admin's edit), a
- *                            page with unpublished draft edits, and Toshoni's
+ *                            page with unpublished draft edits, Toshoni's
  *                            removal while a service would be left without a
- *                            provider
+ *                            provider, a youth package no provider would
+ *                            offer, and providers among which no profile (or
+ *                            more than one) is Toshoni; a refusal comes before
+ *                            any write (no session, no backup, no audit entry)
  *   --restore <file>         put a backup written by --apply back and remove
  *                            what it created
  *   --expect-host <host>     REQUIRED for --apply/--restore against Neon: must

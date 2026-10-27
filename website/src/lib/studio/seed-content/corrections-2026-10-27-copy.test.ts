@@ -186,6 +186,17 @@ describe('the page titles', () => {
     expect(NEW_AFSPRAAK_META).toContain('{{telefoon}}');
     expect(spec('afspraak').metaDescription?.from).toContain('0473 95 26 33');
   });
+
+  it('the /afspraak description also accepts the first seed’s text (kept by every --refresh-slug); no other guard names an earlier seed text', () => {
+    // Staging held exactly this on 27 Oct 2026 (`scripts/cms-seed.mts` of 24 Sep 2026).
+    expect(spec('afspraak').metaDescription?.alsoFrom).toEqual([
+      'Bikefits in Ninove gaan door op afspraak. Bel 0473 95 26 33, kies je fit en breng je fiets, schoenen en fietskleding mee.',
+    ]);
+    for (const page of CORRECTION_PAGE_SPECS.filter((entry) => entry.slug !== 'afspraak')) {
+      expect(page.metaDescription?.alsoFrom, page.slug).toBeUndefined();
+      expect(page.metaTitle?.alsoFrom, page.slug).toBeUndefined();
+    }
+  });
 });
 
 describe('the settings texts', () => {

@@ -1302,8 +1302,9 @@ on an existing database (after the staging gate of §20, which is unrelated):
    (home, /aanbod, /voor-wie, /bikefit, /ons-team) and both menus from the seeds, backup first,
    refusing a page with unpublished draft edits. It leaves every other page, the settings and the
    booking tables alone.
-2. `cms:seed -- --refresh-slug afspraak`: the phone number in "Voor je komt" and the meta
-   description.
+2. `cms:seed -- --refresh-slug afspraak`: the phone number in "Voor je komt". (Not the meta
+   description: a refresh never writes a page's title or SEO fields, so an existing `/afspraak`
+   keeps the description it was created with; §24 accepts staging's.)
 3. In `/admin` → **Instellingen** → Contact: *Telefoon (label)* `+32 473 95 26 33` (the link stays
    `tel:+32473952633`); → Organisatie: the Instagram profile URL under *sameAs* (the footer icon
    appears once it is there; it also lands in the JSON-LD).
@@ -1497,7 +1498,7 @@ the rules (what a field must hold before, what it becomes, what blocks) in
 | `/afspraak` | ends with "Voor je komt" | + the `location` block "Waar vind je ons?" (address, route link, two-click map) as the last block | Pagina's → afspraak |
 | Cadeaubon | not promoted | the section "Geef fietsplezier cadeau" on the home page after the offer catalogue; suggested amounts (€ 75 / € 150 / € 275) and the validity line on `/cadeaubon`; the card text on `/aanbod`; "Cadeaubon" in the main menu before "Contact" | Pagina's, Menu's |
 | Offerings | the copy of 20 Oct | the corrected copy of the nine (contents, extra's, durations, meta descriptions; *Lactaattest* is now *Inspanningstest*; the Kostprijs of *Bikefit – tweede bezoek* is stored as "Gratis binnen {{tweede-bezoek-gratis}} na je fit, daarna {{prijs:bikefit-tweede-bezoek:all}}" and shown as "Gratis binnen zes maanden na je fit, daarna € 75") | Aanbod |
-| Youth package | two variants on the bikefits | + "Jeugd – volledig pakket" (€ 275) on both; on *Bikefit – huidige fiets* with its booking service `jeugdfit-pakket` ("Jeugdfit – volledig pakket", 2 hours, guardian required) offered by every active provider of *Jeugdfit – eenmalig* except Toshoni | Aanbod |
+| Youth package | two variants on the bikefits | + "Jeugd – volledig pakket" (€ 275) on both; on *Bikefit – huidige fiets* with its booking service `jeugdfit-pakket` ("Jeugdfit – volledig pakket", 2 hours, guardian required) offered by every active provider of *Jeugdfit – eenmalig* except Toshoni (none: the patch stops, `!`) | Aanbod |
 | Booking services | `volwassenenfit`, `jeugdfit` with the texts of 20 Oct | the texts of `DEFAULT_SERVICES` ("Jeugdfit – eenmalig", label "Jeugd – eenmalig"); durations: the new-bike variants 2 hours, voetanalyse 30, zadelanalyse 60, schoenplaatjes 15 minutes, for an offering that has a booking service | Aanbod (variants) |
 | Toshoni | offers the booking services | offers none; his provider row, hours, calendar link and bookings stay | Aanbieders |
 
@@ -1509,11 +1510,23 @@ draft edits blocks too (the tool never publishes an editor's draft). Never touch
 page the specs do not name.
 
 **Where each environment is.** Both hold the state of §22 (prices) and of §23 (the extra's of 20 Oct;
-the correction of §23 still has to run), and neither has migration 0017. By the infrastructure log
-of 20 Oct 2026 staging has one provider (Toshoni) and production two. The patch will not take
-Toshoni off a service that no other active provider offers (`!`), so on staging it stops at the dry
-run until a second provider offers `volwassenenfit` and `jeugdfit` (Beheer → Aanbieders): a decision
-for Toshoni, not for the tool. That provider then also gets the new package service.
+the correction of §23 still has to run), and neither has migration 0017. Staging has one provider,
+the profile "Toshoni Van Craen" (login `toshoni@gmail.com`, made by `cms:seed-booking`); production
+has "Toshoni" and a second provider. **Who Toshoni is**, for every step of the patch (his removal, the
+package's providers, the verify): the provider whose login is the default of `cms:seed-booking`
+(`toshoni@gmail.com`), or whose display name is exactly "Toshoni" or "Toshoni Van Craen" (case,
+spacing and accents aside, never a part of a name); the output names him by his display name only.
+The rule fails closed: when the database has providers and no profile matches, or more than one
+does, that is a `!` (below), never "no such provider" and carry on; only a database without any
+provider prints `= provider Toshoni — no providers in this database: nothing to remove` (neither
+staging nor production). The patch will not take him off a service that no other active provider
+offers, nor make a youth package that only he would offer (`!`), so on staging it stops at the dry
+run until a replacement provider offers `volwassenenfit` and `jeugdfit` (Beheer → Aanbieders): a
+decision for Toshoni, not for the tool. That provider then also gets the new package service.
+Staging's `/afspraak` still has the meta description of the very first seed (24 Sep 2026, "Bikefits
+in Ninove gaan door op afspraak. Bel 0473 95 26 33, …"): `cms:seed -- --refresh-slug` never writes a
+page's title or SEO fields (§21). It is a seed's text, so the patch accepts it as an old state
+(`alsoFrom` of the page's guard) and writes the new one; any other text there still blocks.
 
 **Order, per environment** (staging first; production only after Toshoni's explicit go, CLAUDE.md §7):
 
@@ -1545,7 +1558,8 @@ until the next save of that offering.
    DATABASE_URL='<staging pooled url>' npm run cms:patch-aanbod-correcties
    ```
 
-   On a database in the state described above it prints, in this order (`<n>` is a count of this
+   On a database in the state described above, with a second provider who offers the fits
+   (production; staging once it has one), it prints, in this order (`<n>` is a count of this
    database; each page line is followed by an indented line per change):
 
    ```text
@@ -1574,8 +1588,8 @@ until the next save of that offering.
    ~ offering afstellen-schoenplaatjes — metaDescription: "…" → "…"
    ~ offering lactaattest — title: "Lactaattest" → "Inspanningstest"; metaDescription: "…" → "…"
    ~ offering coaching — extras: 3 → 3 item(s), 1 changed; metaDescription: "…" → "…"
-   ~ provider Toshoni — <n> offering(s) removed: jeugdfit, volwassenenfit
-   → provider list: cached for up to 5 minutes, so Toshoni leaves the options within that time
+   ~ provider <his display name> — <n> offering(s) removed: jeugdfit, volwassenenfit
+   → provider list: cached for up to 5 minutes, so <his display name> leaves the options within that time
    ~ menu main — insert "Cadeaubon" (/cadeaubon) before "Contact"
    ~ page / — <n> change(s), then publish
    ~ page /aanbod — <n> change(s), then publish
@@ -1593,27 +1607,63 @@ until the next save of that offering.
    → dry run: run again with --apply to write
    ```
 
+   **On staging as it is now** (Toshoni Van Craen the only provider) the same lines come out with
+   these differences: the package line has no `offered by`, the provider line names him and is not
+   followed by the `→ provider list` line, the `/afspraak` page lists the first seed's text as the
+   old meta description, and the run ends on the stop:
+
+   ```text
+   ~ variant bikefit-huidige-fiets — Jeugd – volledig pakket: add variant at € 275; new service jeugdfit-pakket ("Jeugdfit – volledig pakket", 120 min, € 275)
+   ~ provider Toshoni Van Craen — <n> offering(s) removed: <the services he offers>
+   ~ page /afspraak — <n> change(s), then publish
+       metaDescription: "Bikefits in Ninove gaan door op afspraak. Bel 0473 95 26 33…" → "Boek je bikefit in Ninove online: kies je fit, een dag en e…"
+   ! offering bikefit-huidige-fiets: Jeugd – volledig pakket would be offered by no provider — add a replacement provider for jeugdfit in Beheer → Aanbieders first
+   ! provider Toshoni Van Craen: service volwassenenfit would be left without a provider — add a replacement provider for it in Beheer → Aanbieders first
+   ! provider Toshoni Van Craen: service jeugdfit would be left without a provider — add a replacement provider for it in Beheer → Aanbieders first
+   → dry run: blocked — fix the items marked ! first
+   ```
+
+   (one `! provider` line per active service he alone offers, in the order of his offerings). Once a
+   replacement provider offers both fits, the dry run prints the block above, with
+   `offered by <n> provider(s)` and `~ provider Toshoni Van Craen`.
+
    What varies by database, and is no reason to stop: the old values inside the `service` lines (the
    texts of `cms:bootstrap`, or what the save of the bikefit wrote on 20 Oct, "Bikefit – huidige
    fiets – Jeugd" and the offering's summary; both are accepted as the starting state); a
    `~ duration <offering> — 60 → <n> min` in place of the `=` line for an offering whose online
    booking was switched on in Beheer (60 is what the form pre-fills); the line `~ page /contact`,
    which is there only where the retired draft of `/contact` exists (it stays unpublished);
-   `offered by <n> provider(s)` and the provider line, which follow who offers what. The change
+   `offered by <n> provider(s)` and the provider line, which follow who offers what and name the
+   provider's display name; the old `/afspraak` meta description in that page's change list (the
+   rollout text, or on staging the first seed's). The change
    counts of the pages follow the build. An unpublished page that the repo would refuse to save
    (an old block type) prints `= page <path> — not published, left alone (…)`; a page the specs
    name that is missing or unpublished is a blocker.
 
-   **Stop and report on any `!` line.** The usual ones: `! provider Toshoni: service <slug> would be
-   left without a provider — add the other provider to it in Beheer → Aanbieders first` (staging
-   until a second provider exists; production if the other provider does not offer every service);
+   **Stop and report on any `!` line.** The usual ones: `! provider <his display name>: service
+   <slug> would be left without a provider — add a replacement provider for it in Beheer →
+   Aanbieders first` and `! offering bikefit-huidige-fiets: Jeugd – volledig pakket would be offered
+   by no provider — add a replacement provider for jeugdfit in Beheer → Aanbieders first` (staging
+   until a replacement provider exists; production if the other provider does not offer every
+   service); `! provider Toshoni: no provider profile matches (display name "Toshoni" or "Toshoni
+   Van Craen", or the login of cms:seed-booking) — stop and report; check Beheer → Aanbieders, do not
+   rename a profile blindly` (his profile was renamed or is on another login: which profile is his
+   is Toshoni's answer, not the operator's guess; the line `= provider Toshoni — no such provider`
+   of earlier versions is no longer printed and never a reason to go on); `! provider Toshoni: <n>
+   provider profiles match — "<name>" (by display name), "<name>" (by login), …; rename the one
+   that is not his in Beheer → Aanbieders (or change its login), then run again` (the display name
+   is the Weergavenaam in Beheer → Aanbieders; a login cannot be changed in Beheer, so renaming is
+   the usual fix and a login change is a database change for Toshoni to decide; the login itself is
+   never printed);
    `! setting contact: …`, `! offering <slug>: …` or `! page <path>: … (edited since the rollout?)`
+   or `! page <path>: meta description is "…", not the text it was rolled out with`
    (a field was changed in Beheer: tell Toshoni, leave it, never force it); `! page <path>: has
    unpublished draft edits; publish or discard them in /admin first`; `! offering <slug>: missing —
    run cms:patch-aanbod-prijzen first`. The verdict is then `dry run: blocked — fix the items marked
-   ! first`, and `--apply` refuses with the same list before it writes anything. Compare staging
-   with production: the lines must be the same apart from the counts, the old texts and the
-   provider lines.
+   ! first`, and `--apply` refuses with the same list before it writes anything: it plans on a
+   read-only handle before it opens its admin session, so a refused apply leaves no session, no
+   backup and no audit entry. Compare staging with production: the lines must be the same apart
+   from the counts, the old texts and the provider lines.
 2. **Apply on staging** (the tool writes its own backup before the first write):
 
    ```bash
@@ -1635,7 +1685,8 @@ until the next save of that offering.
    draft stays a draft). The verify is a second plan that must find nothing left, the row counts of
    every table, and the public readers: the catalogue (three labelled variants on both bikefits,
    the Kostprijs text, the durations), the settings, the menu order, the location and voucher
-   blocks in the draft and in the published snapshot, the provider list without Toshoni, and
+   blocks in the draft and in the published snapshot, the provider list without Toshoni (the
+   provider the second plan finds by the same rule, looked up by id), and
    `correctionProblems` on each published page. Audit: the repos' own entries (`settings.update`,
    `location.update`, `service.create`, `service.update`, `provider.services`,
    `navigation.update`, `block.add`/`block.update`/`block.delete`, `page.update`, `page.publish`),
@@ -1648,7 +1699,8 @@ until the next save of that offering.
    - `/afspraak`: the last section is "Waar vind je ons?" with Halsesteenweg 406 a, 9403 Neigem, the
      route link and the button "Kaart tonen" (no request to Google before the click); the fit
      choice offers Volwassene (€ 275), Jeugd – eenmalig (€ 150) and Jeugd – volledig pakket (€ 275);
-     the provider choice no longer lists Toshoni; the phone number is `+32 473 95 26 33`.
+     the provider choice no longer lists Toshoni (on staging: Toshoni Van Craen); the phone number
+     is `+32 473 95 26 33`.
    - Home: "Geef fietsplezier cadeau" after the offer catalogue; the main menu has *Cadeaubon* before
      *Contact*; the footer and the contact block show the new address and phone number.
    - `/cadeaubon`: the three amounts and the validity line; `/aanbod`: the card text of the
@@ -1659,7 +1711,8 @@ until the next save of that offering.
      `/algemene-voorwaarden`: "Versie van 27 oktober 2026", article 3 without the old list of
      services.
    - Logged in: Instellingen → Contact, Bedrijfsgegevens and Regels in de teksten hold their values;
-     Aanbieders → Toshoni offers nothing, the other provider offers the fits and the package;
+     Aanbieders → Toshoni (on staging: Toshoni Van Craen) offers nothing, the other provider offers
+     the fits and the package;
      Auditlog lists the entries above.
 5. **Production**: the order above again with the production `DATABASE_URL` and host, after
    Toshoni's explicit go. The dry run must print the same lines as on staging, apart from the

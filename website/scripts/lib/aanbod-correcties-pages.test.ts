@@ -8,7 +8,11 @@ import {
 import { EMAIL_TOKEN, PHONE_HREF_TOKEN, PHONE_TOKEN } from '@/lib/studio/seed-content/shared';
 import { AFSPRAAK_PAGE } from '@/lib/studio/seed-content/appointment';
 import { LOCATION_BLOCK } from '@/lib/studio/seed-content/location-section';
-import type { CleanupBlock, PageCleanupSpec } from '@/lib/studio/seed-content/page-cleanup';
+import type {
+  CleanupBlock,
+  PageCleanupSpec,
+  PageTextGuard,
+} from '@/lib/studio/seed-content/page-cleanup';
 import { pageFixture } from './aanbod-correcties-before.mjs';
 import {
   diffBlocks,
@@ -274,11 +278,16 @@ describe('the texts of the page itself', () => {
     expect(transformPageTexts(slug, texts()).fields).toEqual({});
   });
 
-  it('moves a meta description from the rollout text to the new one, and refuses another', () => {
+  it('moves a meta description from the rollout text (or an earlier seed text) to the new one, and refuses another', () => {
     const guarded = CORRECTION_PAGE_SPECS.filter((entry) => entry.metaDescription);
     expect(guarded.length).toBeGreaterThan(0);
     for (const spec of guarded) {
-      const guard = spec.metaDescription as { from: string; to: string };
+      const guard = spec.metaDescription as PageTextGuard;
+      for (const old of [guard.from, ...(guard.alsoFrom ?? [])]) {
+        const done = transformPageTexts(spec.slug, settled(spec, { metaDescription: old }));
+        expect(done.fields.metaDescription, `${spec.slug}: ${old}`).toBe(guard.to);
+        expect(done.conflicts, `${spec.slug}: ${old}`).toEqual([]);
+      }
       const done = transformPageTexts(spec.slug, settled(spec, { metaDescription: guard.from }));
       expect(done.fields.metaDescription, spec.slug).toBe(guard.to);
       expect(transformPageTexts(spec.slug, settled(spec)).fields, spec.slug).toEqual({});
@@ -299,7 +308,7 @@ describe('the texts of the page itself', () => {
     const guarded = CORRECTION_PAGE_SPECS.filter((entry) => entry.metaTitle);
     expect(guarded.length).toBeGreaterThan(0);
     for (const spec of guarded) {
-      const guard = spec.metaTitle as { from: string; to: string };
+      const guard = spec.metaTitle as PageTextGuard;
       const done = transformPageTexts(spec.slug, settled(spec, { metaTitle: guard.from }));
       expect(done.fields.metaTitle, spec.slug).toBe(guard.to);
       expect(done.changes, spec.slug).toEqual([expect.stringContaining('metaTitle: "')]);
@@ -308,6 +317,50 @@ describe('the texts of the page itself', () => {
       expect(own.conflicts, spec.slug).toEqual([
         expect.stringContaining('meta title is "Eigen titel"'),
       ]);
+    }
+  });
+});
+
+describe('the /afspraak meta description staging held on 27 Oct 2026', () => {
+  /** Exactly staging's text: the first seed's (24 Sep 2026), which no `--refresh-slug afspraak` overwrote. */
+  const SEEDED =
+    'Bikefits in Ninove gaan door op afspraak. Bel 0473 95 26 33, kies je fit en breng je fiets, schoenen en fietskleding mee.';
+  const TARGET = AFSPRAAK_PAGE.metaDescription;
+  const page = (metaDescription: string | null): PageTexts => ({
+    title: AFSPRAAK_PAGE.title,
+    metaTitle: AFSPRAAK_PAGE.metaTitle,
+    metaDescription,
+    ogTitle: null,
+    ogDescription: null,
+  });
+
+  it('is an old state: it becomes the new text with the phone number as a token, once', () => {
+    const done = transformPageTexts(AFSPRAAK_PAGE.slug, page(SEEDED));
+    expect(done.conflicts).toEqual([]);
+    expect(done.fields).toEqual({ metaDescription: TARGET });
+    expect(TARGET).toContain(PHONE_TOKEN);
+    expect(done.changes).toEqual([
+      `metaDescription: "${SEEDED.slice(0, 59)}…" → "${TARGET.slice(0, 59)}…"`,
+    ]);
+    expect(transformPageTexts(AFSPRAAK_PAGE.slug, page(TARGET))).toEqual({
+      fields: {},
+      changes: [],
+      conflicts: [],
+    });
+  });
+
+  it('any other text is still the editor’s own and blocks', () => {
+    for (const own of [
+      SEEDED.replace('Bel 0473 95 26 33', 'Bel ons'),
+      `${SEEDED} Tot dan!`,
+      SEEDED.toLowerCase(),
+      'Eigen tekst.',
+    ]) {
+      const result = transformPageTexts(AFSPRAAK_PAGE.slug, page(own));
+      expect(result.conflicts, own).toEqual([
+        expect.stringContaining('not the text it was rolled out with'),
+      ]);
+      expect(result.fields.metaDescription, own).not.toBe(TARGET);
     }
   });
 });

@@ -1,7 +1,8 @@
 import { desc, eq } from 'drizzle-orm';
 import { getCmsDb } from '@/db/cms';
 import { cmsUsers, type CmsRole, type CmsUserPublic } from '@/db/cms-schema';
-import { authFail, normalizeEmail, recordAudit, requireCmsUser, type AuthResult } from './auth';
+import { normalizeEmail } from '@/lib/email-address';
+import { authFail, recordAudit, requireCmsUser, type AuthResult } from './auth';
 import { deleteUserMfaChallenges } from './mfa/challenge';
 import { clearMfaAttempts } from './mfa/rate-limit';
 import { generateTemporaryPassword, hashPassword, validatePasswordStrength } from './password';

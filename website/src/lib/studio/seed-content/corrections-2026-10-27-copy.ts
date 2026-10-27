@@ -155,9 +155,21 @@ const OLD_FAQ_META =
 const NEW_FAQ_META =
   'Waarom een bikefit, hoe vaak, hoe lang hij duurt, wat je meebrengt, of het ook aan huis kan en of we e-bikes doen: kort en eerlijk beantwoord.';
 
-/** The /afspraak meta description as the 13 Oct seed wrote it (the old number is swapped by `phoneSpec`). */
+/**
+ * The /afspraak meta description as the seed wrote it from the booking release (24 Sep
+ * 2026, b4217b4) to the review of 19 Oct; the text the page was rolled out with.
+ */
 const OLD_AFSPRAAK_META =
   'Boek je bikefit in Ninove online: kies je fit, een dag en een uur. Liever bellen? 0473 95 26 33. Breng je fiets, schoenen en fietskleding mee.';
+/**
+ * The /afspraak meta description of the FIRST seed (`scripts/cms-seed.mts`, b00f812, 24 Sep
+ * 2026, replaced the same day). `cms:seed -- --refresh-slug afspraak` re-seeds the blocks of an
+ * existing page and never its title or SEO fields (the rule since the flag exists, b4217b4), so a
+ * database whose /afspraak was created by that seed still holds this text after every refresh:
+ * staging did on 27 Oct 2026. A seed's text, not an editor's: it moves to the target as well.
+ */
+const FIRST_SEED_AFSPRAAK_META =
+  'Bikefits in Ninove gaan door op afspraak. Bel 0473 95 26 33, kies je fit en breng je fiets, schoenen en fietskleding mee.';
 export const NEW_AFSPRAAK_META = `Boek je bikefit in Ninove online: kies je fit, een dag en een uur. Liever bellen? ${PHONE_TOKEN}. Breng je fiets, schoenen, pedalen en fietskleding mee.`;
 
 const OLD_PRIVACY_META =
@@ -302,7 +314,11 @@ export const COPY_PAGE_SPECS: PageCleanupSpec[] = [
       ['We haasten ons niet — als het klaar is', 'We haasten ons niet: als het klaar is'],
     ]),
     // The old number is still in the live text; `phoneSpec` swaps the rest of the page.
-    metaDescription: { from: OLD_AFSPRAAK_META, to: NEW_AFSPRAAK_META },
+    metaDescription: {
+      from: OLD_AFSPRAAK_META,
+      alsoFrom: [FIRST_SEED_AFSPRAAK_META],
+      to: NEW_AFSPRAAK_META,
+    },
   },
   {
     slug: 'privacy',

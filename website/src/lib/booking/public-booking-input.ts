@@ -11,8 +11,8 @@ import { normalizePhone } from './phone';
  * never costs a hit), and it is the validation boundary for every caller: the
  * widget's server action caps its fields lower first, the self-test calls it
  * directly. So both stay cheap on input of any size, in two layers: the schema
- * caps every raw string ({@link PUBLIC_BOOKING_RAW_LIMITS}), and the rules
- * check a value's length ({@link PUBLIC_BOOKING_LIMITS}) before any pattern
+ * caps every raw string ({@link PUBLIC_BOOKING_RAW_LIMITS}) before trimming,
+ * and the rules check a value's length ({@link PUBLIC_BOOKING_LIMITS}) before any pattern
  * sees it (input review 2026-10-14 §8, the booking sibling of R-1).
  */
 
@@ -74,11 +74,22 @@ const PHONE_MESSAGE = 'Vul een geldig telefoonnummer in.';
 const tooLong = (max: number) => `Maximaal ${max} tekens.`;
 
 /**
- * A raw text field: over `cap` characters (as sent) a `too_big` issue with
- * `message`; otherwise trimmed, `''` when absent.
+ * A raw string cap, counted as sent (UTF-16 code units), with the same `too_big`
+ * issue as before. Zod 4.6.7's `.max()` computes code-point length with a regex
+ * on the full input, so use a plain length check before any pattern or trim.
  */
-const text = (cap: number, message: string) =>
-  z.string(TYPE_ERROR).max(cap, { error: message }).trim().default('');
+const cappedString = (cap: number, message: string) =>
+  z.string(TYPE_ERROR).superRefine((value, ctx) => {
+    if (value.length > cap) {
+      ctx.addIssue({ code: 'too_big', maximum: cap, inclusive: true, origin: 'string', message });
+    }
+  });
+
+/** Trim only within the raw cap: Zod continues transforms after a length issue. */
+const cappedText = (cap: number, message: string) =>
+  cappedString(cap, message).transform((value) => (value.length > cap ? value : value.trim()));
+
+const text = (cap: number, message: string) => cappedText(cap, message).default('');
 
 /**
  * Structural schema: types, raw caps ({@link PUBLIC_BOOKING_RAW_LIMITS}),
@@ -91,21 +102,18 @@ export const publicBookingInputSchema = z.object({
    * slot; with more than one provider offering the service the beheerder
    * assigns the booking afterwards (`assignment = 'pending'`).
    */
-  providerId: z.string(TYPE_ERROR).max(RAW.providerId, TYPE_ERROR).trim().nullable().default(null),
+  providerId: cappedText(RAW.providerId, INVALID).nullable().default(null),
   /** The slot's location as `getAvailability()` returned it; null = any location at that start. */
-  locationId: z.string(TYPE_ERROR).max(RAW.locationId, TYPE_ERROR).trim().nullable().default(null),
+  locationId: cappedText(RAW.locationId, INVALID).nullable().default(null),
   /** ISO instant of the chosen slot, exactly as returned by `getAvailability()`. */
   startsAt: text(RAW.startsAt, INVALID),
   /** The extras ticked (offering ids); checked against the catalogue by the booking (20 Oct 2026). */
-  addonIds: z
-    .array(z.string(TYPE_ERROR).max(64, TYPE_ERROR).trim(), TYPE_ERROR)
-    .max(8, TYPE_ERROR)
-    .default([]),
+  addonIds: z.array(cappedText(64, INVALID), TYPE_ERROR).max(8, TYPE_ERROR).default([]),
   customerName: text(RAW.customerName, tooLong(LIMITS.customerName)),
   customerEmail: text(RAW.customerEmail, tooLong(LIMITS.customerEmail)),
   customerPhone: text(RAW.customerPhone, PHONE_MESSAGE),
   customerAge: z
-    .union([z.number(), z.string().max(RAW.customerAge, TYPE_ERROR), z.null()], TYPE_ERROR)
+    .union([z.number(), cappedString(RAW.customerAge, INVALID), z.null()], TYPE_ERROR)
     .default(null),
   guardianName: text(RAW.guardianName, tooLong(LIMITS.guardianName)),
   guardianEmail: text(RAW.guardianEmail, tooLong(LIMITS.guardianEmail)),
@@ -116,7 +124,7 @@ export const publicBookingInputSchema = z.object({
   notes: text(RAW.notes, tooLong(LIMITS.notes)),
   /** Honeypot: must stay empty. */
   website: text(RAW.website, INVALID),
-  locale: z.string(TYPE_ERROR).max(RAW.locale, TYPE_ERROR).trim().default(DEFAULT_LOCALE),
+  locale: cappedText(RAW.locale, INVALID).default(DEFAULT_LOCALE),
 });
 
 export type PublicBookingInput = z.input<typeof publicBookingInputSchema>;

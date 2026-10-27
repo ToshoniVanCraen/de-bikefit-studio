@@ -1626,7 +1626,8 @@ e-mail* is gone: the seed script no longer replaces anything in the legal texts
 
 Seed copy that must also reach existing databases is kept as data next to the seeds: exact old → new
 edits per page (`seed-content/page-cleanup.ts`: `set`, `remove`, `append`, and since 27 Oct 2026
-`replace`, `replaceItem`, `replaceAll`; a page guards its `metaDescription` and `metaTitle`) and per
+`replace`, `replaceItem`, `replaceAll`; a page guards its `metaDescription` and `metaTitle`, by the
+text it was rolled out with and any earlier seed text named in `alsoFrom`) and per
 offering and service (`src/lib/offers/corrections-2026-10-27.ts`), for example
 `seed-content/corrections-2026-10-27.ts` (terms art. 3, FAQ, `/afspraak`, team and studio texts,
 "inspanningstest", the phone label) and its copy half `corrections-2026-10-27-copy.ts` (no

@@ -1,6 +1,7 @@
 import { and, eq, gte, sql } from 'drizzle-orm';
 import { cache } from 'react';
 import { getCmsDb, type CmsDatabase } from '@/db/cms';
+import { normalizeEmail } from '@/lib/email-address';
 import {
   cmsAuditLog,
   cmsLoginAttempts,
@@ -81,10 +82,6 @@ const MESSAGES: Record<AuthError, string> = {
 /** An `AuthResult` failure with the standard Dutch message (or `message`). */
 export function authFail(error: AuthError, message = MESSAGES[error]) {
   return { ok: false as const, error, message };
-}
-
-export function normalizeEmail(email: string): string {
-  return email.trim().toLowerCase();
 }
 
 /**
