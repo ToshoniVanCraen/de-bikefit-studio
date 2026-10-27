@@ -2,7 +2,7 @@
 import { config } from 'dotenv';
 import { and, eq, sql } from 'drizzle-orm';
 import { installRequestContextStubs, cookieJar } from './lib/request-context.mjs';
-import { AANBOD_REHEARSAL_SUBTITLE as SUBTITLE } from './lib/aanbod-correcties-pages.mjs';
+import { KEPT_AANBOD_INTRO as SUBTITLE } from '@/lib/studio/seed-content/corrections-2026-10-27-copy';
 
 config({ path: '.env.local' });
 installRequestContextStubs();
@@ -169,7 +169,7 @@ async function main() {
       offer: 'bikefit-nieuwe-fiets',
       audience: 'adult',
       slug: 'bikefit-nieuwe-fiets-volwassene',
-      name: 'Bikefit – nieuwe fiets – Volwassene',
+      name: 'Bikefit – aankoop nieuwe fiets – Volwassene',
       label: 'Volwassene',
       guardian: false,
     },
@@ -177,7 +177,7 @@ async function main() {
       offer: 'bikefit-nieuwe-fiets',
       audience: 'youth',
       slug: 'bikefit-nieuwe-fiets-jeugd',
-      name: 'Bikefit – nieuwe fiets – Jeugd',
+      name: 'Bikefit – aankoop nieuwe fiets – Jeugd',
       label: 'Jeugd',
       guardian: true,
     },
