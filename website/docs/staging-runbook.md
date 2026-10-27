@@ -1514,6 +1514,23 @@ third value (even extra whitespace) remains a `!` conflict. The published-page v
 production dry-run line and draft/live values before proposing an apply; a clean dry run is not
 production authorization.
 
+**Production direct-booking variance (read-only snapshot, 27 Oct).** Unlike staging's
+new-bike enquiry, production keeps *Bikefit – aankoop nieuwe fiets* bookable online:
+`bikefit-nieuwe-fiets-volwassene` is named "Bikefit – aankoop nieuwe fiets – Volwassene"
+(label "Volwassene"), and `bikefit-nieuwe-fiets-jeugd` is named "Bikefit – aankoop nieuwe
+fiets – Jeugd" (label "Jeugd", guardian required). Both are 60 minutes before the patch,
+with no service price; their offering variants are € 275 and € 150. The Beheer-made
+`voetanalyse`, `zadelanalyse` and `afstellen-schoenplaatjes` services are also 60 minutes
+and have no service price; their variant prices are € 85, € 60 and € 15. The patch
+changes the two new-bike service durations to 120 minutes and the three analyses to
+30, 60 and 15 minutes; it adds the new-bike youth-package variant at € 275 and, only
+for this direct offering, its own `bikefit-nieuwe-fiets-jeugd-pakket` service at 120
+minutes. It does **not** rename the existing new-bike services, change booking modes,
+or copy variant prices into their service rows. A pre-existing custom package service
+with that slug is adopted only if its booking identity and facts match; a collision or
+an unexpected linked service blocks the dry run for inspection, rather than making a
+`-2` duplicate. These are synthetic regression fixtures, not a live patch result.
+
 Every correction names the value it expects. A field that holds the old value is changed (`~`), one
 that already holds the target is left (`=`), one that holds neither was edited in Beheer since and
 blocks the whole run (`!`): nothing is overwritten, there is no override flag. A page with unpublished

@@ -288,14 +288,6 @@ export function packageServiceName(youthName: string): string {
   return `${youthName.replace(/ – eenmalig$/, '')} – volledig pakket`;
 }
 
-function freeSlug(base: string, taken: ReadonlySet<string>): string {
-  if (!taken.has(base)) return base;
-  for (let suffix = 2; suffix < 100; suffix += 1) {
-    if (!taken.has(`${base}-${suffix}`)) return `${base}-${suffix}`;
-  }
-  throw new Error('no free service slug');
-}
-
 /**
  * The third variant of a bikefit (Toshoni, 27 Oct 2026), as the defaults have it:
  *
@@ -305,8 +297,9 @@ function freeSlug(base: string, taken: ReadonlySet<string>): string {
  *    Jeugd – eenmalig variant has one: `jeugdfit-pakket` from the defaults when
  *    that variant books through `jeugdfit`, else a copy of that service
  *    ("<name> – volledig pakket", 2 hours, the price shown, a guardian asked
- *    for, the same location and buffer); an existing service with the slug is
- *    used as it is;
+ *    for, the same location and buffer); a custom existing service is adopted
+ *    only when its identity and booking facts match. A slug collision never
+ *    creates a second semantic package;
  *  - subscribed to every active provider that offers the Jeugd – eenmalig
  *    service, except Toshoni ({@link isToshoni}), whose offerings go
  *    (`decideProviderRemoval`); with `staging-retain` he stays and is offered it
@@ -378,15 +371,45 @@ export function decideYouthPackage(input: {
       packageDefault !== undefined &&
       input.defaultYouthServiceSlug !== null &&
       youthService.slug === input.defaultYouthServiceSlug;
-    const taken = new Set(services.map((service) => service.slug));
-    const slug = standard ? packageDefault.slug : freeSlug(`${offering.slug}-jeugd-pakket`, taken);
-    const existing = third?.serviceId
+    const slug = standard ? packageDefault.slug : `${offering.slug}-jeugd-pakket`;
+    const linked = third?.serviceId
       ? services.find((service) => service.id === third.serviceId)
-      : services.find((service) => service.slug === slug);
+      : null;
+    if (third?.serviceId && !linked) {
+      return blocked(
+        `package variant links to missing service ${third.serviceId} — inspect in Beheer first`,
+      );
+    }
+    if (linked && linked.slug !== slug) {
+      return blocked(
+        `package variant links to service ${linked.slug}, not ${slug} — inspect in Beheer first`,
+      );
+    }
+    const existing = linked ?? services.find((service) => service.slug === slug);
     if (existing && !existing.isActive) {
       return blocked(
         `service ${existing.slug} exists but is switched off — activate it in Beheer first`,
       );
+    }
+    if (existing && !standard) {
+      const expected = {
+        name: packageServiceName(youthService.name),
+        choiceLabel: AUDIENCE_LABELS[PACKAGE_AUDIENCE],
+        durationMinutes: packageDefault?.durationMinutes ?? 120,
+        bufferAfterMinutes: youthService.bufferAfterMinutes,
+        priceCents: targetPriceCents,
+        showPrice: true,
+        locationId: youthService.locationId,
+        requiresGuardian: true,
+      };
+      const mismatched = Object.entries(expected)
+        .filter(([key, value]) => existing[key as keyof ServiceRow] !== value)
+        .map(([key]) => key);
+      if (mismatched.length > 0) {
+        return blocked(
+          `service ${slug} has unexpected ${mismatched.join(', ')} — inspect in Beheer first`,
+        );
+      }
     }
     if (existing) {
       decision.service = { kind: 'existing', id: existing.id, slug: existing.slug };
