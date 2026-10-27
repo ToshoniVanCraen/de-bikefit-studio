@@ -28,8 +28,10 @@
  * also the earlier seed texts its guard lists in `alsoFrom`, such as the first
  * seed's `/afspraak` description); a field that holds neither an old nor the new
  * value is a conflict and blocks the patch (an editor's change is never
- * overwritten). Idempotent: a second run on the result finds nothing. Runbook:
- * `docs/staging-runbook.md` §24.
+ * overwritten). One exact editor's text is accepted as it is: the `keep` of a `set`
+ * (production's /aanbod subtitle, Toshoni, 21 Oct 2026), no write, no conflict,
+ * listed in `kept` for the dry run. Idempotent: a second run on the result finds
+ * nothing. Runbook: `docs/staging-runbook.md` §24.
  */
 import { sanitizeBlockData } from '@/lib/cms/actions/sanitize';
 import { validateBlock, validateBlocks } from '@/lib/cms/blocks';
@@ -86,6 +88,8 @@ export type PageWork = {
   next: WorkBlock[];
   changes: string[];
   conflicts: string[];
+  /** Fields left as they are because they hold a text their edit keeps (`keep` of a `set`). */
+  kept: string[];
 };
 
 type Data = Record<string, unknown>;
@@ -122,13 +126,14 @@ export function transformBlocks(
   sources: PageSources = PAGE_SOURCES,
 ): PageWork {
   let work: WorkBlock[] = blocks.map((block) => ({ ...block, data: structuredClone(block.data) }));
-  const result: PageWork = { next: work, changes: [], conflicts: [] };
+  const result: PageWork = { next: work, changes: [], conflicts: [], kept: [] };
 
   // 1 + 2: the engine of page-cleanup.ts; the specs of the slug first, the phone number last.
   const run = (spec: PageCleanupSpec) => {
     const done = cleanupBlocks<WorkBlock>(spec, work);
     result.changes.push(...done.changes);
     result.conflicts.push(...done.conflicts);
+    result.kept.push(...done.kept);
     const removed = new Set<WorkBlock>(done.removed);
     const rewritten = new Map<WorkBlock, Data>(
       done.updated.map(({ block, data }): [WorkBlock, Data] => [block, data]),

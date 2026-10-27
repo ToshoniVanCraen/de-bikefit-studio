@@ -320,6 +320,74 @@ describe('the youth package', () => {
     );
   });
 
+  it('adopts only the exact custom package; collisions and wrong links fail closed', () => {
+    const online = offering('bikefit-nieuwe-fiets', 'direct');
+    const own = service('s-own', 'bikefit-nieuwe-fiets-jeugd', {
+      name: 'Bikefit – aankoop nieuwe fiets – Jeugd',
+      choiceLabel: 'Jeugd',
+      durationMinutes: 60,
+      sortOrder: 31,
+      requiresGuardian: true,
+    });
+    const input = {
+      ...base,
+      offering: online,
+      variants: [
+        variant(online.id, 'adult', null, 27500),
+        variant(online.id, 'youth', own.id, 15000),
+      ],
+      services: [own],
+      subscriptions: [sub('p2', own.id)],
+      defaultYouthServiceSlug: null,
+    };
+    const first = decideYouthPackage(input);
+    expect(first.service).toMatchObject({ kind: 'create' });
+    if (first.service.kind !== 'create') throw new Error('expected a package to create');
+    const packageRow = service('s-package', first.service.facts.slug, first.service.facts);
+    const adopted = decideYouthPackage({ ...input, services: [own, packageRow] });
+    expect(adopted.service).toEqual({
+      kind: 'existing',
+      id: packageRow.id,
+      slug: packageRow.slug,
+    });
+    const done = decideYouthPackage({
+      ...input,
+      services: [own, packageRow],
+      variants: [...input.variants, variant(online.id, 'youth-package', packageRow.id, 27500)],
+      subscriptions: [...input.subscriptions, sub('p2', packageRow.id)],
+    });
+    expect(done).toMatchObject({ action: 'none', changes: [], subscribe: [], blockers: [] });
+    for (const changed of [
+      { priceCents: 15000 },
+      { requiresGuardian: false },
+      { durationMinutes: 60 },
+      { name: 'Other package' },
+      { choiceLabel: 'Other' },
+      { locationId: 'elsewhere' },
+    ]) {
+      const collision = decideYouthPackage({
+        ...input,
+        services: [own, { ...packageRow, ...changed }],
+      });
+      expect(collision.action).toBe('blocked');
+      expect(collision.service).toEqual({ kind: 'none' });
+      expect(collision.blockers).toEqual([expect.stringContaining('unexpected')]);
+    }
+    const wrongLink = decideYouthPackage({
+      ...input,
+      variants: [...input.variants, variant(online.id, 'youth-package', own.id, 27500)],
+      services: [own, packageRow],
+    });
+    expect(wrongLink.action).toBe('blocked');
+    expect(wrongLink.blockers).toEqual([expect.stringContaining('links to service')]);
+    const missingLink = decideYouthPackage({
+      ...input,
+      variants: [...input.variants, variant(online.id, 'youth-package', 'missing', 27500)],
+    });
+    expect(missingLink.action).toBe('blocked');
+    expect(missingLink.blockers).toEqual([expect.stringContaining('missing service')]);
+  });
+
   it('needs the audience split and the Jeugd – eenmalig variant first', () => {
     expect(
       decideYouthPackage({ ...base, offering: offering('x', 'direct', 'single') }).blockers,

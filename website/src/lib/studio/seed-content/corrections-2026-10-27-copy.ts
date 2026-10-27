@@ -37,9 +37,10 @@ import {
  *   - no dash between two sentences ("op jou — niet omgekeerd — zodat"): a comma,
  *     a colon or a full stop; the en dash stays inside names and labels
  *     ("Bikefit – huidige fiets", "Jeugd – eenmalig");
- *   - the /aanbod intro without "gediplomeerde", the terms without "fit aan
- *     huis", the privacy statement naming Google Maps, the home contact block with
- *     the address.
+ *   - the /aanbod intro without "gediplomeerde" (where it still has the rollout
+ *     text: production keeps Toshoni's own subtitle, `KEPT_AANBOD_INTRO`), the
+ *     terms without "fit aan huis", the privacy statement naming Google Maps, the
+ *     home contact block with the address.
  *
  * What a text on a page is worth in an edit:
  *
@@ -135,6 +136,18 @@ function seedPage(slug: string) {
 
 const OLD_AANBOD_INTRO =
   'Elke fietser is anders. Daarom werkt De Bikefit Studio uitsluitend met ervaren, gediplomeerde professionals. Samen zoeken we wat bij jou past: van je eerste kilometers tot een nieuw sportief doel. Persoonlijke fietsbegeleiding, dichtbij — in de studio, op locatie of, waar mogelijk, bij jou thuis.';
+
+/**
+ * The /aanbod hero subtitle as Toshoni rewrote it himself on PRODUCTION on 21 Oct 2026 (block
+ * saved 13:51:09Z, page published 13:52:21Z): the rollout text with a last sentence of his own.
+ * Read from production, read-only, on 27 Oct 2026 (Arend, 16:40Z): the draft and the published
+ * snapshot hold exactly this text, 258 characters. His edit, not one of our texts: the subtitle
+ * correction keeps it as it is (`keep`), never moves it to `AANBOD_INTRO`, and the verify allows
+ * its "gediplomeerde" in that one field only (`correctionProblems`). Staging holds the rollout
+ * text (`OLD_AANBOD_INTRO`), which still moves.
+ */
+export const KEPT_AANBOD_INTRO =
+  'Elke fietser is anders. Daarom werkt De Bikefit Studio uitsluitend met ervaren, gediplomeerde professionals. Samen zoeken we wat bij jou past: van je eerste kilometers tot een nieuw sportief doel. Persoonlijke fietsbegeleiding, in de studio of bij jou thuis.';
 
 /** The page titles of the 13 Oct redesign, with their dash. */
 const OLD_META_TITLES = {
@@ -265,8 +278,9 @@ export const COPY_PAGE_SPECS: PageCleanupSpec[] = [
   {
     slug: 'aanbod',
     edits: [
-      // Toshoni, 27 Oct 2026: experience and people skills, not diplomas.
-      set(pageHead, 'subtitle', OLD_AANBOD_INTRO, AANBOD_INTRO),
+      // Toshoni, 27 Oct 2026: experience and people skills, not diplomas. His own subtitle of
+      // 21 Oct 2026 on production stays as it is; any other text is still a conflict.
+      set(pageHead, 'subtitle', OLD_AANBOD_INTRO, AANBOD_INTRO, [KEPT_AANBOD_INTRO]),
     ],
     metaTitle: { from: OLD_META_TITLES.aanbod, to: seedPage('aanbod').metaTitle },
   },

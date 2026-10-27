@@ -978,8 +978,13 @@ to Ninove) and is exported, with the block instance to insert, from
 `lib/studio/seed-content/location-section.ts` (`STUDIO_CONTACT_ADDRESS`, `STUDIO_LOCATION_ADDRESS`,
 `LOCATION_BLOCK`; a unit test keeps the booking default and `STUDIO_LOCATION_ADDRESS` in step). A fresh `cms:seed` publishes the block as the last
 block of `/afspraak`; an existing database gets the settings, the location row and the block from
-`cms:patch-aanbod-correcties`. Deploy this code first: a snapshot with a block type the running code does not
-know counts as unpublished. The public site has no Content-Security-Policy today (§13).
+`cms:patch-aanbod-correcties`. The 27 Oct page patch has one exact editorial retention:
+production's 21 Oct `/aanbod` page-head subtitle (258 characters) is left unchanged in both saved
+draft and published snapshot. Only that exact field/value may retain "gediplomeerde" in the
+published-page verifier; staging's earlier rollout subtitle changes to the corrected copy and an
+unknown third value blocks. The dry run labels the retained value `= … kept as it is`; see the
+exact text and production gate in staging-runbook §24. Deploy this code first: a snapshot
+with a block type the running code does not know counts as unpublished. The public site has no Content-Security-Policy today (§13).
 
 ### Copy tokens: one master per fact (`{{duur:…}}` 20 Oct 2026, the full set 27 Oct 2026)
 

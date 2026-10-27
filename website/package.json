@@ -35,7 +35,8 @@
     "cms:mfa-reset": "tsx scripts/cms-mfa-reset.mts",
     "staging:access": "tsx scripts/staging-access.mts",
     "images:import": "tsx scripts/import-editorial-image.mts",
-    "images:portrait": "tsx scripts/team-portrait.mts"
+    "images:portrait": "tsx scripts/team-portrait.mts",
+    "cms:rehearsal-fixture": "tsx scripts/cms-rehearsal-fixture.mts"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

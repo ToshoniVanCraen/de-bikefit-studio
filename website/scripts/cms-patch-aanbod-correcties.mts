@@ -23,7 +23,9 @@
  *   --apply                  write: backup first (every row it touches), then
  *                            the sections in order, verified on the public
  *                            readers; refuses (`!`) a field that holds neither
- *                            the old nor the new value (an admin's edit), a
+ *                            the old nor the new value (an admin's edit; the
+ *                            one it keeps instead: production's /aanbod
+ *                            subtitle of 21 Oct 2026, exactly), a
  *                            page with unpublished draft edits, Toshoni's
  *                            removal while a service would be left without a
  *                            provider, a youth package no provider would

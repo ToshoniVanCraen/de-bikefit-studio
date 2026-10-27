@@ -28,7 +28,9 @@
  * `aanbod-correcties-plan.mts`. Runbook: `docs/staging-runbook.md` §24.
  *
  *   plan     read-only; every field holds the target (`=`), the value it had
- *            before (`~`), or an admin's own (`!`, which refuses the apply)
+ *            before (`~`), or an admin's own (`!`, which refuses the apply); the
+ *            one admin's text a correction keeps, production's /aanbod subtitle
+ *            of 21 Oct 2026, stays as it is (`= … kept as it is`)
  *   apply    plans first on `readOnlyDb()`: a blocked plan (or one with nothing
  *            to do) stops before any write, not even a session row; then writes
  *            a JSON backup FIRST (every row it touches), then the sections in the
