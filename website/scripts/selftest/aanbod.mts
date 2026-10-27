@@ -245,9 +245,9 @@ export async function aanbodSection(ctx: {
   );
   const mainMenu = await getNavigation(locale, 'main');
   check(
-    'menu: Aanbod, Voor wie, Bikefit, Ons team, Veelgestelde vragen, Contact',
+    'menu: Aanbod, Voor wie, Bikefit, Ons team, Veelgestelde vragen, Cadeaubon, Contact',
     mainMenu.map((item) => item.label).join() ===
-      'Aanbod,Voor wie,Bikefit,Ons team,Veelgestelde vragen,Contact',
+      'Aanbod,Voor wie,Bikefit,Ons team,Veelgestelde vragen,Cadeaubon,Contact',
   );
   const [overOns] = await db
     .select({ status: schema.cmsPages.status, snapshot: schema.cmsPages.publishedSnapshot })

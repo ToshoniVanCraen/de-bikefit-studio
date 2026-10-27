@@ -1,4 +1,5 @@
 import { OFFER_INDEX_PATH } from '@/lib/offers/catalogue';
+import { CADEAUBON_MENU_ITEM } from './cadeaubon-promo';
 import { BOOKING_PATH, type SeedNavigationItem } from './shared';
 
 /**
@@ -22,6 +23,8 @@ export const MAIN_MENU: SeedNavigationItem[] = [
   navItem('Ons team', '/ons-team'),
   // Moved up from the footer on Toshoni's review of 19 Oct 2026.
   navItem('Veelgestelde vragen', '/veelgestelde-vragen'),
+  // The voucher no longer hides under Overige (Toshoni, 27 Oct 2026; `cadeaubon-promo.ts`).
+  navItem(CADEAUBON_MENU_ITEM.label, CADEAUBON_MENU_ITEM.href),
   navItem('Contact', BOOKING_PATH),
 ];
 

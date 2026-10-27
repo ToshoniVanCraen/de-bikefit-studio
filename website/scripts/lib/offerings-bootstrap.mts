@@ -1,8 +1,10 @@
 /**
  * The default offerings (`src/lib/offers/defaults.ts`) on a database: one
- * `cms_offerings` row per slug that is missing, with its variants linked to
- * the bootstrap services by slug. Shared by `cms-bootstrap.mts` and the
- * self-test. Create-only and idempotent: an existing offering (by locale and
+ * `cms_offerings` row per slug that is missing, with its variants (Volwassene,
+ * Jeugd – eenmalig, Jeugd – volledig pakket where an offering splits by
+ * audience) linked to the bootstrap services by slug. Shared by
+ * `cms-bootstrap.mts` and the self-test. Create-only and idempotent: an
+ * existing offering (by locale and
  * slug) is never touched, whatever it holds. Direct database writes, like the
  * rest of the bootstrap (no session, no audit); nothing touches
  * `cms_services`, `cms_provider_services` or `cms_bookings`. The extras of a
@@ -75,6 +77,7 @@ export async function ensureDefaultOfferings(
         extras: content.extras,
         extrasNote: content.extrasNote,
         duration: content.duration,
+        priceText: content.priceText,
         ctaLabel: content.ctaLabel,
         image: content.image,
         metaDescription: content.metaDescription,

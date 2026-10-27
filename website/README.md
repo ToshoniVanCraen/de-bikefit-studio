@@ -41,12 +41,13 @@ website/
 │   │                        admin/, ui/ (shadcn), shop/, layout/, shell/ (webshop)
 │   ├── db/                  cms-schema.ts + cms.ts (CMS + booking), schema.ts + index.ts (webshop)
 │   ├── lib/
-│   │   ├── cms/             auth, sessions, permissions, block registry, content (read), repo (write),
-│   │   │                    actions/ (server actions, sanitiser)
+│   │   ├── cms/             auth, sessions, permissions, block registry, site settings (the masters
+│   │   │                    copy refers to), content (read), repo (write), actions/ (server actions, sanitiser)
 │   │   ├── booking/         availability engine, time zones, repo, public booking, Google Calendar
 │   │   ├── email/           Resend client, settings (env or /admin/email), ICS builder, Dutch templates
 │   │   ├── analytics/       consent cookie, GA4 tag, GA4 Data API (panel + deep dive)
-│   │   ├── studio/          locale, SEO, JSON-LD, OG images, legal identity
+│   │   ├── studio/          locale, SEO, JSON-LD, OG images, copy tokens ({{prijs:…}}, {{telefoon}}, …),
+│   │   │                    legal defaults
 │   │   └── env.ts           zod-validated env vars + `features` flags
 │   └── middleware.ts        Clerk pass-through + /admin cookie redirect (no database)
 ├── drizzle/                 SQL migrations 0000–0007 + meta snapshots
@@ -110,13 +111,14 @@ Run inside `website/`. Scripts that touch a database use PGlite unless `DATABASE
 | `npm run db:migrate` | Apply pending migrations (PGlite, or Neon when `DATABASE_URL` is set) |
 | `npm run db:push` | Push the schema without a migration: throwaway local database only, **never Neon** |
 | `npm run db:studio` | Drizzle Studio |
-| `npm run cms:bootstrap` | Idempotent: first admin, site settings, menus, locations, services and the default offerings of Beheer → Aanbod; fills only an empty service choice label ("Volwassene", "Jeugd", after migration 0009) (`CMS_BOOTSTRAP_PASSWORD` inline) |
+| `npm run cms:bootstrap` | Idempotent: first admin, site settings, menus, locations, services and the default offerings of Beheer → Aanbod; fills only an empty service choice label ("Volwassene", "Jeugd – eenmalig", "Jeugd – volledig pakket", after migration 0009) (`CMS_BOOTSTRAP_PASSWORD` inline) |
 | `npm run cms:seed` | Idempotent Dutch content, published. `-- --only-missing` leaves existing pages/menus alone; `-- --refresh-slug <slug>` re-seeds and republishes one page |
 | `npm run cms:seed-booking` | Idempotent first provider, hours and service subscriptions (`PROVIDER_EMAIL` / `PROVIDER_NAME` for another) |
 | `npm run cms:rollout-aanbod` | Offer redesign onto an existing database: dry run by default; `-- --apply --expect-host <host>` (backup first), `-- --restore <backup.json>`. See `docs/staging-runbook.md` §9 |
 | `npm run cms:patch-booking-cta` | Points existing "Boek je bikefit" buttons that dial (or jump to `#contact`) at `/afspraak`: dry run by default; `-- --apply --expect-host <host>` (backup first), `-- --restore <backup.json>`. See `docs/staging-runbook.md` §10 |
 | `npm run cms:patch-page-cleanup` | Applies Toshoni's site review of 13 Oct 2026 to existing content (kickers, headings, "jeugd", `/afspraak` layout, `/contact` → `/afspraak`, menus, public e-mail): dry run by default; `-- --apply --expect-host <host>` (backup first), `-- --restore <backup.json>`. See `docs/staging-runbook.md` §11 |
-| `npm run cms:patch-aanbod-extras` | Applies Toshoni's extra's of 20 Oct 2026 to an existing database (voetanalyse, zadelanalyse and schoenplaatjes as extras a visitor can tick when booking a bikefit, tweede fiets as an extra only, both bikefits listing those four): dry run by default, `-- --apply --expect-host <host>` to write, `-- --restore <backup.json>` to undo (`docs/staging-runbook.md` §23) |
+| `npm run cms:patch-aanbod-extras` | Applies Toshoni's extra's to an existing database: Bikefit – tweede fiets is the only extra (an extra only, two choices), both bikefits list only it; voetanalyse, zadelanalyse and schoenplaatjes are no extra (27 Oct 2026), and a database in the state of the first version of 20 Oct 2026 is moved on: dry run by default, `-- --apply --expect-host <host>` to write, `-- --restore <backup.json>` to undo (`docs/staging-runbook.md` §23) |
+| `npm run cms:patch-aanbod-correcties` | Applies Toshoni's corrections of 27 Oct 2026 to an existing database, after `cms:patch-aanbod-extras` and with this build deployed: contact address and phone label in Instellingen, the studio location, the corrected page texts and the contact tokens on every page, the location block on `/afspraak`, the cadeaubon promo (home section, voucher page, menu item, aanbod card), the corrected offering and service texts, the youth package (variant and service), the durations of the new-bike variants, foot analysis, saddle analysis and cleat adjustment, and Toshoni's service subscriptions: dry run by default, `-- --apply --expect-host <host> --backup-dir <dir>` to write (backup first), `-- --restore <backup.json>` to undo (`docs/staging-runbook.md` §24) |
 | `npm run cms:patch-aanbod-prijzen` | Applies Toshoni's prices and durations of 20 Oct 2026 to an existing database (the seven offerings, two new ones, the two booking services at 2 u with their price): dry run by default, `-- --apply --expect-host <host>` to write, `-- --restore <backup.json>` to undo (`docs/staging-runbook.md` §22) |
 | `npm run brand:icons` | Renders `favicon.ico`, `apple-icon.png` and the 512 px PNG from the brand SVGs in `public/brand/` (`docs/brand-assets.md`); outputs are committed |
 | `npm run cms:migrate-aanbod` | Turns the offer pages of an existing database into offerings (Beheer → Aanbod owns the offer since 17 Oct 2026): dry run by default; `-- --apply --expect-host <host>` (backup first); `-- --verify` re-runs the final check read-only. See `docs/staging-runbook.md` §19 |
@@ -140,7 +142,8 @@ Three layers, all in CI ([`../CLAUDE.md`](../CLAUDE.md) §5):
    registry, publish, the booking schema, the
    provider role, `computeSlots()`, e-mail/ICS/token encryption, the full booking flow, the
    offer rollout, Beheer → Aanbod with its migration, the content patches (booking CTA, page cleanup,
-   gift voucher) and the e-mail service in `/admin/email`, on a throwaway PGlite. Section list
+   gift voucher, extras, prices, the corrections of 27 Oct 2026) and the e-mail service in
+   `/admin/email`, on a throwaway PGlite. Section list
    in the header of `scripts/cms-selftest.mts`.
 3. **Smoke** — after every preview and staging deployment the DevOps agent (Arend) runs
    `site-health` (status codes, `robots.txt`, `noindex`, key paths).

@@ -18,7 +18,7 @@
 import { and, eq } from 'drizzle-orm';
 import type { CmsDatabase } from '@/db/cms';
 import before from '@/lib/studio/seed-content/page-cleanup.fixture.json';
-import { CONTACT_EMAIL, PHONE_HREF } from '@/lib/studio/seed-content/shared';
+import { CONTACT_EMAIL, EMAIL_TOKEN, PHONE_HREF } from '@/lib/studio/seed-content/shared';
 import { guardCounts, type PlanDeps } from '../lib/aanbod-rollout.mjs';
 import { runPageCleanupPatch } from '../lib/page-cleanup-patch.mjs';
 
@@ -241,7 +241,8 @@ export async function pageCleanupSection(ctx: {
     afspraak.map((block) => block.type).join() === 'booking,richText' &&
       afspraak[0].data.title === 'Kies je moment' &&
       html.includes('Andere vraag?') &&
-      html.includes(`href="mailto:${CONTACT_EMAIL}"`) &&
+      // The "Andere vraag?" paragraph of the seed holds the e-mail token; the site resolves it.
+      html.includes(`href="mailto:${EMAIL_TOKEN}"`) &&
       html.includes(`href="${PHONE_HREF}"`),
     afspraak.map((block) => block.type).join(),
   );

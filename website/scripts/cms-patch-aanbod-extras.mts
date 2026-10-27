@@ -1,26 +1,31 @@
 /**
- * Toshoni's extra's of 20 Oct 2026 on an EXISTING database: voetanalyse,
- * zadelanalyse and afstellen-schoenplaatjes become extras a visitor can tick
- * when booking a bikefit (still sold alone), bikefit-tweede-fiets an extra
- * only, and both bikefits list those four. Nothing else.
+ * Toshoni's extra's on an EXISTING database: Bikefit – tweede fiets is the only
+ * extra of a bikefit (an extra only, with its two choices) and both bikefits
+ * list only it. Voetanalyse, zadelanalyse and afstellen-schoenplaatjes are
+ * included in every bikefit, so they are no extra (27 Oct 2026). A database
+ * that ran the first version (20 Oct 2026: the three as extras, four links per
+ * bikefit; staging and production) is moved on, a fresh one gets the target in
+ * one run. Nothing else.
  *
  *   npm run cms:patch-aanbod-extras                         # dry run (default): plan only
  *   npm run cms:patch-aanbod-extras -- --apply --expect-host <host>
  *   npm run cms:patch-aanbod-extras -- --restore <backup.json> --expect-host <host>
  *
  * Options
- *   --apply                  write: backup first, then the three extra columns
- *                            and the links; refuses an offering whose extra
- *                            settings were changed in Beheer since migration 0015
+ *   --apply                  write: backup first, then the extra columns, the
+ *                            choices and the links; refuses an offering whose
+ *                            extra settings, choices or links were changed in
+ *                            Beheer (neither the target nor a known state)
  *   --restore <file>         put a backup written by --apply back
  *   --expect-host <host>     REQUIRED for --apply/--restore against Neon: must
  *                            equal the host in DATABASE_URL
  *   --backup-dir <dir>       where --apply writes its backup
  *                            (default: .rollout-backups/, gitignored)
  *
- * Idempotent: a second run finds nothing to do. Needs migration 0015 and the
- * nine offerings (`cms:patch-aanbod-prijzen`). Logic and guarantees:
- * `scripts/lib/aanbod-extras-patch.mts`. Runbook: `docs/staging-runbook.md` §23.
+ * Idempotent: a second run finds nothing to do. Needs migrations 0015 and 0016
+ * and the nine offerings (`cms:patch-aanbod-prijzen`). Logic and guarantees:
+ * `scripts/lib/aanbod-extras-patch.mts` (the rules: `aanbod-extras-targets.mts`,
+ * the plan: `aanbod-extras-plan.mts`). Runbook: `docs/staging-runbook.md` §23.
  */
 import { config } from 'dotenv';
 

@@ -50,7 +50,7 @@ export function StepItem({
             type="button"
             className="studio-booking__edit"
             onClick={onEdit}
-            aria-label={`${title} — wijzigen`}
+            aria-label={`${title}: wijzigen`}
           >
             Wijzigen
           </button>

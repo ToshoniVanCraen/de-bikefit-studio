@@ -17,7 +17,9 @@ import { StudioLogo } from './logo';
  * Columns come from the `footer` menu's `group` field, in the order the editor
  * arranged them. The contact column is not a menu: it is rendered from
  * `cms_site_settings.contact`, and every line is omitted when its value is
- * empty (no street address or e-mail is on record yet).
+ * empty. The street, postal code and city printed here are the same settings
+ * the `location` block on /afspraak shows (Halsesteenweg 406 a, 9403 Neigem
+ * since 27 Oct 2026, set in Instellingen → Contact).
  *
  * The legal row under the bottom bar is not a menu either, so it exists on
  * every deployment whatever the menu rows say: hard links to the privacy
@@ -34,8 +36,11 @@ import { StudioLogo } from './logo';
  * The company identity line (Qarakter BV, registered office, BTW, RPR) and
  * the "city · hours" note in the bottom bar were removed at Toshoni's request
  * (review 13 Oct 2026). The identity stays on `/privacy` and
- * `/algemene-voorwaarden`, linked from every page, and in `LEGAL_IDENTITY`
- * for the e-mails; the public e-mail address is in the contact column.
+ * `/algemene-voorwaarden`, linked from every page, where it is written with
+ * the copy tokens `{{bedrijf}}`, `{{zetel}}`, `{{kbo}}` and `{{btw}}` from the
+ * `business` settings (Instellingen → Bedrijfsgegevens); the public e-mail
+ * address is in the contact column. The footer reads settings directly, so it
+ * needs no tokens of its own.
  */
 export function StudioSiteFooter({ chrome }: { chrome: StudioChrome }) {
   const { settings, footerNav } = chrome;

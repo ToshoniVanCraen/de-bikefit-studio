@@ -35,7 +35,7 @@ const DATA: BookingEmailData = {
 describe('assignmentTodoEmail', () => {
   it('asks the beheerder to assign, names the holder and links the pending list', () => {
     const mail = assignmentTodoEmail(DATA);
-    expect(mail.subject).toBe(`Toe te wijzen: Volwassenenfit — Anna <script>, ${SHORT} 09:00`);
+    expect(mail.subject).toBe(`Toe te wijzen: Volwassenenfit voor Anna <script>, ${SHORT} 09:00`);
     expect(mail.text).toContain('zonder een aanbieder te kiezen');
     expect(mail.text).toContain('Voorlopig bij: Rutger <b>');
     expect(mail.text).toContain(
@@ -71,7 +71,7 @@ describe('bookingReassignedEmail', () => {
       'Rutger',
     );
     expect(mail.subject).toBe(
-      `Afspraak niet meer bij jou: Volwassenenfit — Anna <script>, ${SHORT} 09:00`,
+      `Afspraak niet meer bij jou: Volwassenenfit voor Anna <script>, ${SHORT} 09:00`,
     );
     expect(mail.text).toContain('Hallo Rutger, een beheerder wees deze afspraak toe aan Toshoni');
     expect(mail.text).toContain('Nu bij: Toshoni');

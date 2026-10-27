@@ -94,7 +94,6 @@ export type PublicService = {
 export type PublicProvider = {
   id: string;
   displayName: string;
-  bio: string;
   /** Services offered, with the location that applies to this provider. */
   services: { serviceId: string; location: PublicLocation | null }[];
   /** Where this provider works: the locations of their hours rows and their default, distinct, in admin order. */
@@ -287,7 +286,6 @@ export async function listPublicProviders(serviceId?: string | null): Promise<Pu
           entry = {
             id: provider.id,
             displayName: provider.displayName,
-            bio: provider.bio,
             services: [],
             locations: [...worksAt]
               .map((id) => toPublicLocation(byId.get(id)))

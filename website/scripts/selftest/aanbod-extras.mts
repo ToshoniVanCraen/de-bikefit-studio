@@ -1,20 +1,23 @@
 /**
  * Self-test section 17c: extra's (add-ons) on the throwaway PGlite of
  * `cms-selftest.mts`, after the prices section (17b) removed the nine
- * offerings again:
- * 0. migration 0015: guarded statements only, re-running it is a no-op;
- * 1. the bootstrap offerings carry the extras: the four extras timed and
- *    priced under the fit's services, tweede fiets an extra only that names
- *    both bikefits as its hosts;
+ * offerings again. Toshoni, 27 Oct 2026: *Bikefit – tweede fiets* is the only
+ * extra of a bikefit (two choices); voetanalyse, zadelanalyse and
+ * afstellen-schoenplaatjes are included in every bikefit, so no extra.
+ * 0. migrations 0015 and 0016: guarded statements only, re-running them is a
+ *    no-op;
+ * 1. the bootstrap offerings carry the extras: the fit offers the two choices
+ *    of tweede fiets, timed and priced, and nothing else; tweede fiets is an
+ *    extra only that names both bikefits as its hosts; the three analyses are
+ *    sold alone and no extra;
  * 2. availability with an extra holds the service plus its minutes; an id
- *    that is no extra of the service is refused;
+ *    that is no extra of the service (lactaattest, voetanalyse) is refused;
  * 3. a booking with an extra: ends later, keeps a snapshot row, names the
  *    extra in its summary, the confirmation mail and the admin list; an
  *    unknown extra is refused before anything is written;
- * 4. `cms:patch-aanbod-extras` on a database as migration 0015 leaves it:
- *    the dry run writes nothing; apply writes the columns and links, audits,
- *    a second dry run finds nothing; restore puts the bare state back; an
- *    offering changed in Beheer blocks the patch; apply again;
+ * 4. `cms:patch-aanbod-extras` (`aanbod-extras-scenarios.mts`: a fresh
+ *    database, an edit in Beheer, the state of 20 Oct 2026 that staging and
+ *    production hold now);
  * 5. clean-up, so later sections find the database as before.
  *
  * Imported lazily by `cms-selftest.mts` after its request-context stubs.
@@ -22,32 +25,26 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import * as orm from 'drizzle-orm';
-import type { CmsDatabase } from '@/db/cms';
 import { cmsBookingAddons, cmsOfferingAddons, cmsOfferings } from '@/db/cms-offering-schema';
 import { DEFAULT_OFFERS } from '@/lib/offers/defaults';
 import { addDaysYmd, BOOKING_TIMEZONE, todayYmd } from '@/lib/booking/time';
-import { runAanbodExtrasPatch } from '../lib/aanbod-extras-patch.mjs';
 import { withAdminSession } from '../lib/aanbod-rollout-run.mjs';
 import { ensureDefaultOfferings } from '../lib/offerings-bootstrap.mjs';
-
-type Check = (label: string, condition: boolean, detail?: string) => void;
+import { createExtrasKit, type ExtrasSectionContext } from './aanbod-extras-kit.mjs';
+import { aanbodExtrasPatchSection } from './aanbod-extras-scenarios.mjs';
 
 const { and, eq, inArray, sql } = orm;
+
+/** Sold alone and included in every bikefit: never an extra of one. */
+const ANALYSIS_SLUGS = ['voetanalyse', 'zadelanalyse', 'afstellen-schoenplaatjes'];
 
 function minutesBetween(startsAt: string, endsAt: string): number {
   return Math.round((Date.parse(endsAt) - Date.parse(startsAt)) / 60_000);
 }
 
-export async function aanbodExtrasSection(ctx: {
-  db: CmsDatabase;
-  check: Check;
-  section: (title: string) => void;
-  cookieJar: Map<string, string>;
-  backupDir: string;
-  admin: { id: string };
-}) {
-  const { db, check, section, cookieJar, backupDir, admin } = ctx;
-  section("17c. aanbod extra's: catalogue, booking, patch (20 Oct 2026)");
+export async function aanbodExtrasSection(ctx: ExtrasSectionContext) {
+  const { db, check, section, cookieJar, admin } = ctx;
+  section("17c. aanbod extra's: catalogue, booking, patch (20 + 27 Oct 2026)");
 
   const schema = await import('@/db/cms-schema');
   const offeringSchema = await import('@/db/cms-offering-schema');
@@ -57,48 +54,8 @@ export async function aanbodExtrasSection(ctx: {
   const { emailData, loadBookingContext } = await import('@/lib/booking/notifications');
   const { bookingConfirmationEmail } = await import('@/lib/email/templates');
   const bookingRepo = await import('@/lib/booking/repo');
-  const locale = schema.DEFAULT_LOCALE;
+  const { locale, offeringRow, linkSlugs } = await createExtrasKit(ctx);
   const slugs = DEFAULT_OFFERS.map((entry) => entry.content.slug);
-
-  const lines: string[] = [];
-  const log = (symbol: string, message: string) => {
-    lines.push(`${symbol} ${message}`);
-  };
-  const run = (options: { apply: boolean; restore: string | null }) => {
-    lines.length = 0;
-    return runAanbodExtrasPatch(
-      { ...options, backupDir },
-      { db, driver: 'pglite', cookieJar, log },
-    );
-  };
-  const offeringRow = async (slug: string) => {
-    const [row] = await db
-      .select()
-      .from(cmsOfferings)
-      .where(and(eq(cmsOfferings.locale, locale), eq(cmsOfferings.slug, slug)))
-      .limit(1);
-    return row ?? null;
-  };
-  const linkSlugs = async (slug: string) => {
-    const host = await offeringRow(slug);
-    if (!host) return [];
-    const links = await db
-      .select({ addonId: cmsOfferingAddons.addonId, sortOrder: cmsOfferingAddons.sortOrder })
-      .from(cmsOfferingAddons)
-      .where(eq(cmsOfferingAddons.offeringId, host.id))
-      .orderBy(orm.asc(cmsOfferingAddons.sortOrder));
-    const rows = await db
-      .select({ id: cmsOfferings.id, slug: cmsOfferings.slug })
-      .from(cmsOfferings);
-    return links.map((link) => rows.find((row) => row.id === link.addonId)?.slug ?? '?');
-  };
-  const auditCount = async (action?: string) =>
-    (
-      await db
-        .select({ id: schema.cmsAuditLog.id })
-        .from(schema.cmsAuditLog)
-        .where(action ? eq(schema.cmsAuditLog.action, action) : undefined)
-    ).length;
 
   // --- 0: migrations 0015 + 0016 ---------------------------------------------------
   for (const file of ['0015_cms_offering_addons.sql', '0016_cms_offering_addon_options.sql']) {
@@ -146,34 +103,46 @@ export async function aanbodExtrasSection(ctx: {
       and(eq(schema.cmsServices.locale, locale), eq(schema.cmsServices.slug, 'volwassenenfit')),
     )
     .limit(1);
-  const voet = await offeringRow('voetanalyse');
+  const [youthFit] = await db
+    .select()
+    .from(schema.cmsServices)
+    .where(and(eq(schema.cmsServices.locale, locale), eq(schema.cmsServices.slug, 'jeugdfit')))
+    .limit(1);
+  const analyses = await Promise.all(ANALYSIS_SLUGS.map((slug) => offeringRow(slug)));
   const tweede = await offeringRow('bikefit-tweede-fiets');
   check(
-    'bootstrap: the nine offerings with their extra columns and the links of both bikefits',
+    'bootstrap: the nine offerings; tweede fiets the only extra (an extra only, two choices), both bikefits link to it alone, the three analyses are no extra',
     seeded.created.length === 9 &&
-      voet?.isAddon === true &&
-      voet.soldAlone === true &&
-      voet.addonMinutes === 30 &&
+      analyses.every(
+        (row) =>
+          row?.isAddon === false &&
+          row.soldAlone === true &&
+          row.addonMinutes === null &&
+          row.addonOptions.length === 0,
+      ) &&
       tweede?.isAddon === true &&
       tweede.soldAlone === false &&
       tweede.addonMinutes === 30 &&
       tweede.addonOptions.length === 2 &&
       tweede.addonOptions[1]?.key === 'ander-type' &&
-      (await linkSlugs('bikefit-huidige-fiets')).join(',') ===
-        'bikefit-tweede-fiets,voetanalyse,zadelanalyse,afstellen-schoenplaatjes' &&
-      (await linkSlugs('bikefit-nieuwe-fiets')).length === 4 &&
-      (await linkSlugs('voetanalyse')).length === 0,
-    JSON.stringify({ created: seeded.created.length, voet, tweede }),
+      (await linkSlugs('bikefit-huidige-fiets')).join(',') === 'bikefit-tweede-fiets' &&
+      (await linkSlugs('bikefit-nieuwe-fiets')).join(',') === 'bikefit-tweede-fiets' &&
+      (await Promise.all(ANALYSIS_SLUGS.map((slug) => linkSlugs(slug)))).every(
+        (links) => links.length === 0,
+      ),
+    JSON.stringify({ created: seeded.created.length, analyses, tweede }),
   );
   const catalogue = await loadOfferCatalogue(locale);
   const options = adultFit ? (catalogue.addonsByService[adultFit.id] ?? []) : [];
   check(
-    'catalogue: the fit offers five options in order (tweede fiets as two choices), timed and priced',
-    options.map((option) => `${option.slug}:${option.minutes}:${option.priceCents}`).join('|') ===
-      'bikefit-tweede-fiets:30:7500|bikefit-tweede-fiets:60:15000|voetanalyse:30:8500|zadelanalyse:60:6000|afstellen-schoenplaatjes:15:1500' &&
+    'catalogue: the fit offers the two choices of tweede fiets, timed and priced, and nothing else — also for Jeugd',
+    options
+      .map((option) => `${option.slug}:${option.optionKey}:${option.minutes}:${option.priceCents}`)
+      .join('|') ===
+      'bikefit-tweede-fiets:zelfde-type:30:7500|bikefit-tweede-fiets:ander-type:60:15000' &&
       options[0].id === `${options[0].offeringId}#zelfde-type` &&
       options[1].label === 'Ander type fiets' &&
-      options[2].id === options[2].offeringId,
+      (youthFit ? (catalogue.addonsByService[youthFit.id] ?? []) : []).length === 2,
     options.map((option) => option.slug).join(','),
   );
   const tweedeLive = catalogue.bySlug['bikefit-tweede-fiets'];
@@ -183,25 +152,37 @@ export async function aanbodExtrasSection(ctx: {
       catalogue.offers.some((offer) => offer.slug === 'bikefit-tweede-fiets') &&
       tweedeLive.offer.bookingServiceSlugs.length === 0 &&
       tweedeLive.addonHosts.map((host) => host.slug).join(',') ===
-        'bikefit-nieuwe-fiets,bikefit-huidige-fiets' &&
-      catalogue.bySlug['voetanalyse']?.offering.status === 'enquiry',
+        'bikefit-nieuwe-fiets,bikefit-huidige-fiets',
     JSON.stringify({ status: tweedeLive?.offering.status, hosts: tweedeLive?.addonHosts }),
+  );
+  check(
+    'catalogue: the three analyses are listed, asked for, no extra and offered as one by no bikefit',
+    ANALYSIS_SLUGS.every((slug) => {
+      const entry = catalogue.bySlug[slug];
+      return (
+        entry?.offering.status === 'enquiry' &&
+        entry.offering.isAddon === false &&
+        entry.addonHosts.length === 0 &&
+        catalogue.offers.some((offer) => offer.slug === slug)
+      );
+    }),
+    ANALYSIS_SLUGS.map((slug) => catalogue.bySlug[slug]?.offering.status).join(','),
   );
 
   // --- 2: availability with an extra -------------------------------------------------
   const today = todayYmd(new Date(), BOOKING_TIMEZONE);
   const window = { fromYmd: addDaysYmd(today, 3), toYmd: addDaysYmd(today, 17) };
-  const voetOption = options.find((option) => option.slug === 'voetanalyse');
+  const sameTypeOption = options.find((option) => option.optionKey === 'zelfde-type');
   const plain = adultFit
     ? await availabilityAction({ serviceId: adultFit.id, providerId: null, ...window })
     : null;
   const longer =
-    adultFit && voetOption
+    adultFit && sameTypeOption
       ? await availabilityAction({
           serviceId: adultFit.id,
           providerId: null,
           ...window,
-          addonIds: [voetOption.id],
+          addonIds: [sameTypeOption.id],
         })
       : null;
   check(
@@ -222,18 +203,21 @@ export async function aanbodExtrasSection(ctx: {
       longer: longer?.ok ? longer.slots.length : longer?.message,
     }),
   );
-  const notAnExtra = adultFit
-    ? await availabilityAction({
-        serviceId: adultFit.id,
-        providerId: null,
-        ...window,
-        addonIds: [catalogue.bySlug['lactaattest']?.offer.id ?? 'x'],
-      })
-    : null;
+  // Lactaattest was never an extra; voetanalyse was one until 27 Oct 2026 (a bikefit includes it).
+  const withOffering = async (slug: string) =>
+    adultFit
+      ? availabilityAction({
+          serviceId: adultFit.id,
+          providerId: null,
+          ...window,
+          addonIds: [catalogue.bySlug[slug]?.offer.id ?? 'x'],
+        })
+      : null;
+  const notExtras = [await withOffering('lactaattest'), await withOffering('voetanalyse')];
   check(
-    'availability: an offering that is no extra of the service is refused',
-    notAnExtra?.ok === false && notAnExtra.message.includes('extra'),
-    JSON.stringify(notAnExtra),
+    'availability: an offering that is no extra of the service — lactaattest, and voetanalyse which a bikefit includes — is refused',
+    notExtras.every((result) => result?.ok === false && result.message.includes('extra')),
+    JSON.stringify(notExtras),
   );
   const tweedeChoices = options.filter((option) => option.slug === 'bikefit-tweede-fiets');
   const twice =
@@ -254,14 +238,14 @@ export async function aanbodExtrasSection(ctx: {
   // --- 3: a booking with an extra ----------------------------------------------------
   const slot = longer?.ok ? longer.slots[0] : null;
   const booked =
-    adultFit && slot && voetOption
+    adultFit && slot && sameTypeOption
       ? await createPublicBooking(
           {
             serviceId: adultFit.id,
             providerId: null,
             locationId: slot.locationId,
             startsAt: slot.startsAt,
-            addonIds: [voetOption.id],
+            addonIds: [sameTypeOption.id],
             customerName: 'Extra Tester',
             customerEmail: 'extra-tester@example.com',
             customerPhone: '0470 00 00 00',
@@ -276,15 +260,15 @@ export async function aanbodExtrasSection(ctx: {
         .where(eq(cmsBookingAddons.bookingId, booked.bookingId))
     : [];
   check(
-    'booking: made with the extra — ends 2 u 30 after the start, one snapshot row, the summary names it',
+    'booking: made with a choice of tweede fiets — ends 2 u 30 after the start, one snapshot row, the summary names it',
     booked?.ok === true &&
       minutesBetween(booked.booking.startsAt, booked.booking.endsAt) === 150 &&
       booked.booking.addons.length === 1 &&
-      booked.booking.addons[0].title === 'Voetanalyse' &&
+      booked.booking.addons[0].title === 'Bikefit – tweede fiets – Zelfde type fiets' &&
       booked.booking.addons[0].minutes === 30 &&
       addonRows.length === 1 &&
-      addonRows[0].priceCents === 8500 &&
-      addonRows[0].slug === 'voetanalyse',
+      addonRows[0].priceCents === 7500 &&
+      addonRows[0].slug === 'bikefit-tweede-fiets',
     booked?.ok ? JSON.stringify(booked.booking.addons) : JSON.stringify(booked),
   );
   if (booked?.ok) {
@@ -293,7 +277,7 @@ export async function aanbodExtrasSection(ctx: {
     check(
       'mail: the confirmation lists the extra and the full duration',
       mail !== null &&
-        mail.text.includes('Voetanalyse (30 min)') &&
+        mail.text.includes('Bikefit – tweede fiets – Zelfde type fiets (30 min)') &&
         mail.text.includes('(2 u 30 min)') &&
         mail.html.includes('Extra’s'),
       mail ? mail.text.split('\n').slice(0, 8).join(' | ') : 'no context',
@@ -305,7 +289,8 @@ export async function aanbodExtrasSection(ctx: {
     );
     check(
       'admin: the bookings list carries the extra',
-      listed?.addons.length === 1 && listed.addons[0].title === 'Voetanalyse',
+      listed?.addons.length === 1 &&
+        listed.addons[0].title === 'Bikefit – tweede fiets – Zelfde type fiets',
       JSON.stringify(listed?.addons),
     );
   }
@@ -338,91 +323,8 @@ export async function aanbodExtrasSection(ctx: {
     check('booking: deleting the booking cascades its extras', left.length === 0);
   }
 
-  // --- 4: the patch on a database as migration 0015 leaves it ----------------------
-  await db
-    .update(cmsOfferings)
-    .set({ isAddon: false, soldAlone: true, addonMinutes: null, addonOptions: [] })
-    .where(eq(cmsOfferings.locale, locale));
-  await db.delete(cmsOfferingAddons);
-  const auditBefore = await auditCount();
-  await run({ apply: false, restore: null });
-  check(
-    'dry run: six offerings to update, nothing written, no audit entry',
-    lines.filter((line) => line.startsWith('~ offering')).length === 6 &&
-      lines.at(-1)?.includes('run again with --apply') === true &&
-      (await offeringRow('voetanalyse'))?.isAddon === false &&
-      (await linkSlugs('bikefit-huidige-fiets')).length === 0 &&
-      (await auditCount()) === auditBefore,
-    lines.filter((line) => /^[~!→=]/.test(line)).join(' | '),
-  );
-  await run({ apply: true, restore: null });
-  const applyLines = [...lines];
-  const backupPath = applyLines
-    .find((line) => line.startsWith('✓ backup written: '))
-    ?.slice('✓ backup written: '.length);
-  const voetAfter = await offeringRow('voetanalyse');
-  const tweedeAfter = await offeringRow('bikefit-tweede-fiets');
-  check(
-    'apply: columns and links written, audited, backup written',
-    applyLines.some((line) => line.startsWith('✓ apply complete')) &&
-      Boolean(backupPath) &&
-      voetAfter?.isAddon === true &&
-      voetAfter.addonMinutes === 30 &&
-      tweedeAfter?.soldAlone === false &&
-      tweedeAfter.addonOptions.length === 2 &&
-      (await linkSlugs('bikefit-huidige-fiets')).join(',') ===
-        'bikefit-tweede-fiets,voetanalyse,zadelanalyse,afstellen-schoenplaatjes' &&
-      (await linkSlugs('bikefit-nieuwe-fiets')).length === 4 &&
-      (await auditCount('patch.aanbod-extras.apply')) === 1,
-    applyLines.filter((line) => /^[~!✓]/.test(line)).join(' | '),
-  );
-  await run({ apply: false, restore: null });
-  check(
-    'dry run after apply: nothing to do',
-    lines.at(-1)?.includes('nothing to do') === true,
-    lines.at(-1),
-  );
-  if (backupPath) {
-    await run({ apply: false, restore: backupPath });
-    check(
-      'restore: the bare state of migration 0015 is back',
-      (await offeringRow('voetanalyse'))?.isAddon === false &&
-        (await offeringRow('bikefit-tweede-fiets'))?.soldAlone === true &&
-        (await offeringRow('bikefit-tweede-fiets'))?.addonOptions.length === 0 &&
-        (await linkSlugs('bikefit-huidige-fiets')).length === 0,
-      lines.join(' | '),
-    );
-  }
-  // An offering changed in Beheer since the migration blocks the patch.
-  await db
-    .update(cmsOfferings)
-    .set({ isAddon: true, addonMinutes: 45 })
-    .where(and(eq(cmsOfferings.locale, locale), eq(cmsOfferings.slug, 'voetanalyse')));
-  await run({ apply: false, restore: null });
-  let refused = false;
-  try {
-    await run({ apply: true, restore: null });
-  } catch {
-    refused = true;
-  }
-  check(
-    'guard: an offering changed in Beheer blocks the dry run (!) and the apply, nothing written',
-    refused &&
-      (await linkSlugs('bikefit-huidige-fiets')).length === 0 &&
-      (await auditCount('patch.aanbod-extras.apply')) === 1,
-    lines.filter((line) => line.startsWith('!')).join(' | '),
-  );
-  await db
-    .update(cmsOfferings)
-    .set({ isAddon: false, addonMinutes: null })
-    .where(and(eq(cmsOfferings.locale, locale), eq(cmsOfferings.slug, 'voetanalyse')));
-  await run({ apply: true, restore: null });
-  check(
-    'apply again: the extras are back',
-    (await linkSlugs('bikefit-huidige-fiets')).length === 4 &&
-      (await offeringRow('voetanalyse'))?.addonMinutes === 30,
-    lines.filter((line) => /^[~!✓]/.test(line)).join(' | '),
-  );
+  // --- 4: the patch (a fresh database, an edit in Beheer, the state of 20 Oct 2026) ---
+  await aanbodExtrasPatchSection(ctx);
 
   // --- 5: clean-up ----------------------------------------------------------------------
   await db

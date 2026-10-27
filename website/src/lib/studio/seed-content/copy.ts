@@ -4,6 +4,10 @@
  * Review of 19 Oct 2026 (Toshoni): the hero subtitle lost "dichtbij".
  * The junior text follows Toshoni's site review of the same day: "jeugd"
  * instead of "junioren", and the four youth categories named.
+ * Review of 27 Oct 2026 (Toshoni): the team is chosen on "ervaring en
+ * mensenkennis" (no diplomas, so the /aanbod intro says "ervaren professionals"),
+ * the 3D-printed insoles are off the site, and sentences are no longer joined by
+ * a dash (a comma or a colon does it).
  * Only Rutger has a source-backed bio (content/about.html §1); Robin and Goran
  * carry their name and team membership only. Plain data.
  */
@@ -14,7 +18,7 @@ export const HERO_SUBTITLE =
   'Van een fiets die beter past tot begeleiding die met je meegroeit. We luisteren naar jouw verhaal en helpen je op weg, in de studio of bij jou thuis.';
 
 export const AANBOD_INTRO =
-  'Elke fietser is anders. Daarom werkt De Bikefit Studio uitsluitend met ervaren, gediplomeerde professionals. Samen zoeken we wat bij jou past: van je eerste kilometers tot een nieuw sportief doel. Persoonlijke fietsbegeleiding, dichtbij — in de studio, op locatie of, waar mogelijk, bij jou thuis.';
+  'Elke fietser is anders. Daarom werkt De Bikefit Studio uitsluitend met ervaren professionals. Samen zoeken we wat bij jou past: van je eerste kilometers tot een nieuw sportief doel. Persoonlijke fietsbegeleiding, dichtbij: in de studio, op locatie of, waar mogelijk, bij jou thuis.';
 
 export const JUNIOR_TEXT =
   'Jonge fietsers groeien. Hun fiets groeit niet vanzelf mee. Daarom besteden we extra aandacht aan de jeugd, met betaalbare begeleiding en opvolging op maat. Of je nu miniem, aspirant, nieuweling of junior bent, er blijft ruimte om te groeien, bij te leren en vooral graag te fietsen.';
@@ -22,12 +26,22 @@ export const JUNIOR_TEXT =
 export const MOTION_ANALYSIS_TEXT =
   'We gebruiken de nieuwste 3D-bewegingsanalyse om je houding en trapbeweging vanuit verschillende hoeken te bekijken. Die inzichten combineren we met jouw ervaring en de blik van onze fitter. Technologie helpt ons meten; jij blijft het vertrekpunt.';
 
-/** The studio's own means, named by Toshoni on 19 Oct 2026 (register E-03, E-04). */
+/**
+ * The studio's own means, named by Toshoni on 19 Oct 2026 (register E-03, E-04).
+ * On 27 Oct 2026 he had the 3D-printed insoles taken off the website; the
+ * saddles stay.
+ */
 export const STUDIO_EXTRAS_TEXT =
-  'In de studio maken we ook 3D-geprinte schoenzolen op maat, en je kunt er een ruime keuze aan zadels uittesten. Zo krijgen ook je voeten en je zitvlak hun juiste plaats.';
+  'In de studio kun je een ruime keuze aan zadels uittesten. Zo krijgt ook je zitvlak zijn juiste plaats.';
 
-export const TEAM_INTRO =
-  'Goede begeleiding begint bij de juiste mensen. We kiezen ons team op ervaring, vakkennis en de nodige diploma’s, maar ook op de manier waarop iemand luistert. Je krijgt een aanpak die bij jou past, met heldere uitleg en aandacht voor jouw doelen.';
+/**
+ * How the team is chosen (Toshoni, 27 Oct 2026: experience and people skills,
+ * no diplomas); also the body of the team band on the home page.
+ */
+export const TEAM_SELECTION_SENTENCE =
+  'We kiezen ons team op ervaring en mensenkennis, en op de manier waarop iemand luistert.';
+
+export const TEAM_INTRO = `Goede begeleiding begint bij de juiste mensen. ${TEAM_SELECTION_SENTENCE} Je krijgt een aanpak die bij jou past, met heldere uitleg en aandacht voor jouw doelen.`;
 
 /**
  * Second bio line on an interim profile, so the card reads as unfinished on
@@ -48,7 +62,7 @@ export const TEAM_MEMBERS = [
     name: 'Rutger Roelandts',
     role: 'Oprichter',
     bio: [
-      'Ik zit op een fiets zolang ik me kan herinneren. Negentien jaar competitie, en een heel leven daarbuiten gewoon fietsen — naar school, naar het werk, het heuvelland in op zondag.',
+      'Ik zit op een fiets zolang ik me kan herinneren. Negentien jaar competitie, en een heel leven daarbuiten gewoon fietsen: naar school, naar het werk, het heuvelland in op zondag.',
       'Daarom heb ik De Bikefit Studio opgericht. Iedereen verdient het om te genieten van alles wat een fiets te bieden heeft. Mijn werk is ervoor te zorgen dat jouw fiets je dat ook toelaat.',
     ],
     image: teamPortrait('rutger-roelandts'),

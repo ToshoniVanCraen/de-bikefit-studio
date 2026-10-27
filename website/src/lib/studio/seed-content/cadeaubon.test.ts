@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { validateBlock } from '@/lib/cms/blocks';
+import {
+  GIFT_VOUCHER_DEFAULT_AMOUNTS,
+  GIFT_VOUCHER_VALIDITY_NOTE,
+} from '@/lib/gift-voucher/amounts';
 import { GIFT_VOUCHER_PAGE_SLUG, GIFT_VOUCHER_SUBMIT_LABEL } from '@/lib/gift-voucher/order';
 import { AANBOD_PAGES } from './aanbod';
 import { CADEAUBON_CARD, CADEAUBON_PAGE, CADEAUBON_PATH } from './cadeaubon';
@@ -18,7 +22,8 @@ describe('cadeaubon page (seed)', () => {
     expect(CADEAUBON_CARD).toEqual({
       category: 'overige',
       title: 'Cadeaubon',
-      summary: 'Fietsplezier cadeau doen, met een bedrag en een boodschap naar keuze.',
+      summary:
+        'Fietsplezier cadeau doen, met € 75, € 150 of € 275. Geldig {{cadeaubon-geldigheid}} na aankoop.',
       priceLabel: 'Bedrag naar keuze',
       href: '/cadeaubon',
     });
@@ -32,13 +37,27 @@ describe('cadeaubon page (seed)', () => {
     }
   });
 
-  it('states no validity, terms, payment method or minimum (not decided)', () => {
+  it('suggests € 75, € 150 and € 275 and says a voucher is valid for one year (Toshoni, 27 Oct 2026)', () => {
+    const [block] = CADEAUBON_PAGE.blocks;
+    expect(block.data.amounts).toEqual(GIFT_VOUCHER_DEFAULT_AMOUNTS);
+    expect(block.data.validityNote).toBe(GIFT_VOUCHER_VALIDITY_NOTE);
+    // The period is the copy token (it resolves to "een jaar"), never typed; the amounts are block data.
+    expect(GIFT_VOUCHER_VALIDITY_NOTE).toBe(
+      'Een cadeaubon is {{cadeaubon-geldigheid}} geldig na aankoop.',
+    );
+    expect(CADEAUBON_PAGE.metaDescription).toContain('Geldig {{cadeaubon-geldigheid}} na aankoop.');
+    expect(CADEAUBON_CARD.summary).toContain('Geldig {{cadeaubon-geldigheid}} na aankoop.');
+    for (const text of [CADEAUBON_PAGE.metaDescription, CADEAUBON_CARD.summary]) {
+      for (const amount of ['€ 75', '€ 150', '€ 275']) expect(text).toContain(amount);
+      expect(text).not.toMatch(/een jaar/i);
+    }
+  });
+
+  it('still states no terms, payment method, refund or minimum (not decided)', () => {
     const text = JSON.stringify(CADEAUBON_PAGE).toLowerCase();
     for (const word of [
-      'geldig',
       'voorwaarde',
       'maand',
-      'jaar',
       'minimum',
       'bancontact',
       'overschrijving',

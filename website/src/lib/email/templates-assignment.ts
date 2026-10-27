@@ -55,7 +55,7 @@ function customerRows(data: BookingEmailData): Row[] {
 
 /** To the beheerder: a booking waits for assignment. `data.heldBy` names who holds the slot. */
 export function assignmentTodoEmail(data: BookingEmailData): RenderedEmail {
-  const subject = `Toe te wijzen: ${data.serviceName} — ${data.customerName}, ${shortWhen(data)}`;
+  const subject = `Toe te wijzen: ${data.serviceName} voor ${data.customerName}, ${shortWhen(data)}`;
   const heading = 'Afspraak toewijzen';
   const intro = `Een klant boekte ${data.serviceName} zonder een aanbieder te kiezen. Wijs de afspraak toe aan een aanbieder; tot dan houdt ${data.heldBy || 'een aanbieder'} het moment vrij en weet de klant nog niet bij wie hij terechtkomt.`;
   const rows: Row[] = [...customerRows(data), ['Voorlopig bij', data.heldBy]];
@@ -118,7 +118,7 @@ export function bookingReassignedEmail(
   data: BookingEmailData,
   previousProviderName: string,
 ): RenderedEmail {
-  const subject = `Afspraak niet meer bij jou: ${data.serviceName} — ${data.customerName}, ${shortWhen(data)}`;
+  const subject = `Afspraak niet meer bij jou: ${data.serviceName} voor ${data.customerName}, ${shortWhen(data)}`;
   const heading = 'Afspraak toegewezen aan iemand anders';
   const intro = `Hallo ${previousProviderName}, een beheerder wees deze afspraak toe aan ${data.providerName}. Het tijdslot is weer vrij in jouw agenda.`;
   const rows: Row[] = [

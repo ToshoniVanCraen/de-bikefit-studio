@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { isBarePrefix, normalizePhone } from '@/lib/booking/phone';
 import { EMAIL_RE, normalizeMessage, singleLine } from '@/lib/gift-voucher/order';
+import { isSplitAudience, type SplitAudience } from '@/lib/offers/offering-audience';
 
 /**
  * The enquiry form on an offer page that is asked for, not booked online
@@ -8,9 +9,10 @@ import { EMAIL_RE, normalizeMessage, singleLine } from '@/lib/gift-voucher/order
  * (instant feedback) and the server (the one that counts), unit-tested in
  * `input.test.ts`.
  *
- * Data minimisation: name, e-mail, an optional phone number, for a Volwassene
- * / Jeugd offering who it is for, and the question itself. Nothing is stored;
- * the enquiry lives only in the studio's mailbox (`delivery.ts`).
+ * Data minimisation: name, e-mail, an optional phone number, for an offering
+ * that splits by audience (Volwassene, Jeugd – eenmalig, Jeugd – volledig
+ * pakket) who it is for, and the question itself. Nothing is stored; the
+ * enquiry lives only in the studio's mailbox (`delivery.ts`).
  *
  * Validation order (the booking and gift voucher rules): raw caps first
  * (schema), then each field's rule with length before pattern, so a pattern
@@ -54,7 +56,7 @@ export const OFFER_ENQUIRY_MESSAGES = {
 export type OfferEnquiryField = 'audience' | 'name' | 'email' | 'phone' | 'message';
 
 /** `''` = not asked (one option); else who the enquiry is for. */
-export type OfferEnquiryAudience = '' | 'adult' | 'youth';
+export type OfferEnquiryAudience = '' | SplitAudience;
 
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const REQUEST_ID_RE = /^[A-Za-z0-9-]{16,64}$/;
@@ -109,12 +111,12 @@ function isField(key: PropertyKey | undefined): key is OfferEnquiryField {
 
 /**
  * Validates one enquiry. `audiences` are the choices the offering has (none
- * for a single option, `adult` + `youth` for Volwassene/Jeugd); the server
- * passes the offering's own, so a crafted value never reaches the mail.
+ * for a single option, `adult`, `youth` and `youth-package` for a split one);
+ * the server passes the offering's own, so a crafted value never reaches the mail.
  */
 export function validateOfferEnquiry(
   raw: unknown,
-  audiences: readonly ('adult' | 'youth')[] = [],
+  audiences: readonly SplitAudience[] = [],
 ): OfferEnquiryValidation {
   const parsed = offerEnquiryInputSchema.safeParse(raw ?? {});
   if (!parsed.success) {
@@ -138,7 +140,7 @@ export function validateOfferEnquiry(
   let audience: OfferEnquiryAudience = '';
   if (audiences.length > 0) {
     const value = input.audience.trim();
-    if (value === 'adult' || value === 'youth') {
+    if (isSplitAudience(value)) {
       if (audiences.includes(value)) audience = value;
       else errors.audience = FIELD_MESSAGES.audience;
     } else {

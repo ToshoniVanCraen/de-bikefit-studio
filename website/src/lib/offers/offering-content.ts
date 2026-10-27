@@ -4,6 +4,7 @@ import {
   OFFER_CATEGORIES,
   OFFER_CTA_LABEL,
   OFFER_DURATION_FALLBACK,
+  OFFER_PRICE_TEXT_MAX,
   type OfferCategory,
 } from './catalogue';
 import type { OfferingSettings } from './offering';
@@ -39,6 +40,11 @@ export type OfferingContent = {
   extrasNote: string;
   /** Free-text Duur, public only for an offering that is asked for; '' = "Duur in overleg". */
   duration: string;
+  /**
+   * Free-text Kostprijs, public only for an offering that is asked for (27 Oct 2026);
+   * '' = the variants' prices (`offeringPriceLabel()`).
+   */
+  priceText: string;
   /** Text of the booking button; '' = {@link OFFER_CTA_LABEL}. */
   ctaLabel: string;
   image: CmsImageRef;
@@ -82,6 +88,11 @@ export const offeringContentSchema = z.object({
   extras: z.array(line(300)).max(20, 'Maximaal 20 extra’s.').default([]),
   extrasNote: line(300).default(''),
   duration: line(120).default(''),
+  priceText: z
+    .string()
+    .trim()
+    .max(OFFER_PRICE_TEXT_MAX, `De prijstekst is te lang (max. ${OFFER_PRICE_TEXT_MAX} tekens).`)
+    .default(''),
   ctaLabel: line(80).default(''),
   image: imageRefSchema.default(emptyImage),
   metaDescription: line(320).default(''),
@@ -124,6 +135,7 @@ export const EMPTY_OFFERING_CONTENT: OfferingContent = {
   extras: [],
   extrasNote: '',
   duration: '',
+  priceText: '',
   ctaLabel: '',
   image: { ...emptyImage },
   metaDescription: '',
@@ -151,6 +163,8 @@ export function contentFromRow(row: {
   extras: unknown;
   extrasNote: string;
   duration: string;
+  /** Absent before migration 0017: read as no text. */
+  priceText?: string | null;
   ctaLabel: string;
   image: unknown;
   metaDescription: string;
@@ -170,6 +184,7 @@ export function contentFromRow(row: {
     extras: stringList(row.extras),
     extrasNote: row.extrasNote,
     duration: row.duration,
+    priceText: typeof row.priceText === 'string' ? row.priceText : '',
     ctaLabel: row.ctaLabel,
     image: image.success ? image.data : { ...emptyImage },
     metaDescription: row.metaDescription,

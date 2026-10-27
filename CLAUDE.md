@@ -76,6 +76,12 @@ feature branch. CI runs the same six steps; a red CI is never merged.
 - **Language:** all user-facing copy is Dutch (Belgium), informal "je", in the CMS where the
   visitor can edit it, in code only as sensible defaults. Error messages shown to visitors
   are short, Dutch and never leak internals.
+- **One master per fact.** A fact that more than one text states (a price, a duration, the phone
+  number, the address, the company identity, "six months of follow-up") is typed once, in its
+  master (Beheer → Aanbod, Locaties; Instellingen → Contact, Bedrijfsgegevens, Regels); copy
+  refers to it with a copy token (`{{prijs:…}}`, `{{telefoon}}`, `{{kbo}}`, …), resolved at render
+  time and in e-mails. The tokens, their masters and fallbacks: `website/docs/cms-architecture.md`
+  §5, "Copy tokens: one master per fact".
 - **File size:** keep modules under ~500 lines. When you touch a file that is over that,
   split the part you are working on rather than adding to it.
 - **No duplicate helpers.** Shared ones: `escapeHtml` (`src/lib/html.ts`), client IP

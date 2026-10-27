@@ -12,6 +12,7 @@ import {
   StatusMessage,
   SubmitButton,
 } from '@/components/admin/form';
+import { CopyTokenHelp } from '@/components/admin/copy-token-help';
 import { MediaPicker, type MediaOption } from '@/components/admin/media-picker';
 import { PAGE_KINDS } from '@/components/admin/page-create-form';
 import { updatePageAction } from '@/lib/cms/actions/pages';
@@ -86,6 +87,7 @@ export function PageSettingsForm({
         description="Leeg laten betekent: de standaardwaarden uit de site-instellingen gebruiken."
       >
         <div className="flex flex-col gap-3">
+          <CopyTokenHelp />
           <Field label="Meta titel" htmlFor="metaTitle">
             <Input id="metaTitle" name="metaTitle" defaultValue={page.metaTitle ?? ''} />
           </Field>

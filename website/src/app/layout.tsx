@@ -55,7 +55,7 @@ export const metadata: Metadata = {
    */
   title: 'De Bikefit Studio',
   description:
-    'Fiets met comfort. Professionele bikefit in Ninove — voor jonge fietsers, wielertoeristen, recreanten, pendelaars en gezinnen.',
+    'Fiets met comfort. Professionele bikefit in Ninove, voor jonge fietsers, wielertoeristen, recreanten, pendelaars en gezinnen.',
   // Icons: `src/app/favicon.ico`, `icon.svg` and `apple-icon.png` (Next's file
   // conventions; generated from `public/brand/` by `npm run brand:icons`).
 };

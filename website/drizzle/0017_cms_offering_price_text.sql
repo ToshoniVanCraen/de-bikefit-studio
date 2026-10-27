@@ -1,0 +1,20 @@
+-- A free-text Kostprijs for an offering that is asked for (Toshoni, 27 Oct 2026):
+-- "Bikefit – tweede bezoek" is free within six months of the fit and € 75 after that, so
+-- its page reads "Gratis binnen 6 maanden na je fit, daarna € 75" instead of "€ 75" —
+-- docs/cms-architecture.md §14.
+--
+-- ADDITIVE. One column: `cms_offerings.price_text`, empty by default. Empty means the
+-- Kostprijs line is built from the variants' prices as before; text is shown only for an
+-- offering set to "Enkel op aanvraag", the same rule as the free-text Duur. The default
+-- text of *Bikefit – tweede bezoek* comes with `cms:bootstrap` on a new database or is
+-- typed in Beheer → Aanbod ("Prijs (tekst)").
+-- No row is created, updated or removed; nothing touches cms_offering_variants,
+-- cms_services, cms_provider_services, cms_bookings or a webshop table. A variant's
+-- `audience` is plain text without a CHECK constraint, so the new audience
+-- `youth-package` (27 Oct 2026) needs no migration.
+--
+-- Guarded (IF NOT EXISTS) so the file is safe to re-run.
+--
+-- Apply BEFORE deploying a build that contains it: the new build selects the column on
+-- every offering read.
+ALTER TABLE "cms_offerings" ADD COLUMN IF NOT EXISTS "price_text" text DEFAULT '' NOT NULL;

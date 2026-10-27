@@ -8,8 +8,10 @@ import { z } from 'zod';
  * What an order is (Toshoni, 13 Oct 2026): a visitor picks an amount, writes a
  * personal message and leaves contact details; "Bestel nu" e-mails the studio,
  * which makes the invoice and payment link by hand. There is no payment,
- * invoice, voucher code or customer e-mail here, and no validity or terms are
- * stated anywhere: those are the studio's to decide.
+ * invoice, voucher code or customer e-mail here. The one term the site states
+ * is the validity, one year after purchase (Toshoni, 27 Oct 2026; the block's
+ * `validityNote`, see `amounts.ts`); any other term is the studio's to decide.
+ * The suggested amounts of the form are a convenience on top of these rules.
  */
 
 /** The exact label of the submit button (work block 2026-10-13). */

@@ -9,7 +9,8 @@ import type { BookingChoice, BookingServiceOption } from './types';
  *
  * A choice is a service on its own, or an offer with its services underneath
  * (`groupBookingChoices()`): "Bikefit – huidige fiets" opens a second row,
- * "Voor wie?", with Volwassene and Jeugd. That second row comes right after
+ * "Voor wie?", with Volwassene, Jeugd – eenmalig and Jeugd – volledig pakket
+ * (the labels and prices of Beheer → Aanbod). That second row comes right after
  * the offer's button in the DOM, so Tab reaches it next. Only a service is
  * ever selected: its duration, price and (on the next steps) availability and
  * form are the ones shown and booked. An offer with a single bookable service

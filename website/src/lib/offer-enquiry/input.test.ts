@@ -13,7 +13,7 @@ const VALID = {
   name: 'An Peeters',
   email: 'an@example.com',
   phone: '',
-  message: 'Kan ik in november een lactaattest doen?',
+  message: 'Kan ik in november een inspanningstest doen?',
   requestId: '0b8f3c2e-1d4a-4c7e-9b1a-2f6e8d9c0a11',
 };
 
@@ -28,7 +28,7 @@ describe('validateOfferEnquiry', () => {
         name: 'An Peeters',
         email: 'an@example.com',
         phone: '',
-        message: 'Kan ik in november een lactaattest doen?',
+        message: 'Kan ik in november een inspanningstest doen?',
         requestId: VALID.requestId,
       },
     });
@@ -47,19 +47,33 @@ describe('validateOfferEnquiry', () => {
     });
   });
 
-  it('asks who it is for only when the offering has Volwassene and Jeugd', () => {
+  it('asks who it is for only when the offering splits by audience', () => {
+    const split = ['adult', 'youth', 'youth-package'] as const;
     expect(validateOfferEnquiry({ ...VALID, audience: 'youth' }, [])).toMatchObject({
       ok: true,
       enquiry: { audience: '' },
     });
-    expect(validateOfferEnquiry(VALID, ['adult', 'youth'])).toEqual({
+    expect(validateOfferEnquiry(VALID, split)).toEqual({
       ok: false,
       fieldErrors: { audience: 'Kies voor wie de aanvraag is.' },
     });
-    expect(validateOfferEnquiry({ ...VALID, audience: 'youth' }, ['adult', 'youth'])).toMatchObject(
-      { ok: true, enquiry: { audience: 'youth' } },
-    );
-    expect(validateOfferEnquiry({ ...VALID, audience: 'all' }, ['adult', 'youth']).ok).toBe(false);
+    for (const audience of split) {
+      expect(validateOfferEnquiry({ ...VALID, audience }, split)).toMatchObject({
+        ok: true,
+        enquiry: { audience },
+      });
+    }
+    expect(validateOfferEnquiry({ ...VALID, audience: 'all' }, split).ok).toBe(false);
+  });
+
+  it('accepts Jeugd – volledig pakket only when the offering has it (older offerings do not)', () => {
+    const older = ['adult', 'youth'] as const;
+    expect(validateOfferEnquiry({ ...VALID, audience: 'youth-package' }, older)).toEqual({
+      ok: false,
+      fieldErrors: { audience: 'Kies voor wie de aanvraag is.' },
+    });
+    // The longest audience value fits under the raw cap, so it is never cut off.
+    expect('youth-package'.length).toBeLessThanOrEqual(OFFER_ENQUIRY_RAW_LIMITS.audience);
   });
 
   it('gives every field its message at once', () => {

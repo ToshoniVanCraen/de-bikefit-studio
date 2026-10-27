@@ -14,7 +14,7 @@ import {
   type OfferingVariantMode,
   type VariantServiceInput,
 } from '@/lib/offers/offering';
-import { linesToList } from '@/lib/offers/offering-content';
+import { linesToList, OFFERING_SLUG_PATTERN } from '@/lib/offers/offering-content';
 import { createOffering, deleteOffering, updateOffering } from '@/lib/offers/repo';
 import { runAction } from './run';
 import { actionError, actionOk, boolField, field, type ActionState } from './state';
@@ -100,6 +100,7 @@ export async function saveOfferingAction(
       extras: linesToList(field(form, 'extras')),
       extrasNote: field(form, 'extrasNote'),
       duration: field(form, 'duration'),
+      priceText: field(form, 'priceText'),
       ctaLabel: field(form, 'ctaLabel'),
       image: {
         mediaId: imageMediaId,
@@ -168,7 +169,13 @@ export async function saveOfferingAction(
       if (priceCents === undefined || priceCents === null) {
         return actionError(`Keuze “${label}”: geef de prijs in euro, bv. 75 of 149,50.`);
       }
-      addonOptions.push({ key: slugify(label) || `keuze-${row + 1}`, label, minutes, priceCents });
+      // A choice that exists keeps its key when its label changes: bookings and the copy token
+      // `{{extra:<slug>:<key>}}` refer to it. Only a new row gets a key from its label.
+      const keptKey = field(form, `addonOptionKey:${row}`);
+      const key = OFFERING_SLUG_PATTERN.test(keptKey)
+        ? keptKey
+        : slugify(label) || `keuze-${row + 1}`;
+      addonOptions.push({ key, label, minutes, priceCents });
     }
 
     const input = {

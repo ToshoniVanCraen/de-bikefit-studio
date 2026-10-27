@@ -1,14 +1,22 @@
+import { LOCATION_DEFAULTS } from '@/lib/cms/blocks-location';
+import { LEGAL_LINKS } from '@/lib/studio/legal';
 import { StudioButtonLink, splitArrow } from '../link';
+import { LocationMap } from './location-map';
 import { StudioSection } from './section';
 import type { BlockProps } from './types';
 
 /**
  * `contact` — the studio's contact details.
  *
- * Every field is rendered only when it has a value. No street address, e-mail
- * address or opening-hours grid exists anywhere in the source material, so
- * those rows simply do not appear — the page never invents one, and neither
- * does the `LocalBusiness` JSON-LD.
+ * Every field is rendered only when it has a value, so a row without data
+ * simply does not appear: the page never invents one, and neither does the
+ * `LocalBusiness` JSON-LD. The details are copy tokens in the block's data
+ * (`{{telefoon}}`, `{{telefoon-href}}`, `{{e-mail}}`, `{{adres}}`), resolved by
+ * `BlockRenderer` from Instellingen → Contact before this component runs, so a
+ * token whose setting is empty makes its row disappear like an empty field.
+ * The optional `mapEmbedUrl` goes through the same two-click leaf as the
+ * `location` block (`LocationMap`): the Google frame is not in the page and
+ * Google receives nothing until the visitor presses the button (CLAUDE.md §4).
  */
 export function ContactBlock({ data, anchor, headingLevel }: BlockProps<'contact'>) {
   const address = data.addressLines.filter(Boolean);
@@ -74,12 +82,11 @@ export function ContactBlock({ data, anchor, headingLevel }: BlockProps<'contact
 
       {data.mapEmbedUrl ? (
         <div className="studio-stack">
-          <iframe
+          <LocationMap
             src={data.mapEmbedUrl}
             title="Kaart met de ligging van de studio"
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-            style={{ width: '100%', height: '360px', border: 0 }}
+            buttonLabel={LOCATION_DEFAULTS.mapLabel}
+            privacyHref={LEGAL_LINKS.privacy}
           />
         </div>
       ) : null}

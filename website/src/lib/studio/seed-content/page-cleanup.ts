@@ -1,6 +1,6 @@
 import { JUNIOR_TEXT } from './copy';
 import { CONTACT_REDIRECT, OTHER_QUESTION_HTML, RETIRED_CONTACT_SLUG } from './appointment';
-import { BOOKING_PATH, CONTACT_EMAIL, PHONE_HREF } from './shared';
+import { BOOKING_PATH, CONTACT_EMAIL, EMAIL_TOKEN, PHONE_HREF, PHONE_HREF_TOKEN } from './shared';
 
 /**
  * Toshoni's site review of 13 Oct 2026 as exact, guarded edits — the pure
@@ -14,38 +14,58 @@ import { BOOKING_PATH, CONTACT_EMAIL, PHONE_HREF } from './shared';
  * the patch refuses, so an editor's change is never overwritten silently.
  * Removals take only blocks that match their selector; a missing block counts
  * as already removed. Plain data and functions, no I/O.
+ *
+ * Since 27 Oct 2026 the same engine carries that day's copy corrections
+ * (`corrections-2026-10-27.ts`), which needed three more kinds of edit, each
+ * guarded like `set` (the old value, or the new one already there, or a
+ * conflict): `replace` swaps the exact old text inside a text field,
+ * `replaceItem` swaps the one list entry equal to the old value, and
+ * `replaceAll` swaps an exact string in every field of every block of a page
+ * (nothing to guard: the old string is either there or it is not).
  */
 
 export type CleanupBlock = { type: string; data: Record<string, unknown> };
 
-type Selector = { label: string; type: string; where?: (data: Record<string, unknown>) => boolean };
+export type Selector = {
+  label: string;
+  type: string;
+  where?: (data: Record<string, unknown>) => boolean;
+};
 
 export type CleanupEdit =
   | { kind: 'set'; select: Selector; field: string; from: unknown; to: unknown }
   | { kind: 'remove'; select: Selector }
-  | { kind: 'append'; select: Selector; field: string; marker: string; value: string };
+  | { kind: 'append'; select: Selector; field: string; marker: string; value: string }
+  | { kind: 'replace'; select: Selector; field: string; from: string; to: string }
+  | { kind: 'replaceItem'; select: Selector; field: string; from: unknown; to: unknown }
+  | { kind: 'replaceAll'; from: string; to: string };
 
 export type PageCleanupSpec = {
   slug: string;
   edits: CleanupEdit[];
   metaDescription?: { from: string; to: string };
+  /**
+   * The page's own title for the browser tab and search results, guarded like
+   * `metaDescription` (27 Oct 2026: the dash clean-up changes four of them).
+   */
+  metaTitle?: { from: string; to: string };
 };
 
 /** Before the review; the target values come from the seeds. */
 const OLD_JUNIOR_TEXT =
   'Jonge fietsers groeien. Hun fiets groeit niet vanzelf mee. Daarom besteden we extra aandacht aan junioren, met betaalbare begeleiding en opvolging op maat. Zo blijft er ruimte om te groeien, bij te leren en vooral graag te fietsen.';
 
-const pageHead: Selector = {
+export const pageHead: Selector = {
   label: 'hero (page head)',
   type: 'hero',
   where: (data) => data.variant === 'pageHead',
 };
 
-function titled(type: string, title: string): Selector {
+export function titled(type: string, title: string): Selector {
   return { label: `${type} "${title}"`, type, where: (data) => data.title === title };
 }
 
-function set(select: Selector, field: string, from: unknown, to: unknown): CleanupEdit {
+export function set(select: Selector, field: string, from: unknown, to: unknown): CleanupEdit {
   return { kind: 'set', select, field, from, to };
 }
 
@@ -155,6 +175,46 @@ function describe(from: unknown, to: unknown): string {
   return `${cut(a)} → ${cut(b)}`;
 }
 
+/**
+ * The text after a `replace` edit: `from` swapped for `to` (everywhere it
+ * occurs), the text itself when the edit is already done, `null` when neither
+ * is there. When `to` contains `from` (text was added) the edit is done as
+ * soon as `to` is there; swapping again would add the text twice.
+ */
+function replaceText(current: string, from: string, to: string): string | null {
+  if (current.includes(to) && to.includes(from)) return current;
+  if (current.includes(from)) return current.split(from).join(to);
+  return current.includes(to) ? current : null;
+}
+
+type StringSwap = { value: unknown; touched: number };
+
+/** `value` with `from` swapped for `to` in every string inside it, and how many strings changed. */
+function replaceInStrings(value: unknown, from: string, to: string): StringSwap {
+  if (typeof value === 'string') {
+    return value.includes(from)
+      ? { value: value.split(from).join(to), touched: 1 }
+      : { value, touched: 0 };
+  }
+  if (Array.isArray(value)) {
+    const parts = value.map((entry) => replaceInStrings(entry, from, to));
+    return {
+      value: parts.map((part) => part.value),
+      touched: parts.reduce((sum, part) => sum + part.touched, 0),
+    };
+  }
+  if (value && typeof value === 'object') {
+    const parts = Object.entries(value as Record<string, unknown>).map(
+      ([key, entry]) => [key, replaceInStrings(entry, from, to)] as const,
+    );
+    return {
+      value: Object.fromEntries(parts.map(([key, part]) => [key, part.value])),
+      touched: parts.reduce((sum, [, part]) => sum + part.touched, 0),
+    };
+  }
+  return { value, touched: 0 };
+}
+
 export type CleanupResult<T extends CleanupBlock> = {
   /** Blocks to write, with their new data. */
   updated: { block: T; data: Record<string, unknown> }[];
@@ -176,6 +236,19 @@ export function cleanupBlocks<T extends CleanupBlock>(
   const conflicts: string[] = [];
 
   for (const edit of spec.edits) {
+    if (edit.kind === 'replaceAll') {
+      const { from, to } = edit;
+      if (from === '') throw new Error('replaceAll: "from" must not be empty');
+      let touched = 0;
+      data.forEach((blockData, index) => {
+        if (removed.has(index)) return;
+        const swapped = replaceInStrings(blockData, from, to);
+        data[index] = swapped.value as Record<string, unknown>;
+        touched += swapped.touched;
+      });
+      if (touched > 0) changes.push(`${touched} field(s): ${describe(from, to)}`);
+      continue;
+    }
     const { label, type, where } = edit.select;
     const hits = blocks
       .map((block, index) => index)
@@ -204,6 +277,46 @@ export function cleanupBlocks<T extends CleanupBlock>(
       } else if (!current.includes(edit.marker)) {
         target[edit.field] = `${current}${edit.value}`;
         changes.push(`${label}.${edit.field}: append "${edit.marker}"`);
+      }
+      continue;
+    }
+    if (edit.kind === 'replace') {
+      if (typeof current !== 'string') {
+        conflicts.push(`${label}.${edit.field}: not text`);
+        continue;
+      }
+      const replaced = replaceText(current, edit.from, edit.to);
+      if (replaced === null) {
+        conflicts.push(
+          `${label}.${edit.field}: expected the text ${show(edit.from)} (edited since the rollout?)`,
+        );
+      } else if (replaced !== current) {
+        target[edit.field] = replaced;
+        changes.push(`${label}.${edit.field}: ${describe(edit.from, edit.to)}`);
+      }
+      continue;
+    }
+    if (edit.kind === 'replaceItem') {
+      if (!Array.isArray(current)) {
+        conflicts.push(`${label}.${edit.field}: not a list`);
+        continue;
+      }
+      const matches = current.flatMap((entry, position) =>
+        same(entry, edit.from) ? [position] : [],
+      );
+      if (matches.length === 1) {
+        target[edit.field] = current.map((entry, position) =>
+          position === matches[0] ? structuredClone(edit.to) : entry,
+        );
+        changes.push(`${label}.${edit.field}: ${describe(edit.from, edit.to)}`);
+      } else if (matches.length > 1) {
+        conflicts.push(
+          `${label}.${edit.field}: ${matches.length} entries equal ${show(edit.from)}`,
+        );
+      } else if (!current.some((entry) => same(entry, edit.to))) {
+        conflicts.push(
+          `${label}.${edit.field}: no entry equals ${show(edit.from)} (edited since the rollout?)`,
+        );
       }
       continue;
     }
@@ -294,10 +407,16 @@ export function pageCleanupProblems(slug: string, blocks: readonly CleanupBlock[
       (block) => block.type === 'richText' && block.data.title === 'Voor je komt',
     );
     const html = typeof info?.data.html === 'string' ? info.data.html : '';
-    if (!html.includes('Andere vraag?') || !html.includes(`href="mailto:${CONTACT_EMAIL}"`)) {
+    // The e-mail address and the phone link are the literal master values or, since
+    // 27 Oct 2026, their copy tokens (`{{e-mail}}`, `{{telefoon-href}}`).
+    const mailLinks = [`href="mailto:${CONTACT_EMAIL}"`, `href="mailto:${EMAIL_TOKEN}"`];
+    const phoneLinks = [`href="${PHONE_HREF}"`, `href="${PHONE_HREF_TOKEN}"`];
+    if (!html.includes('Andere vraag?') || !mailLinks.some((link) => html.includes(link))) {
       problems.push('"Voor je komt" lacks "Andere vraag?" with the e-mail link');
     }
-    if (!html.includes(`href="${PHONE_HREF}"`)) problems.push('"Voor je komt" lost the phone link');
+    if (!phoneLinks.some((link) => html.includes(link))) {
+      problems.push('"Voor je komt" lost the phone link');
+    }
     return problems;
   }
   if (heads.some((block) => String(block.data.eyebrow).includes('Ninove'))) {

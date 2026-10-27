@@ -48,7 +48,7 @@ export function AddonStep({
             <li key={option.id}>
               {startsGroup ? (
                 <p className="studio-booking__addon-group" aria-hidden="true">
-                  {option.groupTitle} — kies één
+                  {option.groupTitle}: kies één
                 </p>
               ) : null}
               <label className="studio-booking__addon" htmlFor={inputId} data-checked={checked}>

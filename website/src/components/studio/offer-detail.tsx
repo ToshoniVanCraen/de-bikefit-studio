@@ -2,13 +2,19 @@ import Link from 'next/link';
 import type { SiteSettings } from '@/lib/cms/blocks';
 import { OFFER_ENQUIRY_ANCHOR, OFFER_ENQUIRY_CTA_LABEL } from '@/lib/offer-enquiry/input';
 import { formatDuration } from '@/lib/booking/format';
-import { OFFER_CATEGORY_LABELS, OFFER_INDEX_PATH, offerBookingHref } from '@/lib/offers/catalogue';
+import {
+  OFFER_CATEGORY_LABELS,
+  OFFER_INDEX_PATH,
+  offerBookingHref,
+  offerBookingPath,
+} from '@/lib/offers/catalogue';
 import type { CatalogueOfferEntry } from '@/lib/offers/offer-catalogue';
 import {
   OFFERING_STATUS_LABELS,
   type OfferingStatus,
   type ResolvedVariant,
 } from '@/lib/offers/offering';
+import { isSplitAudience } from '@/lib/offers/offering-audience';
 import { offeringCtaLabel } from '@/lib/offers/offering-content';
 import { LEGAL_IDENTITY } from '@/lib/studio/legal';
 import {
@@ -41,6 +47,11 @@ import { StudioImage, hasImage } from './studio-image';
  *  - **unavailable** (direct, nobody offers it right now): greyed out, the
  *    button is disabled and no availability is shown or suggested; the phone
  *    number stays as the way to ask;
+ *  - **addon** (an extra that is not sold alone): the button opens the booking
+ *    page itself, `/afspraak#boeken` with nothing preselected (27 Oct 2026,
+ *    Toshoni); the note under the facts names the offerings it goes with.
+ *    Without a bookable one it is the enquiry form when the offering is set
+ *    to it, else nothing to click;
  *  - **enquiry** (asked for on purpose): the button scrolls to the enquiry
  *    form, which mails the studio (`src/lib/offer-enquiry/`).
  *
@@ -130,14 +141,14 @@ function OfferDetail({
 }) {
   const { offer, offering, content, addonHosts } = entry;
   const variants = offering.variants;
-  // An extra that is not sold alone: its button books the first offering that
-  // lists it and is bookable, with the extra ticked. Without one, the enquiry
-  // form (when the offering is set to it), else nothing to click.
-  const bookableHost =
-    status === 'addon' ? (addonHosts.find((host) => host.bookable) ?? null) : null;
+  // An extra that is not sold alone: its button opens the booking page when an
+  // offering that lists it is bookable; the visitor picks the fit there (the
+  // note under the facts names them). Without one, the enquiry form (when the
+  // offering is set to it), else nothing to click.
+  const hasBookableHost = status === 'addon' && addonHosts.some((host) => host.bookable);
   const showEnquiry =
     status === 'enquiry' ||
-    (status === 'addon' && !bookableHost && offering.bookingMode === 'enquiry');
+    (status === 'addon' && !hasBookableHost && offering.bookingMode === 'enquiry');
   const partlyUnavailable =
     status === 'bookable' && variants.length > 1 && variants.some((variant) => !variant.bookable);
   const withImage = hasImage(content.image);
@@ -148,9 +159,9 @@ function OfferDetail({
       <StudioButtonLink href={offerBookingHref(content.slug)} variant="primary">
         {offeringCtaLabel(content)}
       </StudioButtonLink>
-    ) : bookableHost ? (
-      <StudioButtonLink href={offerBookingHref(bookableHost.slug, content.slug)} variant="primary">
-        Boek samen met {bookableHost.title}
+    ) : hasBookableHost ? (
+      <StudioButtonLink href={offerBookingPath()} variant="primary">
+        Boek je bikefit
       </StudioButtonLink>
     ) : showEnquiry ? (
       <StudioButtonLink href={`#${OFFER_ENQUIRY_ANCHOR}`} variant="primary">
@@ -298,9 +309,7 @@ function OfferDetail({
               <OfferEnquiryForm
                 offerSlug={content.slug}
                 offerTitle={content.title}
-                audiences={variants
-                  .map((variant) => variant.audience)
-                  .filter((audience): audience is 'adult' | 'youth' => audience !== 'all')}
+                audiences={variants.map((variant) => variant.audience).filter(isSplitAudience)}
                 headingTag="h2"
                 phoneLabel={phoneLabel}
                 phoneHref={phoneHref}

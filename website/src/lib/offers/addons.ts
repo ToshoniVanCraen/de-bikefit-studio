@@ -1,5 +1,11 @@
-import { formatDuration, formatPrice } from '@/lib/booking/format';
-import type { AddonChoice, OfferingAudience, OfferingSettings } from './offering';
+import {
+  formatDuration,
+  formatDurationInProse,
+  formatPrice,
+  formatPriceInProse,
+} from '@/lib/booking/format';
+import { baseAudienceOf, type OfferingAudience } from './offering-audience';
+import type { AddonChoice, OfferingSettings } from './offering';
 
 /**
  * Extra's (add-ons, 20 Oct 2026). An offering marked "als extra te boeken"
@@ -44,7 +50,7 @@ export type BookingAddonOption = {
   /** The choice within the extra; `null` for an extra with one price and time. */
   optionKey: string | null;
   slug: string;
-  /** "Voetanalyse", or "Bikefit – tweede fiets – Ander type fiets" for a choice. */
+  /** An extra's own title, or "Bikefit – tweede fiets – Ander type fiets" for one of its choices. */
   title: string;
   /** The extra's own title when this is one of its choices (the widget groups them), else `null`. */
   groupTitle: string | null;
@@ -65,18 +71,24 @@ export function addonChoiceId(offeringId: string, key: string): string {
 
 /**
  * The price of an extra for the audience of the variant it is added to:
- * that audience's own variant, else the single option, else the first variant
- * with a price. `null` when the extra has no price at all.
+ * that audience's own variant, else its base audience (the full Jeugd package
+ * is priced like Jeugd, `baseAudienceOf()`), else the single option, else the
+ * first variant with a price. `null` when the extra has no price at all.
  */
 export function addonPriceFor(
   addon: Pick<AddonSource, 'settings'>,
   audience: OfferingAudience,
 ): number | null {
-  const { variants } = addon.settings;
-  const priced = variants.filter((variant) => variant.priceCents != null);
-  const exact = priced.find((variant) => variant.audience === audience);
-  const single = priced.find((variant) => variant.audience === 'all');
-  return exact?.priceCents ?? single?.priceCents ?? priced[0]?.priceCents ?? null;
+  const priced = addon.settings.variants.filter((variant) => variant.priceCents != null);
+  const priceOf = (wanted: OfferingAudience) =>
+    priced.find((variant) => variant.audience === wanted)?.priceCents ?? null;
+  return (
+    priceOf(audience) ??
+    priceOf(baseAudienceOf(audience)) ??
+    priceOf('all') ??
+    priced[0]?.priceCents ??
+    null
+  );
 }
 
 /**
@@ -219,6 +231,15 @@ export function preselectAddonIds(
 /** "+ 30 min · + € 85,00" */
 export function addonMetaLabel(addon: Pick<BookingAddonOption, 'minutes' | 'priceCents'>): string {
   return `+ ${formatDuration(addon.minutes)} · + ${formatPrice(addon.priceCents)}`;
+}
+
+/**
+ * "€ 75 en 30 minuten extra": the same two facts as {@link addonMetaLabel}, price
+ * first, written for a sentence (copy token `{{extra:<slug>[:<choice key>]}}`,
+ * 27 Oct 2026). No label and no total: the sentence names the choice itself.
+ */
+export function addonProseLabel(addon: Pick<BookingAddonOption, 'minutes' | 'priceCents'>): string {
+  return `${formatPriceInProse(addon.priceCents)} en ${formatDurationInProse(addon.minutes)} extra`;
 }
 
 /** "Samen 2 u 30 min · € 360,00"; the price is left out while the base price is unknown. */

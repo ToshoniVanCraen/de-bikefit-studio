@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { CheckboxField, Field, SectionCard } from '@/components/admin/form';
 import { centsToEuroInput } from '@/components/admin/booking-labels';
 import { OFFERING_MAX_ADDON_CHOICES, type AddonChoice } from '@/lib/offers/offering';
+import { extraToken } from '@/lib/studio/copy-tokens';
 
 /** An offering that is marked as an extra, as the "Extra's bij dit aanbod" list shows it. */
 export type AddonCandidate = {
@@ -26,6 +27,7 @@ export type AddonCandidate = {
 export function OfferingAddonsFields({
   values,
   candidates,
+  offeringSlug,
 }: {
   values: {
     isAddon: boolean;
@@ -35,6 +37,8 @@ export function OfferingAddonsFields({
     addonOptions: AddonChoice[];
   };
   candidates: AddonCandidate[];
+  /** This offering's slug, for the variable of each choice; empty while it is not saved yet. */
+  offeringSlug: string;
 }) {
   const rows = Array.from(
     { length: OFFERING_MAX_ADDON_CHOICES },
@@ -81,7 +85,18 @@ export function OfferingAddonsFields({
           </p>
           {rows.map((choice, index) => (
             <div key={index} className="grid gap-3 sm:grid-cols-3">
-              <Field label={`Keuze ${index + 1}`} htmlFor={`offering-addonOptionLabel-${index}`}>
+              {/* The key is the choice's identity (`<offering id>#<key>`, and the copy token
+                  `{{extra:<slug>:<key>}}`): saving keeps it, whatever the label becomes. */}
+              <input type="hidden" name={`addonOptionKey:${index}`} value={choice?.key ?? ''} />
+              <Field
+                label={`Keuze ${index + 1}`}
+                htmlFor={`offering-addonOptionLabel-${index}`}
+                hint={
+                  choice && offeringSlug
+                    ? `Variabele voor teksten: ${extraToken(offeringSlug, choice.key)}`
+                    : undefined
+                }
+              >
                 <Input
                   id={`offering-addonOptionLabel-${index}`}
                   name={`addonOptionLabel:${index}`}

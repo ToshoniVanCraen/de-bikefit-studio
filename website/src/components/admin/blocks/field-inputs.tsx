@@ -179,9 +179,9 @@ function LabelledField({
 }
 
 const RICH_TEXT_HINT_TEXT =
-  'Gewone tekst. Eén lege regel begint een nieuwe alinea; HTML wordt niet overgenomen.';
+  'Gewone tekst. Eén lege regel begint een nieuwe alinea; HTML wordt niet overgenomen. Variabelen zoals {{telefoon}} en {{prijs:…}} werken ook hier.';
 const RICH_TEXT_HINT_HTML =
-  'HTML-bron. Toegestaan: p, br, h2, h3, h4, ul, ol, li, a, strong, em, blockquote. Al de rest wordt bij het opslaan verwijderd.';
+  'HTML-bron. Toegestaan: p, br, h2, h3, h4, ul, ol, li, a, strong, em, blockquote. Al de rest wordt bij het opslaan verwijderd. Variabelen werken ook in een link: href="mailto:{{e-mail}}" of href="{{telefoon-href}}".';
 
 /**
  * Not a WYSIWYG. Two modes, one stored value (HTML):

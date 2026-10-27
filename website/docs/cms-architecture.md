@@ -29,7 +29,7 @@ File ownership during parallel work comes from the work-block file (see
 | Area | Paths |
 | --- | --- |
 | Data | `src/db/cms-schema.ts` (the `cms_*` tables of the CMS and booking), `src/db/cms-mfa-schema.ts` (the four `cms_mfa_*` tables), `src/db/cms.ts` (driver), `drizzle/**`, `drizzle.config.ts` |
-| CMS core | `src/lib/cms/{auth,guard,session,password,permissions,blocks,block-primitives,blocks-aanbod,content,offers-content,repo,repo-admin}.ts` |
+| CMS core | `src/lib/cms/{auth,guard,session,password,permissions,blocks,block-primitives,blocks-aanbod,blocks-location,site-settings,content,offers-content,repo,repo-admin}.ts` |
 | Offer ("Aanbod") | `src/lib/offers/{catalogue,offering,offering-content,offer-catalogue,defaults}.ts` (plain), `src/lib/offers/{offering-store,repo}.ts` (server-only), `src/db/cms-offering-schema.ts`, `src/app/(studio)/aanbod/[slug]/page.tsx` + `src/components/studio/offer-detail.tsx`, `src/app/admin/(dashboard)/aanbod/**` + `src/components/admin/offering-form.tsx`, `src/lib/studio/seed-content/**` (seed + rollout content), `src/lib/studio/editorial-images.{ts,json}`, `scripts/cms-migrate-aanbod.mts` + `scripts/lib/aanbod-migrate.mts`, `scripts/lib/offerings-bootstrap.mts`, `scripts/cms-rollout-aanbod.mts` + `scripts/lib/aanbod-rollout{,-plan,-run}.mts`, the prices of 20 Oct 2026: `src/lib/offers/aanbod-prices.ts` + `scripts/cms-patch-aanbod-prijzen.mts` + `scripts/lib/aanbod-prices-{plan,patch}.mts` — see §14 |
 | Admin | `src/app/admin/**`, `src/components/admin/**`, `src/lib/cms/actions/**` (server actions + `sanitize.ts`), `src/app/api/cms/media/**` |
 | Public site | `src/app/(studio)/**`, `src/components/studio/**`, `src/lib/studio/**`, `src/app/sitemap.ts`, `src/app/robots.ts` |
@@ -151,6 +151,16 @@ URL prefix (`publicPathFor()` in `repo.ts` encodes that rule).
 | `drizzle/0008_cms_rate_limits.sql` | Race-free public booking limit (§4, Rate limiting; `booking-architecture.md` §9): the `cms_rate_limits` table (one row per key, no FK) and its index on `updated_at`, both `IF NOT EXISTS`. No data change, no DROP, no webshop table; `cms_booking_rate_limit` untouched. Migrate **before** deploying the build that uses it: without the table every public booking attempt fails closed (`error`, `[booking] create_failed`). |
 | `drizzle/0009_cms_service_choice_label.sql` | `cms_services.choice_label` (text, not null, default `''`): a service's label under an offer with several services ("Volwassene", "Jeugd"; `booking-architecture.md` §14). One `ADD COLUMN IF NOT EXISTS`, no data change. Migrate **before** deploying the build that uses it: the app selects every `cms_services` column. |
 | `drizzle/0010_cms_offerings.sql` | Beheer → Aanbod (§15): `cms_offerings` (one row per offer page: shown, variant mode, booking mode; FK to `cms_pages` cascade, unique `page_id`) and `cms_offering_variants` (per variant: booking service, FK set null, and price in cents; PK offering + audience). Guarded `CREATE TABLE`/`INDEX IF NOT EXISTS` and `duplicate_object` FK blocks; no data change, no webshop table, nothing on `cms_services`, `cms_provider_services` or `cms_bookings`. Migrate **before** deploying: without it pages derive their settings from their blocks, but Beheer → Aanbod cannot save and the booking actions fail closed. |
+| `drizzle/0011_cms_offerings_content.sql` | The offering IS the offer (§14, 17 Oct 2026): `cms_offerings` gains the copy of an offer (slug, category, order, title, summary, intro, Doel, Inhoud, extra's, Duur, button label, image, meta description), `page_id` becomes nullable and (locale, slug) unique. Guarded `ADD COLUMN IF NOT EXISTS`; no data change (`cms:migrate-aanbod` fills the rows from the former offer pages). |
+| `drizzle/0012_cms_provider_locations_assignment.sql` | `cms_business_hours.location_id` (+ FK, set null) and `cms_bookings.assignment` / `assigned_at` (`booking-architecture.md` §16). Guarded; every existing booking is `assigned`. |
+| `drizzle/0013_cms_staging_gate.sql` | The first-party staging access gate (`staging-gate.md`): `cms_staging_gate_accounts` and `cms_staging_gate_sessions` (FK cascade, two indexes). Guarded, additive; read only on the staging host. |
+| `drizzle/0014_cms_booking_followups.sql` | Reminder and review mails (`booking-architecture.md` §17): `cms_bookings.reminder_sent_at` / `review_requested_at` and the table `cms_reviews`. Guarded, additive. |
+| `drizzle/0015_cms_offering_addons.sql` | Extra's (§14, 20 Oct 2026): `cms_offerings.is_addon` / `sold_alone` / `addon_minutes`, `cms_offering_addons` (the extras an offering allows, in order) and `cms_booking_addons` (a snapshot per booking). Guarded; `cms:patch-aanbod-extras` fills in the set. |
+| `drizzle/0016_cms_offering_addon_options.sql` | `cms_offerings.addon_options` (jsonb, default `[]`): the choices within an extra. Guarded. |
+| `drizzle/0017_cms_offering_price_text.sql` | `cms_offerings.price_text` (text, default `''`): the free-text Kostprijs of an offering that is asked for (27 Oct 2026). Guarded; the audience `youth-package` needs no migration (`cms_offering_variants.audience` is plain text). |
+
+Migrate **before** deploying a build that reads the new columns (every offering read selects them
+all): 0015–0017 with the build of 27 Oct 2026 (`staging-runbook.md` §23, §24).
 
 **Rollout order of 0004–0007.** The e-mail settings (from `staging`) and the
 security release met in one merge: the MFA and session migrations were
@@ -881,13 +891,14 @@ repo call. A forged cookie gets past middleware and is rejected there.
 
 ## 5. Block registry
 
-`src/lib/cms/blocks.ts`. Fifteen block types: eleven derived from the real
+`src/lib/cms/blocks.ts`. Sixteen block types: eleven derived from the real
 prototype (`prototype/index.html`, `prototype/bikefit.html`) and copy decks
 (`content/index.html`, `content/about.html`, `content/booking.html`),
-`booking` for the online booking widget, and `offerCatalogue`, `giftVoucher`
+`booking` for the online booking widget, `offerCatalogue`, `giftVoucher`
 and `team` for the 13 Oct 2026 redesign (defined in `blocks-aanbod.ts` and spread
 into the registry; the `offer` block was retired on 17 Oct 2026, §14; shared field schemas such as `imageRefSchema` live in
-`block-primitives.ts` and are re-exported from `blocks.ts`).
+`block-primitives.ts` and are re-exported from `blocks.ts`), and `location` for the
+studio's address and map (27 Oct 2026, defined in `blocks-location.ts` and spread in the same way).
 
 ```ts
 import { blockRegistry, BLOCK_TYPES, defaultDataFor, validateBlock, validateBlocks } from '@/lib/cms/blocks';
@@ -910,12 +921,13 @@ defaultDataFor('hero')          // deep clone of the above
 | `cta` | Oproep | the accent callout, "Comfort is een keuze. Maak ze." |
 | `imageText` | Beeld + tekst | `#verhaal`, `#waarom`, `#aan-huis`, `#jeugd` — `imagePosition`, `variant`, optional `quote`/`bullets`/`facts` |
 | `pricing` | Prijzen | **no amounts exist anywhere in the source material** — see below |
-| `contact` | Contact | phone, city, "Op afspraak" — no street address or e-mail is known |
+| `contact` | Contact | phone, city, "Op afspraak". The street address is a setting (Instellingen → Contact), not a default of this block: the `location` block shows it. Its `mapEmbedUrl` loads a frame at once, without a choice from the visitor, so leave it empty |
 | `testimonial` | Ervaringen | 4 reviews from the copy deck, all marked placeholder |
 | `offerCatalogue` | Aanbod (overzicht) | grouped overview (Bikefit, Begeleiding, Overige); owns only its title, per-group title/lede and `extraCards` (fixed cards that are not offerings: the gift voucher) — the offering cards are read from Beheer → Aanbod at render time (`listPublishedOffers`), so nothing is duplicated (§14) |
-| `giftVoucher` | Cadeaubon (bestelformulier) | the gift voucher page `/cadeaubon`: page head (owns the `<h1>`) + the order form (amount of choice, personal message, contact details, button "Bestel nu"). Owns only copy (`eyebrow`, `title`, `intro`, `formTitle`, `sentTitle`, `sentText`; `summary` and `sortOrder` are kept for old content); fields, rules and sending are code in `src/lib/gift-voucher/` (server action → `sendEmail` to the order inbox from `/admin/email` / env `GIFT_VOUCHER_RECIPIENT`, never `contact.email`; success only when Resend accepted it). Its card on `/aanbod` is an `extraCards` entry of that page's catalogue block ("Bedrag naar keuze"); it is never a booking target. Ops: `booking-runbook.md` §12 |
+| `giftVoucher` | Cadeaubon (bestelformulier) | the gift voucher page `/cadeaubon`: page head (owns the `<h1>`, with the `intro` and the one-line `validityNote`) + the order form (suggested amounts next to "Ander bedrag" with the free amount field, personal message, contact details, button "Bestel nu"). Owns only copy and the suggestions (`eyebrow`, `title`, `intro`, `formTitle`, `sentTitle`, `sentText`, `validityNote` (default "Een cadeaubon is een jaar geldig na aankoop."), `amounts`: at most six `{ cents, caption }`, € 1 to € 5.000, default € 75 / € 150 / € 275 "Volledige bikefit"; both default in the schema, so content saved before 27 Oct 2026 shows them; `summary` and `sortOrder` are kept for old content); a suggestion only fills the amount field and the order is validated as before; fields, rules and sending are code in `src/lib/gift-voucher/` (server action → `sendEmail` to the order inbox from `/admin/email` / env `GIFT_VOUCHER_RECIPIENT`, never `contact.email`; success only when Resend accepted it). Its card on `/aanbod` is an `extraCards` entry of that page's catalogue block ("Bedrag naar keuze"); it is never a booking target. Ops: `booking-runbook.md` §12 |
 | `team` | Team | profiles: name, role, bio paragraphs (verified text only), image; without an image the initials are drawn. `internalNote` is never rendered and names the person's open register rows; interim profiles end with "Een uitgebreid profiel volgt binnenkort." |
 | `booking` | Afspraak boeken | the booking widget on `/afspraak` (service → provider → day → slot → details → confirmation). Carries copy and a filter only: `serviceIds` (empty = every active service), `showProviderChoice` (AND-ed with the `booking.showProviderChoice` setting), `successTitle`, `successText` (empty → `booking.confirmationText`). Services, providers and live availability are read at render time through `@/lib/booking/content`, so nothing in the block goes stale. |
+| `location` | Locatie | "Waar vind je ons?": the studio's address as text (an `<address>`), an optional `note` under it ("Parking beschikbaar voor de deur."), a "Route plannen" link to Google Maps and a small map. Owns only copy (`variant`, `eyebrow`, `title`, `intro`, `note`, `showMap`, `mapLabel`, `routeLabel`); the address is not a field: it is read from Instellingen → Contact, the same setting the footer and the JSON-LD postal address use, so it is edited in one place. Without a street line it renders nothing. The map follows the two-click rule below. Last block of `/afspraak` in the seed |
 
 Most blocks share `variant: 'default' | 'gray' | 'dark'`, matching the
 prototype's white / `--gray` / `--dark` section backgrounds.
@@ -936,19 +948,116 @@ Deploy code that adds a block type **before** publishing pages that use it
 (this is why `/afspraak` is refreshed after the booking deploy, see the
 staging runbook).
 
-### Copy tokens (`{{duur:…}}`, 20 Oct 2026)
+### The `location` block and its two-click map (27 Oct 2026)
 
-An editor may type `{{duur:<service-slug>}}` in any text or rich-text field of a public page
-(e.g. "Reken op {{duur:volwassenenfit}} voor een bikefit voor volwassenen"). `BlockRenderer`
-(`src/components/studio/blocks/index.tsx`) resolves it at render time to that service's planning
-duration as the booking widget shows it ("2 uur", "1 u 30 min"), read once per page from the cached
-public services (`listPublicServices()`); an unknown or inactive slug reads "in overleg". In rich
-text the label is HTML-escaped. The admin and the stored block keep the token as typed, so the copy
-never repeats a number that lives in `/admin` → **Diensten**. Pure logic and tests:
-`src/lib/studio/copy-tokens.ts`. The seed uses it in "Reken op de tijd" on `/afspraak`, in the
-"Hoe lang duurt een bikefit?" answer on `/veelgestelde-vragen` and in the block defaults; on an
-existing database `cms:seed -- --refresh-slug afspraak` and `-- --refresh-slug veelgestelde-vragen`
-bring those pages up to date.
+Toshoni asked for a section with the exact address and a small Google Maps map with the location
+pinned, on the appointment page (`/afspraak`; `/contact` redirects there), and for the same address in
+the footer. `components/studio/blocks/location.tsx` prints the address from
+`getSiteSettings().contact` (`addressLines`, `postalCode`, `city`), the same source as the footer, so
+the address is edited in one place (Instellingen → Contact) and never typed into a block or a
+component. It adds the optional `note` ("Parking beschikbaar voor de deur."; empty shows nothing) and a
+plain link to Google Maps ("Route plannen", `rel="noopener noreferrer"`, new tab). Pure logic and tests:
+`src/lib/studio/location.ts` (which lines to print; the query is the address plus the country's Dutch
+name; both URLs are built from it and URL-encoded, never from a literal; no street line means no place,
+so the block renders nothing).
+
+**The map is a two-click embed, because the frame sets Google cookies (CLAUDE.md §4).** The server
+renders only a placeholder: a notice that the map comes from Google Maps and that Google receives the
+visitor's IP address and may set cookies, a link to the privacy statement and the button "Kaart tonen".
+The small client leaf `location-map.tsx` mounts
+`<iframe src="https://www.google.com/maps?q=…&z=15&output=embed" referrerpolicy="no-referrer-when-downgrade" loading="lazy">`
+only after that click, and moves focus into it. Until then there is no frame in the HTML or the DOM and no
+request to Google; no API key is involved and the choice is not stored (the next visit asks again).
+`showMap` off drops the map and its placeholder. A new Google embed anywhere else needs the same click:
+the `contact` block's `mapEmbedUrl` goes through the same leaf (27 Oct 2026; it used to render its
+frame at once), so no Google request happens before the visitor presses the button there either.
+
+**The address in the data.** Halsesteenweg 406 a, 9403 Neigem (Toshoni, 27 Oct 2026) is the default of the
+booking location in `lib/booking/defaults.ts` (its name stays "De Bikefit Studio, Ninove": Neigem belongs
+to Ninove) and is exported, with the block instance to insert, from
+`lib/studio/seed-content/location-section.ts` (`STUDIO_CONTACT_ADDRESS`, `STUDIO_LOCATION_ADDRESS`,
+`LOCATION_BLOCK`; a unit test keeps the booking default and `STUDIO_LOCATION_ADDRESS` in step). A fresh `cms:seed` publishes the block as the last
+block of `/afspraak`; an existing database gets the settings, the location row and the block from
+`cms:patch-aanbod-correcties`. Deploy this code first: a snapshot with a block type the running code does not
+know counts as unpublished. The public site has no Content-Security-Policy today (§13).
+
+### Copy tokens: one master per fact (`{{duur:…}}` 20 Oct 2026, the full set 27 Oct 2026)
+
+**A fact is typed once, in its master; copy refers to it** (Toshoni, 27 Oct 2026: "keep content
+consistent by working with variables referring to the master"). A price, a duration, the phone number,
+the company number or "six months of follow-up" lives in exactly one place in the beheer; every text
+that states it (a block, an offering, a service description, a booking text, an e-mail) types a *copy
+token* instead, and the site fills it in at render time from live data. Change the master and every
+page, e-mail and meta tag follows. The admin and the stored data keep the token as typed.
+
+| Token | Prints | Master | Fallback |
+| --- | --- | --- | --- |
+| `{{duur:<service-slug>}}` | the planning duration of that bookable service as the widget shows it: "2 uur", "1 u 30 min" | Beheer → Aanbod, the variant's duration (the service behind it, `listPublicServices()`) | `in overleg` (unknown, inactive or unoffered service) |
+| `{{prijs:<offering-slug>}}` | the price line of the offering as `/aanbod` shows it (`CatalogueOffer.priceLabel`): the variants joined ("Volwassene € 275,00 · Jeugd – eenmalig € 150,00"), or the free-text price of an offering that is asked for, itself resolved, or "Prijs op aanvraag" | Beheer → Aanbod, prices per variant (and "Prijs (tekst)") | `op aanvraag` |
+| `{{prijs:<offering-slug>:<audience>}}` | one variant's amount in prose: "€ 275", "€ 75,50"; audience `all`, `adult`, `youth` or `youth-package`. Reads the variant's cents only, never the price text | Beheer → Aanbod, price per variant | `op aanvraag` |
+| `{{extra:<offering-slug>}}` | an extra without choices: "€ 85 en 30 minuten extra" (price, then time; no label, no total) | Beheer → Aanbod, the extra's time and price | `in overleg` (not an extra, hidden, no time or price; an extra with choices needs the choice) |
+| `{{extra:<offering-slug>:<choice-key>}}` | one choice of an extra, same shape: "€ 75 en 30 minuten extra" | Beheer → Aanbod → Extra's → Keuzes (the choice's `key`) | `in overleg` |
+| `{{telefoon}}`, `{{telefoon-href}}` | the phone label "+32 473 95 26 33" and the link "tel:+32473952633" (only a plain `tel:` link passes: it lands in `href`s of already sanitised text) | Instellingen → Contact | the pair `LEGAL_IDENTITY.phoneLabel`/`phoneHref` (`legal.ts`), as the offer page and the gift voucher already do |
+| `{{e-mail}}` | the bare address; as a link write `href="mailto:{{e-mail}}"`. Only a plain address passes (no scheme, space or quote: it may land in an `href` of already sanitised text) | Instellingen → Contact | empty |
+| `{{adres}}` | the studio's address on one line: "Halsesteenweg 406 a, 9403 Neigem" (`formatPostalAddress()`) | Instellingen → Contact | the address of the studio location, else empty |
+| `{{adres-studio}}` | the default studio booking location on one line (no name) | Beheer → Locaties: the active studio location marked "Standaard", else the first one (`getDefaultStudioLocation()`) | the contact address, else empty |
+| `{{bedrijf}}`, `{{zetel}}`, `{{kbo}}`, `{{btw}}` | the legal name, the registered office on one line ("Weversstraat 7, 1730 Asse"), the enterprise number and the VAT number, verbatim | Instellingen → Bedrijfsgegevens (`business`) | the schema defaults (`LEGAL_IDENTITY`) while the row is missing; a field the admin emptied prints empty |
+| `{{opvolging:volwassene}}`, `{{opvolging:jeugd-pakket}}`, `{{tweede-bezoek-gratis}}`, `{{cadeaubon-geldigheid}}` | a number of months in words: 6 → "zes maanden", 12 → "een jaar", 24 → "twee jaar", 1 → "1 maand", any other → "<n> maanden" (`monthsInWords()`) | Instellingen → Regels (`rules`: 6, 12, 6, 12 months) | the schema defaults while the row is missing |
+
+**Grammar and rules.** A token is `{{name}}` or `{{name:part}}` or `{{name:part:part}}` in lower-case letters,
+digits and hyphens; spaces inside the braces are fine. Resolution is **a single pass** and never scans what
+it printed. Anything outside the set (an unknown name, a wrong number of parts, a capital) is left exactly as
+typed. A known token never reaches a visitor raw: missing data reads its fallback. In rich text (a key
+named `html`) the printed text is HTML-escaped; everywhere else it is plain. `hrefs` work too
+(`href="{{telefoon-href}}"`, a button link of `{{telefoon-href}}`).
+
+**What a price token reads.** Only offerings shown on the website count (a hidden offering reads the
+fallback, like `duur` only knows the services the site offers). The variant form never reads the free-text
+price: it is the cents of the variant. The line form returns the card's price line; when that line is the
+free-text price of an offering that is asked for ("Gratis binnen {{tweede-bezoek-gratis}} na je fit, daarna
+{{prijs:bikefit-tweede-bezoek:all}}") it is resolved first. A line-form token *inside* a price text prints that
+other offering's line, resolved the same way; its own line, or a loop back to it, reads `op aanvraag` instead of
+recursing (use the variant form there). In prose prices drop ",00" (`formatPriceInProse()`,
+`src/lib/booking/format.ts`); the structured labels (cards, widget, e-mail tables) keep `formatPrice()`.
+A choice's `key` is its identity (`<offering id>#<key>`, also in bookings and in this token): saving the
+offering form keeps the key of an existing choice, whatever its label becomes.
+
+**How it is built.** `src/lib/studio/copy-tokens.ts` is the pure engine (grammar, parsing, resolution, the
+fallbacks; tested in `copy-tokens.test.ts`). `copy-token-values.ts` is the pure builder from plain data (what each
+token prints; tested without a database), `months-in-words.ts` the months formatter. `copy-token-lookup.ts`
+(server-only) builds the request's `CopyTokenLookup` **once per request** (`React.cache`) from the cached
+readers `getSiteSettings`, `listPublicServices`, `loadOfferCatalogue` and `getDefaultStudioLocation`
+(`src/lib/booking/location-store.ts`); a reader that fails is logged (`[copy-tokens] reader_failed`) and counts as
+empty, so the tokens read their fallbacks and the page renders. `resolveCopy(value, locale)` resolves any
+value and reads nothing when there is no token: a page without tokens never touches the lookup's sources.
+`copy-token-catalogue.ts` is the Dutch list the admin shows under the text fields; a unit test keeps it in
+step with the engine.
+
+**Where tokens are resolved** (and where not):
+
+- *Blocks:* `BlockRenderer` resolves **every string of every block**, link labels and `href`s included.
+  `StudioPageView` resolves the same blocks once more, from the raw snapshot, for the structured data (FAQ
+  answers, service descriptions, the page description), so the JSON-LD says what the page says; nothing is ever
+  resolved from text an earlier pass printed.
+- *Metadata:* `buildPageMetadata()` resolves a CMS page's meta title and description and the OG title and
+  description, and the site-wide defaults they fall back to; `buildOfferMetadata()` the offering's.
+- *Offerings:* the route `/aanbod/<slug>` resolves the whole entry (summary, intro, Doel, Inhoud, extra's,
+  the note, the Duur and Kostprijs lines with the free-text `duration` and `priceText`, the meta description) and
+  therefore also its JSON-LD; the `offerCatalogue` block resolves the cards.
+- *Booking:* `components/studio/booking/load.ts` resolves the services' texts (description, names) and the
+  booking settings' texts (intro, confirmation) on the server, so the client widget never sees a token; the
+  confirmation page resolves the confirmation text. (`lib/booking/content.ts` is a lower layer and cannot import
+  the lookup, which reads from it.)
+- *Mail:* `sendEmail()` resolves the subject, text and html (escaped) just before the send
+  (`src/lib/email/resolve-copy.ts`; the lookup loads lazily, only when a mail holds a token); the booking's
+  calendar file is resolved before `buildIcs()` escapes and folds it. A mail never shows `{{…}}`. Visitor-typed
+  text in a mail is resolved too; every token prints a public fact, never a secret.
+- *Not resolved:* the admin (fields show what was typed), the stored blocks and offerings, the footer and the
+  error pages (they read settings or constants directly), and client components (they get finished text as props).
+
+The seed and the defaults use the tokens (`/afspraak` "Reken op de tijd", the legal pages, the offerings);
+on an existing database `cms:seed -- --refresh-slug <slug>` and the data patches bring a page up to date. The FAQ
+answer "Hoe lang duurt een bikefit?" names the two fit pages instead of stating durations (27 Oct 2026).
 
 ### Rich-text sanitiser
 
@@ -1021,19 +1130,28 @@ control in the bottom bar are rendered by `site-footer.tsx`, not by a menu. Vali
 
 ### Site settings keys
 
-`cms_site_settings` values are validated per key by `siteSettingSchemas`:
+`cms_site_settings` values are validated per key by `siteSettingSchemas` (`src/lib/cms/site-settings.ts`,
+re-exported by `blocks.ts`; split out on 27 Oct 2026):
 
 | Key | Contents |
 | --- | --- |
 | `site` | `name`, `tagline` (the share image `/og` and the JSON-LD slogan), `mission`, `logoMediaId`. `strapline` was removed on 19 Oct 2026: nothing read it (a stored value is ignored) |
-| `contact` | `phoneLabel`, `phoneHref`, `email`, `addressLines`, `postalCode`, `city`, `country` (JSON-LD postal address), `hours`, `website` |
+| `contact` | `phoneLabel`, `phoneHref`, `email`, `addressLines`, `postalCode`, `city`, `country` (JSON-LD postal address), `hours`, `website` — the master of `{{telefoon}}`, `{{telefoon-href}}`, `{{e-mail}}` and `{{adres}}` |
 | `seo` | `defaultMetaTitle`, `titleTemplate`, `defaultMetaDescription`, `defaultOgImageMediaId`, `allowIndexing` |
-| `organization` | `type`, `legalName`, `vatNumber`, `sameAs`, `priceRange`, `areaServed`, `latitude`, `longitude` — the Organization / LocalBusiness JSON-LD source |
+| `organization` | `type`, `sameAs`, `priceRange`, `areaServed`, `latitude`, `longitude` — the Organization / LocalBusiness JSON-LD source. `legalName` and `vatNumber` moved to `business` on 27 Oct 2026 (a stored value is ignored) |
+| `business` | (27 Oct 2026) `legalName` ("Qarakter BV"), `seatAddressLines` (["Weversstraat 7"]), `seatPostalCode` ("1730"), `seatCity` ("Asse"), `seatCountry` ("BE"), `enterpriseNumber` and `vatNumber` ("BE 1036.912.281" both) — the legal identity: the master of `{{bedrijf}}`, `{{zetel}}`, `{{kbo}}` and `{{btw}}`, and of the JSON-LD Organization's `legalName` and `vatID` (written without spaces and dots). The defaults are `LEGAL_IDENTITY` (`src/lib/studio/legal.ts`), which is nothing but those defaults (and the phone fallback of the error pages) |
+| `rules` | (27 Oct 2026) whole months, 1 to 60: `followUpMonthsAdult` (6), `followUpMonthsYouthPackage` (12), `secondVisitFreeMonths` (6), `voucherValidityMonths` (12) — printed in words by `{{opvolging:volwassene}}`, `{{opvolging:jeugd-pakket}}`, `{{tweede-bezoek-gratis}}` and `{{cadeaubon-geldigheid}}`; the studio's decisions as text, nothing is computed from them |
 | `analytics` | `ga4PropertyId` (numeric GA4 property for the admin panel; env `GA4_PROPERTY_ID` wins), `enabled` (default **false**; the tag and banner load only when true). The measurement id is the env var `NEXT_PUBLIC_GA4_MEASUREMENT_ID` only (`ga4MeasurementId` removed from the admin on 19 Oct 2026: it was never read) |
 | `booking` | `slotStepMinutes` (30), `minNoticeHours` (24), `horizonDays` (56), `defaultBufferAfterMinutes` (15), `cancelUntilHours` (48), `timezone` (`Europe/Brussels`), `introTitle`, `introText`, `confirmationText`, `showProviderChoice` (true) — the booking rules, see `booking-architecture.md` §4 |
 
-Admin → Instellingen has one form per key: Site, Contact, SEO, Organisatie
-(JSON-LD), Afspraken, Analytics.
+Admin → Instellingen has one form per key: Site, Contact, Bedrijfsgegevens, SEO, Organisatie
+(JSON-LD), Afspraken, Regels, Analytics (`permission settings.update`, admins only). The
+two forms of 27 Oct 2026 (`business-settings-form.tsx`, `rules-settings-form.tsx`, on the shared
+`setting-form.tsx`) are checked against their schema by the action before anything is saved, with a
+Dutch message that names the field ("Geldigheid cadeaubon: Maximaal 60 maanden."): the repo's
+`parseSiteSetting()` would otherwise reset the whole key to its defaults without a word. A database
+without the `business` or `rules` row reads the schema defaults (`getSiteSettings()` starts from
+`defaultSiteSettings()`); the rollout writes the rows.
 
 The e-mail service is deliberately **not** a site setting (site settings are per locale and
 read by the public site): it lives in `cms_integration_settings` and on its own admin page,
@@ -1307,8 +1425,8 @@ npm run dev
 `cms:bootstrap` is idempotent — it creates the admin `contact@toshoni.be`
 (role `admin`, `must_change_password = true`), the six default `nl` site
 settings (`site`, `contact`, `seo`, `organization`, `analytics`, `booking`),
-empty `main` + `footer` menus, the two locations and the five services.
-Running it twice changes nothing.
+empty `main` + `footer` menus, the two locations and the three services (Volwassenenfit,
+Jeugdfit – eenmalig, Jeugdfit – volledig pakket). Running it twice changes nothing.
 
 `cms:seed` writes as an admin who has chosen their own password and enrolled
 two-step verification (§4), so the bootstrap password is replaced and the
@@ -1454,11 +1572,13 @@ full (§13).
 ### 12.5 Structured data
 
 `src/lib/studio/jsonld.ts` builds one `@graph` per page. The layout emits
-`LocalBusiness` (type from `organization.type`) + `WebSite`; each page emits
+`LocalBusiness` (type from `organization.type`, `legalName` and `vatID` from the
+`business` settings) + `WebSite`; each page emits
 `WebPage`/`AboutPage`/`ContactPage`, `BreadcrumbList` (non-home), `FAQPage`
 when a `faq` block has `emitStructuredData`, and `Service` nodes for bookable
-fits. Empty values are dropped rather than guessed, so no street address,
-e-mail, VAT number, price or rating is ever emitted.
+fits. Empty values are dropped rather than guessed, so the street address
+(Instellingen → Contact), e-mail, VAT number, price or rating appear only once
+they are filled in.
 
 A `services` block counts as bookable when at least one of its cards has a
 `duration` — that is what separates "Vier manieren om te boeken" from "Vier
@@ -1495,9 +1615,43 @@ verification (`scripts/lib/cms-actor.mts`; it never creates one). The redesign's
   `/algemene-voorwaarden` to an existing database. Cannot be combined with
   `--only-missing`.
 
-The legal texts (`PRIVACY_HTML` / `TERMS_HTML` in `scripts/cms-seed.mts`) take
-their e-mail address from *Instellingen → Contact → e-mail* at seed time;
-see `booking-runbook.md` §11.2.
+The legal texts (`PRIVACY_HTML` / `TERMS_HTML` in `seed-content/legal.ts`, the FAQ in `seed-content/faq.ts`;
+until 27 Oct 2026 they lived in `scripts/cms-seed.mts`) type none of the studio's
+facts since 27 Oct 2026: the e-mail address, the phone number, the company name, the registered
+office and the enterprise number are copy tokens (`{{e-mail}}`, `{{telefoon}}`, `{{bedrijf}}`,
+`{{zetel}}`, `{{kbo}}`) that the site resolves from Instellingen at render time (the token section
+in §5). The `[E-MAILADRES]` placeholder that the seed used to fill in from *Instellingen → Contact →
+e-mail* is gone: the seed script no longer replaces anything in the legal texts
+(`booking-runbook.md` §11.2).
+
+Seed copy that must also reach existing databases is kept as data next to the seeds: exact old → new
+edits per page (`seed-content/page-cleanup.ts`: `set`, `remove`, `append`, and since 27 Oct 2026
+`replace`, `replaceItem`, `replaceAll`; a page guards its `metaDescription` and `metaTitle`) and per
+offering and service (`src/lib/offers/corrections-2026-10-27.ts`), for example
+`seed-content/corrections-2026-10-27.ts` (terms art. 3, FAQ, `/afspraak`, team and studio texts,
+"inspanningstest", the phone label) and its copy half `corrections-2026-10-27-copy.ts` (no
+sentence joined by a dash, the contact facts as tokens on every page, the privacy statement naming
+Google Maps), applied by `cms:patch-aanbod-correcties` (steps, expected dry-run lines and rollback:
+`staging-runbook.md` §24). A field an editor changed is refused, never overwritten.
+
+**Guard against literal facts and dashes.** `src/lib/studio/content-facts.test.ts` fails when a seed
+module (the FAQ and the legal texts included), a default offering, a default booking service, a block
+default (the data an editor starts from) or an e-mail template types an amount in euros, a duration,
+the phone number, an e-mail address, the street address, a follow-up or validity window ("zes maanden",
+"een jaar") or the company identity. It names the file and the sentence; the fix is the token of §5. It
+also fails on a dash between two sentences (` — `, ` – `) in those texts and in the strings and text of
+the studio's components and routes; the en dash stays in names and labels ("Bikefit – huidige fiets",
+"Jeugd – eenmalig"). Its other half, `content-tokens.test.ts`, checks that every token those texts carry
+is one the engine knows and the default masters can fill in: a typo, or a service, offering or audience
+that does not exist, would read "in overleg" or "op aanvraag" on the site. `blocks-defaults.test.ts` ties
+the services and pricing defaults to the booking services. Both guards read the same texts
+(`content-scan-kit.ts`); a new `seed-content/*.ts` has to be added to the kit's module list, so it is
+scanned too. The allowlist is short and sits at the top of the facts test and in the kit: the contact
+constants the settings are seeded from, the studio address, the `from` side of the corrections (the live
+text they replace), the Duur of an offering that is asked for, the voucher amounts, the 48 hours of art. 6
+of the terms, the authority's address in the privacy statement and the RPR division of the registered
+office ("RPR Brussel, Nederlandstalige afdeling"), which has no master yet and stays typed in the legal
+texts.
 
 ### 12.7 Analytics — consent-gated GA4 tag and admin panel
 
@@ -1628,22 +1782,33 @@ above the fields; `offer` and `team` use it to point editors at the register.
   on `/afspraak`, Google Calendar sync and e-mail. It is documented in
   [`booking-architecture.md`](./booking-architecture.md) (design) and
   [`booking-runbook.md`](./booking-runbook.md) (setup, GDPR, retention).
-- **No prices exist.** Nothing in `prototype/`, `content/` or `brand/` names an
-  amount. The `pricing` block is placeholder-flagged and hidden; services carry
-  `price_cents = null` and `show_price = false`.
-- **Studio contact details are incomplete.** The legal identity (company,
-  registered office, enterprise/VAT number) is fixed in
-  `src/lib/studio/legal.ts` for the footer and the transactional e-mails, but
-  `cms_site_settings.contact` (street, e-mail) and `organization.vatNumber`
-  are still empty, so the `LocalBusiness` JSON-LD stays incomplete until they
-  are filled in. The public contact e-mail is also what the legal texts use.
+- **Prices live in their masters.** The offering's variants and the booking services carry the amounts
+  (since 20 Oct 2026; three fits since 27 Oct, §14); nothing in `prototype/`, `content/` or `brand/` names
+  one. Copy never types an amount: it says `{{prijs:…}}` (§5). The `pricing` block stays
+  placeholder-flagged and hidden; its default plans carry those tokens, so clearing the flag shows the
+  current prices.
+- **Studio contact details.** The legal identity (company, registered office,
+  enterprise/VAT number) is the `business` setting (Instellingen →
+  Bedrijfsgegevens) since 27 Oct 2026; `src/lib/studio/legal.ts` holds only its
+  defaults. The legal pages state it through the tokens `{{bedrijf}}`,
+  `{{zetel}}`, `{{kbo}}` and `{{btw}}` (§5, "Copy tokens"), and the
+  `LocalBusiness` JSON-LD reads its legal name and VAT id there. The RPR division
+  ("RPR Brussel, Nederlandstalige afdeling") has no master yet: it stays typed
+  in the legal texts. The studio's address is known since 27 Oct 2026
+  (Halsesteenweg 406 a, 9403 Neigem: defaults in `lib/booking/defaults.ts` and
+  `lib/studio/seed-content/location-section.ts`, an existing database gets it
+  from `cms:patch-aanbod-correcties`) and the public e-mail is
+  `info@debikefitstudio.be` (register G-01); the legal texts refer to the
+  public contact e-mail with `{{e-mail}}`.
 - **Testimonials are illustrative copy** from the copy deck, not real reviews.
 - **The legal texts are templates** until a lawyer has reviewed them
   (`booking-runbook.md` §11.5).
 - **No Content-Security-Policy on the public site.** The admin has one
   (report-only until staging validation, [`admin-csp.md`](./admin-csp.md)); the
   public pages would need GA4's hosts and nonces on statically rendered pages,
-  a separate piece of work.
+  a separate piece of work. That policy must also allow the `location` block's
+  map: `frame-src https://www.google.com` (the frame only exists after the
+  visitor's click).
 - **Editor and provider sessions** still last 14 days with sliding renewal;
   only admin sessions have the 15-minute idle and 8-hour absolute limits (§4).
   Providers need two-step verification since 16 Oct 2026, but their session
@@ -1679,9 +1844,10 @@ Beheer → Diensten held the booking services; that split is gone.
 
 **One row per offer.** `cms_offerings` (`src/db/cms-offering-schema.ts`, migrations 0010 +
 0011) holds, per offering: the copy a visitor reads (slug, category, order, title, summary,
-intro, Doel, Inhoud, Mogelijke extra's and their note, the free-text Duur of an offering that is
-asked for, the button label, image, meta description) and the decisions (shown on the website,
-one option or Volwassene/Jeugd, booked directly online or asked for). `cms_offering_variants`
+intro, Doel, Inhoud, Mogelijke extra's and their note, the free-text Duur and Kostprijs
+(`price_text`, migration 0017) of an offering that is asked for, the button label, image, meta
+description) and the decisions (shown on the website, one option or Volwassene / Jeugd – eenmalig
+/ Jeugd – volledig pakket, booked directly online or asked for). `cms_offering_variants`
 holds per variant the booking service it is booked as and its public price. The booking service
 (`cms_services`: duration, buffer, location, guardian rule) is written by the same admin form;
 bookings keep referencing it by id.
@@ -1709,32 +1875,81 @@ an active account on ≥ 1 variant's active service), **Tijdelijk niet online te
 nobody offers it: card greyed, button disabled, phone as the way to ask), **Op aanvraag** (enquiry:
 the button scrolls to the form on the page). *Shown* off → left out of every overview, `/aanbod/<slug>`
 answers 404, out of the sitemap, its services held back from `/afspraak`. Kostprijs: "Prijs op
-aanvraag" until a variant has a price; one amount for one option; "Volwassene € 150,00 · Jeugd op
-aanvraag" per variant; prices only on `/aanbod` and the offer pages (`showsOfferPrices`). Duur:
-direct → from the variants' services; enquiry → the offering's own text. JSON-LD `offers` mirror
-the prices. Booking links: `/afspraak?dienst=<slug>#boeken`, resolved on the server
+aanvraag" until a variant has a price; one amount for one option; "Volwassene € 275,00 · Jeugd –
+eenmalig € 150,00 · Jeugd – volledig pakket € 275,00" per variant (a variant without a price reads
+"op aanvraag"); for an offering that is asked for, its free text instead when it has one (see
+*Free-text Kostprijs* below); prices only on `/aanbod` and the offer pages (`showsOfferPrices`).
+Duur: direct → from the variants' services; enquiry → the offering's own text. JSON-LD `offers`
+mirror the prices. Booking links: `/afspraak?dienst=<slug>#boeken`, resolved on the server
 (`resolveBookingSelection`); the booking side is `booking-architecture.md` §14.
+
+**Jeugd in two variants (Toshoni, 27 Oct 2026).** Under 16 you pay € 150 for one fit without
+follow-up, or € 275 for the full package with a year of free follow-up, which the studio
+recommends because young riders grow fast; adults keep € 275 with six months of problem follow-up.
+Before this a Jeugd variant was priced at € 150 and its service text said "met opvolging kies je
+Volwassene (€ 275)", which sent a 15-year-old to the wrong choice. An offering split by audience
+(`variantMode = audience`) therefore has **three** variants, in this order and with these labels
+everywhere (offer page, widget, booking, mails, Beheer, enquiry): `adult` **Volwassene**, `youth`
+**Jeugd – eenmalig**, `youth-package` **Jeugd – volledig pakket**
+(`src/lib/offers/offering-audience.ts`; `OfferingAudience`, `AUDIENCE_LABELS`, `audiencesFor()`).
+The fits that are booked online have a service for each: `volwassenenfit`, `jeugdfit` (*Jeugdfit –
+eenmalig*), `jeugdfit-pakket` (*Jeugdfit – volledig pakket*, € 275, 2 hours, guardian required),
+created by `cms:bootstrap` from `DEFAULT_SERVICES` and subscribed to the first provider by
+`cms:seed-booking`. Both Jeugd variants default to "Ouder of voogd verplicht" in Beheer.
+`cms_offering_variants.audience` is plain text with PK (offering, audience) and no CHECK
+(`drizzle/0010_cms_offerings.sql`), so the new value needs no migration. Older data: an offering
+saved before holds only the pair Volwassene + Jeugd; `settingsFromRows()` reads the missing row
+as a variant without service and price (it shows "Jeugd – volledig pakket op aanvraag" and, on a
+direct offering, "tijdelijk niet online te boeken" until a data patch adds it), and
+`isAcceptedAudienceSet()` still accepts that pair on save so the 20 Oct patch (frozen at its 20
+Oct values in `aanbod-prices.ts`) keeps working; remove that tolerance when the data move of 27
+Oct has reached every database. An extra priced per audience resolves its price for
+`youth-package` as: its own price → `baseAudienceOf()` (`youth`) → the single option → the first
+variant (`addonPriceFor`). A new service made by Beheer gets the slug `<offering>-jeugd-pakket`
+and the order `category × 10 000 + sort order × 3 + audience rank`
+(`src/lib/offers/repo-variant-services.ts`).
+
+**Free-text Kostprijs (Toshoni, 27 Oct 2026; migration 0017).** *Bikefit – tweede bezoek* is free
+within six months of the fit and € 75 after that, so its price line reads "Gratis binnen 6 maanden
+na je fit, daarna € 75" instead of "€ 75". `cms_offerings.price_text` (text, not null, default
+`''`; `OfferingContent.priceText`, at most 120 characters, trimmed) is shown by
+`offeringPriceLabel(offering, priceText)` only for an offering **asked for** (`bookingMode =
+enquiry`), exactly like the free-text Duur; empty, or a directly booked offering, gives the
+variants' prices as before. The variants' cents stay the structured price: the extras' totals use
+them, and the JSON-LD `Offer` keeps `price` (€ 75 is the price after the free period) and gets
+the text as its `description`, so the data says what the page says. Beheer → Aanbod: field
+**Prijs (tekst)** under **Duur (tekst)**, shown for *Enkel op aanvraag*; the overview shows the
+same text in its price column. Migration `0017_cms_offering_price_text.sql` is additive and
+guarded (`ADD COLUMN IF NOT EXISTS`); apply it before deploying (the build selects the column on
+every offering read). `cms:bootstrap` writes the default text of *Bikefit – tweede bezoek*; an
+existing offering keeps what it has and gets the text in Beheer.
 
 **Modules.** `src/lib/offers/offering-content.ts` (pure: the copy, validation, `contentFromRow`),
 `offering.ts` (pure: modes, settings validation incl. the per-variant service facts,
-`resolveOffering`, labels, `withheldServiceIds`), `offer-catalogue.ts` (pure: offerings + services
+`resolveOffering`, `withheldServiceIds`; it re-exports the next two), `offering-audience.ts`
+(pure: the audiences, `AUDIENCE_LABELS`, `audiencesFor`, `baseAudienceOf`, `isAcceptedAudienceSet`),
+`offering-labels.ts` (pure: the Kostprijs and Duur lines, `offeringPriceLabel`, `offeringPriceText`),
+`offer-catalogue.ts` (pure: offerings + services
 + who offers what → cards, `bySlug`, `hiddenSlugs`, `withheldServiceIds`, `variantDisplay`),
 `offering-store.ts` (server-only cached read), `repo.ts` (admin: `listOfferingsForAdmin`,
 `getOfferingForAdmin`, `createOffering`, `updateOffering`, `deleteOffering`,
-`listOfferingSubscriptionGroups`; writes the services of direct variants, audits
-`offering.create|update|delete` + `service.create`), `defaults.ts` (the seven offers of the
-brief, written by `cms:bootstrap`; the older services are retired, `RETIRED_SERVICE_SLUGS` in
+`listOfferingSubscriptionGroups`; writes the offering, its variants and, through
+`repo-variant-services.ts`, the services of direct variants, audits
+`offering.create|update|delete` + `service.create`), `defaults.ts` (the nine default offers,
+written by `cms:bootstrap`; the older services are retired, `RETIRED_SERVICE_SLUGS` in
 `src/lib/booking/defaults.ts`),
 `offering-legacy.ts` (only for `cms:migrate-aanbod`), `src/lib/cms/offers-content.ts`
 (`loadOfferCatalogue`, `getPublishedOffer`, `isServiceBookableOnline`),
-`src/lib/cms/actions/offerings.ts`, `src/components/admin/offering-form.tsx`,
+`src/lib/cms/actions/offerings.ts`, `src/components/admin/offering-form.tsx` (+
+`offering-variants-fields.tsx`: the card per variant),
 `src/app/admin/(dashboard)/aanbod/{page,nieuw/page,[id]/page}.tsx`.
 
 **Enquiry form** (`src/lib/offer-enquiry/`, `src/components/studio/offer-enquiry-form.tsx`):
-unchanged — name, e-mail, optional phone, "Voor wie?" for Volwassene/Jeugd, the question;
+name, e-mail, optional phone, "Voor wie?" with the offering's own variants (Volwassene, Jeugd –
+eenmalig, Jeugd – volledig pakket; the mail to the studio names the choice), the question;
 honeypot; rate limit on `cms_rate_limits`; mailed to the order inbox (env `GIFT_VOUCHER_RECIPIENT`,
 else Beheer → E-mail), visitor as Reply-To; nothing stored; the server re-checks that the offering
-is shown and set to enquiry (`findEnquiryOffer`).
+is shown and set to enquiry (`findEnquiryOffer`) and that the choice is one of its variants.
 
 **Providers.** A user with the role Aanbieder *is* a provider: Gebruikers → role Aanbieder (or a
 role change to it) creates the `cms_providers` row at once
@@ -1762,11 +1977,15 @@ image: the `team` block draws initials until a real portrait is imported with
 `src/lib/studio/team-portraits.json`, ref via `teamPortrait()`; 20 Oct 2026, Rutger). Since that
 day `/ons-team` lists Rutger alone.
 
-**Tests.** `offering-content.test.ts`, `offering.test.ts`, `offer-catalogue.test.ts`,
-`catalogue.test.ts`, `jsonld.test.ts`, `actions/offerings.test.ts`, the seed-content tests; on
-PGlite self-test section 14d (`scripts/selftest/offerings.mts`: migrations, bootstrap, the
-migration CLI, permissions, the admin write with its services, provider self-service, the
-booking gate, the enquiry form, the provider profile).
+**Tests.** `offering-content.test.ts`, `offering.test.ts`, `offering-audience.test.ts`,
+`offering-labels.test.ts`, `offering-legacy.test.ts`, `defaults.test.ts` (the youth price and the
+price text agree everywhere), `offer-catalogue.test.ts`, `catalogue.test.ts`, `addons.test.ts`,
+`aanbod-prices.test.ts`, `jsonld.test.ts`, `actions/offerings.test.ts`, `offer-enquiry/*.test.ts`,
+the seed-content tests (the register `content-placeholders.md` is checked against the defaults); on
+PGlite self-test section 14d (`scripts/selftest/offerings.mts`: migrations, bootstrap with the
+three fit services, the migration CLI, permissions, the admin write with its three services and
+the price text, provider self-service, the booking gate, the enquiry form, the provider profile)
+and 17b (the 20 Oct price patch on the pair Volwassene + Jeugd).
 
 **Decisions (Toshoni, 17 Oct 2026).** `offering.manage` is admin-only (it writes the booking
 catalogue; to confirm). The three older services (Gezinspakket, Fit aan huis, Inspanningstest)
@@ -1776,7 +1995,7 @@ The env name `GIFT_VOUCHER_RECIPIENT` is kept although the inbox also receives e
 
 ---
 
-### Extra's (add-ons), 20 Oct 2026
+### Extra's (add-ons), 20 Oct 2026, corrected 27 Oct 2026
 
 Three columns on `cms_offerings` (`is_addon`, `sold_alone`, `addon_minutes`), the link table
 `cms_offering_addons` (host → extra, `sort_order`) and the booking snapshot
@@ -1787,6 +2006,15 @@ An extra may hold choices (`addon_options` jsonb, migration 0016: key, label, mi
 its own option in the widget; the visitor picks one. The host decides which extras it allows (*Extra's bij dit aanbod*; `syncOfferingAddons()` in
 `src/lib/offers/repo-addons.ts`). The booking side, the widget step, the location choice and
 the rollout: `booking-architecture.md` §18.
+
+**Which offerings are extras.** By default only *Bikefit – tweede fiets* (an extra only, with its
+two choices), and both bikefits list only it (`BIKEFIT_ADDON_SLUGS` in `src/lib/offers/defaults.ts`).
+Toshoni, 27 Oct 2026: voetanalyse, zadelanalyse and afstellen schoenplaatjes are included in every
+bikefit, so they are sold on their own and never a paid extra of one (the first version of 20 Oct
+2026 made them extras, which charged for them twice). That is a default, not a rule of the model: an
+admin can still mark any offering as an extra in Beheer → Aanbod → Extra's, and the catalogue then
+offers it. `cms:bootstrap` writes the default for a new database; `cms:patch-aanbod-extras` moves
+an existing one (staging and production were in the state of 20 Oct: `staging-runbook.md` §23).
 
 ## 15. Retired: offer pages and Beheer → Diensten (13–16 Oct 2026)
 

@@ -93,6 +93,20 @@
  *      editor-changed fields, applies exactly the review (pages, /contact
  *      301 + unpublish, menus, e-mail), verified, idempotent, restore
  *      (`scripts/selftest/page-cleanup.mts`)
+ * 17b. aanbod prices patch (20 Oct 2026): from the 17 Oct state, dry run writes
+ *      nothing, apply prices and times the offerings and the two services,
+ *      catalogue verified, idempotent, restore, an admin's edit blocks it
+ *      (`scripts/selftest/aanbod-prijzen.mts`)
+ * 17c. extra's (add-ons): the bootstrap offerings, availability and a booking
+ *      with an extra, and `cms:patch-aanbod-extras` from a fresh database, an
+ *      edit in Beheer and the state of 20 Oct 2026 (`scripts/selftest/aanbod-extras.mts`)
+ * 17d. aanbod correcties (27 Oct 2026): from the state staging and production
+ *      hold, the dry run writes nothing, apply changes settings, location, pages,
+ *      menu, offerings, services, the youth package and Toshoni's offerings,
+ *      verified on the public readers and the copy-token lookup, idempotent,
+ *      restore returns every table, what must block does; every table is put
+ *      back afterwards
+ *      (`scripts/selftest/aanbod-correcties.mts`)
  *  18. gift voucher: the order service on the database with `fetch` replaced (missing
  *      key/sender or a refusal is "not sent", only an accepted request is a
  *      success, no double mail, rate limit, the recipient is its own setting
@@ -597,6 +611,17 @@ async function main() {
   // 17c: extra's (add-ons) — catalogue, availability, a booking with an extra, the patch.
   const { aanbodExtrasSection } = await import('./selftest/aanbod-extras.mjs');
   await aanbodExtrasSection({
+    db,
+    check,
+    section,
+    cookieJar,
+    backupDir: resolve(process.cwd(), DATA_DIR, 'rollout-backups'),
+    admin: user,
+  });
+
+  // 17d: the corrections of 27 Oct 2026 — settings, pages, copy, youth package, Toshoni.
+  const { aanbodCorrectiesSection } = await import('./selftest/aanbod-correcties.mjs');
+  await aanbodCorrectiesSection({
     db,
     check,
     section,

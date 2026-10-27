@@ -1,6 +1,32 @@
 import { z } from 'zod';
-import { formatDuration, formatPrice } from '@/lib/booking/format';
-import { OFFER_DURATION_FALLBACK, OFFER_PRICE_FALLBACK, offerDurationLabel } from './catalogue';
+import {
+  AUDIENCE_LABELS,
+  OFFERING_AUDIENCES,
+  OFFERING_VARIANT_MODES,
+  audiencesFor,
+  isAcceptedAudienceSet,
+  type OfferingAudience,
+  type OfferingVariantMode,
+} from './offering-audience';
+
+// The audiences and the Kostprijs / Duur lines live in two small siblings (this file is past
+// the size limit). What callers imported from here stays here; the newer helpers
+// (`baseAudienceOf`, `isSplitAudience`, …) come from `./offering-audience`. Named, not
+// `export *`: the CLIs (tsx, CommonJS output) only see names that are spelled out.
+export {
+  AUDIENCE_LABELS,
+  OFFERING_AUDIENCES,
+  OFFERING_VARIANT_MODES,
+  audiencesFor,
+  type OfferingAudience,
+  type OfferingVariantMode,
+} from './offering-audience';
+export {
+  offeringDurationLabel,
+  offeringPriceLabel,
+  offeringPriceText,
+  variantPriceLabel,
+} from './offering-labels';
 
 /**
  * Offering settings — what Beheer → Aanbod decides per offering (its copy is
@@ -14,8 +40,9 @@ import { OFFER_DURATION_FALLBACK, OFFER_PRICE_FALLBACK, offerDurationLabel } fro
  * `src/db/cms-offering-schema.ts`):
  *
  *  - `isListed`: shown on the website (overviews, its own page, `/afspraak`);
- *  - `variantMode`: `single` (one option) or `audience` (Volwassene and Jeugd
- *    apart, each its own booking service, duration and price);
+ *  - `variantMode`: `single` (one option) or `audience` (Volwassene, Jeugd –
+ *    eenmalig and Jeugd – volledig pakket apart, each its own booking service,
+ *    duration and price; `./offering-audience.ts`);
  *  - `bookingMode`: `direct` (online booking through `/afspraak?dienst=<slug>`)
  *    or `enquiry` (the enquiry form on the offer page);
  *  - per variant: the booking service (`cms_services`) it is booked as, and its
@@ -30,19 +57,6 @@ import { OFFER_DURATION_FALLBACK, OFFER_PRICE_FALLBACK, offerDurationLabel } fro
 
 export const OFFERING_BOOKING_MODES = ['direct', 'enquiry'] as const;
 export type OfferingBookingMode = (typeof OFFERING_BOOKING_MODES)[number];
-
-export const OFFERING_VARIANT_MODES = ['single', 'audience'] as const;
-export type OfferingVariantMode = (typeof OFFERING_VARIANT_MODES)[number];
-
-export const OFFERING_AUDIENCES = ['all', 'adult', 'youth'] as const;
-export type OfferingAudience = (typeof OFFERING_AUDIENCES)[number];
-
-/** Public label of a variant; the single option has none. */
-export const AUDIENCE_LABELS: Record<OfferingAudience, string> = {
-  all: '',
-  adult: 'Volwassene',
-  youth: 'Jeugd',
-};
 
 /** € 10.000,00: a technical upper bound, not a business rule. */
 export const OFFERING_MAX_PRICE_CENTS = 1_000_000;
@@ -70,10 +84,6 @@ export const OFFERING_STATUS_LABELS: Record<OfferingStatus, string> = {
   addon: 'Enkel als extra bij een afspraak',
 };
 
-export function audiencesFor(mode: OfferingVariantMode): OfferingAudience[] {
-  return mode === 'audience' ? ['adult', 'youth'] : ['all'];
-}
-
 export type OfferingVariant = {
   audience: OfferingAudience;
   serviceId: string | null;
@@ -84,7 +94,7 @@ export type OfferingSettings = {
   isListed: boolean;
   bookingMode: OfferingBookingMode;
   variantMode: OfferingVariantMode;
-  /** Exactly the audiences of `variantMode`, in that order. */
+  /** Exactly the audiences of `variantMode`, in that order (a saved legacy pair excepted, `isAcceptedAudienceSet`). */
   variants: OfferingVariant[];
   /** Can be ticked as an extra when booking an offering that lists it (20 Oct 2026). */
   isAddon: boolean;
@@ -203,9 +213,8 @@ export const offeringInputSchema = z
       .default([]),
   })
   .superRefine((value, ctx) => {
-    const expected = audiencesFor(value.variantMode);
     const given = value.variants.map((variant) => variant.audience);
-    if (given.length !== expected.length || expected.some((audience, i) => given[i] !== audience)) {
+    if (!isAcceptedAudienceSet(value.variantMode, given)) {
       ctx.addIssue({
         code: 'custom',
         message: 'De varianten passen niet bij de gekozen opdeling.',
@@ -231,7 +240,7 @@ export const offeringInputSchema = z
     if (new Set(services).size !== services.length) {
       ctx.addIssue({
         code: 'custom',
-        message: 'Volwassene en Jeugd hebben elk een eigen dienst nodig (eigen duur en formulier).',
+        message: 'Elke variant heeft een eigen dienst nodig (eigen duur en formulier).',
       });
     }
     if (value.isAddon) {
@@ -385,7 +394,7 @@ export type OfferingServiceInfo = {
 
 export type ResolvedVariant = {
   audience: OfferingAudience;
-  /** "Volwassene", "Jeugd"; '' for the single option. */
+  /** "Volwassene", "Jeugd – eenmalig", "Jeugd – volledig pakket"; '' for the single option. */
   label: string;
   serviceId: string | null;
   serviceSlug: string | null;
@@ -462,61 +471,7 @@ export function resolveOffering(input: {
   };
 }
 
-/** One variant's price: "€ 150,00" or "Prijs op aanvraag". */
-export function variantPriceLabel(variant: Pick<ResolvedVariant, 'priceCents'>): string {
-  return variant.priceCents != null ? formatPrice(variant.priceCents) : OFFER_PRICE_FALLBACK;
-}
-
-/**
- * The offering's Kostprijs line: "Prijs op aanvraag" while no variant has a
- * price; one amount for a single option; per variant otherwise
- * ("Volwassene € 150,00 · Jeugd op aanvraag"). Never an invented amount.
- */
-export function offeringPriceLabel(
-  offering: Pick<ResolvedOffering, 'variants'> & { addonOptions?: AddonChoice[] },
-): string {
-  // An extra with choices is priced per choice ("Zelfde type fiets € 75,00 · Ander type fiets € 150,00").
-  if (offering.addonOptions?.length) {
-    return offering.addonOptions
-      .map((choice) => `${choice.label} ${formatPrice(choice.priceCents)}`)
-      .join(' · ');
-  }
-  const { variants } = offering;
-  if (!variants.some((variant) => variant.priceCents != null)) return OFFER_PRICE_FALLBACK;
-  if (variants.length === 1) return variantPriceLabel(variants[0]);
-  return variants
-    .map(
-      (variant) =>
-        `${variant.label} ${variant.priceCents != null ? formatPrice(variant.priceCents) : 'op aanvraag'}`,
-    )
-    .join(' · ');
-}
-
-/**
- * The offering's Duur line. Direct: from the variants' active services
- * ("Volwassene: 1 u 30 min · Jeugd: 1 uur"), never the editorial text.
- * Enquiry: the editorial text on the offer page (else "Duur in overleg").
- */
-export function offeringDurationLabel(
-  offering: Pick<ResolvedOffering, 'bookingMode' | 'variants'> & { addonOptions?: AddonChoice[] },
-  editorialDuration: string,
-): string {
-  // An extra with choices: the time of each choice, whatever the booking mode.
-  if (offering.addonOptions?.length) {
-    return offering.addonOptions
-      .map((choice) => `${choice.label}: ${formatDuration(choice.minutes)}`)
-      .join(' · ');
-  }
-  if (offering.bookingMode === 'enquiry') return offerDurationLabel(editorialDuration);
-  const parts = offering.variants
-    .filter((variant) => variant.durationMinutes != null)
-    .map((variant) =>
-      variant.label
-        ? `${variant.label}: ${formatDuration(variant.durationMinutes!)}`
-        : formatDuration(variant.durationMinutes!),
-    );
-  return parts.length ? parts.join(' · ') : OFFER_DURATION_FALLBACK;
-}
+// The Kostprijs and Duur lines of an offering: `./offering-labels.ts` (re-exported above).
 
 /**
  * The booking-service slugs `/afspraak` may use for this offering, in variant

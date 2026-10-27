@@ -10,40 +10,49 @@ import type { OfferingContent } from './offering-content';
 
 /**
  * The offer as first published on 13 Oct 2026, as offerings since 17 Oct and
- * with Toshoni's prices and durations of 20 Oct 2026: what
- * `npm run cms:bootstrap` writes to `cms_offerings` when a row with the slug
- * is missing. Plain data, no I/O.
+ * with Toshoni's prices and durations of 20 Oct 2026 and his youth price of
+ * 27 Oct 2026: what `npm run cms:bootstrap` writes to `cms_offerings` when a
+ * row with the slug is missing. Plain data, no I/O.
  *
  * COPY PROVENANCE: work block `2026-10-13-aanbod-staging-brief.md` ("Suggested
  * service content", supplied by Toshoni via Winston) and Toshoni's message of
  * 20 Oct 2026 (prices, durations, the second visit and the second bike, what a
  * bikefit includes, why one analysis alone is often not enough). Nothing
  * beyond those: no device brands, medical claims, guarantees or included
- * products. Where Toshoni gave no duration (lactaattest, coaching) the page
+ * products. Where Toshoni gave no duration (inspanningstest, coaching) the page
  * still says "Duur in overleg".
  *
- * Prices (20 Oct 2026): bikefit € 275, under 16 € 150 without the six-month
- * problem follow-up (€ 275 with it); second visit € 75 (1 u; free within six
- * months of the fit); second bike € 75 (same type, 30 min extra) or € 150
- * (other type, 1 u extra); zadelanalyse € 60 (1 u), voetanalyse € 85 (30 min),
- * schoenplaatjes € 15 (15 min), all three included in every bikefit;
- * lactaattest € 120; coaching € 65. Shown through the variants' `priceCents`
+ * Prices (20 Oct 2026): bikefit € 275 with six months of problem follow-up
+ * included; second visit € 75 (1 u; free within six months of the fit, said in
+ * the offering's `priceText`); second bike € 75 (same type, 30 min extra) or
+ * € 150 (other type, 1 u extra); zadelanalyse € 60 (1 u), voetanalyse € 85
+ * (30 min), schoenplaatjes € 15 (15 min), all three included in every bikefit;
+ * inspanningstest € 120; coaching € 65. Shown through the variants' `priceCents`
  * (offer pages and cards) and, for the fit that is booked online, through
  * the services' price in `src/lib/booking/defaults.ts` (the widget).
  *
- * Extra's (Toshoni, 20 Oct 2026): voetanalyse, zadelanalyse and het afstellen
- * van schoenplaatjes are sold on their own AND can be ticked as an extra when
- * booking a bikefit (their minutes and price are added); *Bikefit – tweede
- * fiets* is an extra only, never booked alone, with two choices the visitor
- * picks from: zelfde type (30 min, € 75) or ander type (1 u, € 150). Both
- * bikefits list those four extras. An existing database gets this with
+ * Jeugd (under 16, Toshoni 27 Oct 2026) is two variants of both bikefits, so the
+ * offer page, the widget, the booking, the mails and Beheer all say the same:
+ * *Jeugd – eenmalig* (`youth`) € 150, one fit without follow-up, or *Jeugd –
+ * volledig pakket* (`youth-package`) € 275 with a year of free follow-up, which
+ * the studio recommends because young riders grow fast. The one booked online
+ * has a service for each (`jeugdfit`, `jeugdfit-pakket`).
+ *
+ * Extra's (Toshoni, 20 Oct 2026, corrected 27 Oct 2026): *Bikefit – tweede
+ * fiets* is the only extra of a bikefit. It is an extra only, never booked
+ * alone, with two choices the visitor picks from: zelfde type (30 min, € 75)
+ * or ander type (1 u, € 150). Both bikefits list it, and nothing else.
+ * Voetanalyse, zadelanalyse and het afstellen van schoenplaatjes are sold on
+ * their own (asked for) and are included in every bikefit, so they are never
+ * an extra of one. An existing database gets this with
  * `npm run cms:patch-aanbod-extras`.
  *
  * Booking: *Bikefit – huidige fiets* is booked directly as Volwassenenfit
- * (Volwassene) and Jeugdfit (Jeugd); the eight others are asked for through
- * the enquiry form until Toshoni confirms a provider for them. An existing
- * database gets these values with `npm run cms:patch-aanbod-prijzen`
- * (`src/lib/offers/aanbod-prices.ts` lists what changes).
+ * (Volwassene), Jeugdfit – eenmalig and Jeugdfit – volledig pakket; the eight
+ * others are asked for through the enquiry form until Toshoni confirms a
+ * provider for them. An existing database got the values of 20 Oct 2026 with
+ * `npm run cms:patch-aanbod-prijzen` (`src/lib/offers/aanbod-prices.ts` freezes
+ * what it wrote); the Jeugd variants of 27 Oct 2026 come with their own patch.
  *
  * Every field stays editable in Beheer → Aanbod. Every placeholder is listed in
  * `docs/content-placeholders.md` (P-, D-, E-rows).
@@ -96,8 +105,10 @@ function offerImage(slug: string, category: Exclude<OfferCategory, 'overige'>) {
 }
 
 function offer(
-  content: Omit<OfferingContent, 'extrasNote' | 'ctaLabel' | 'image' | 'category'> & {
+  content: Omit<OfferingContent, 'extrasNote' | 'ctaLabel' | 'image' | 'category' | 'priceText'> & {
     category: Exclude<OfferCategory, 'overige'>;
+    /** The free-text Kostprijs of an offering that is asked for; absent = the variants' prices. */
+    priceText?: string;
   },
   booking: Pick<DefaultOffering, 'bookingMode' | 'variantMode' | 'variants'>,
   extras: Partial<DefaultOfferingExtras> = {},
@@ -105,6 +116,7 @@ function offer(
   return {
     content: {
       ...content,
+      priceText: content.priceText ?? '',
       extrasNote: OFFER_EXTRAS_NOTE,
       ctaLabel: '',
       image: offerImage(content.slug, content.category),
@@ -127,10 +139,13 @@ function enquiry(
   };
 }
 
-/** Prices in cents (20 Oct 2026). */
+/** Prices in cents (20 Oct 2026; the Jeugd package 27 Oct 2026). */
 export const PRICES = {
   bikefit: 27500,
+  /** Jeugd – eenmalig: one fit, no follow-up. */
   bikefitUnder16: 15000,
+  /** Jeugd – volledig pakket: the full fit with a year of free follow-up. */
+  bikefitYouthPackage: 27500,
   secondVisit: 7500,
   secondBikeSameType: 7500,
   secondBikeOtherType: 15000,
@@ -143,17 +158,33 @@ export const PRICES = {
 
 const INCLUDED_ANALYSES =
   'Zadelanalyse, voetanalyse en het afstellen van je schoenplaatjes zitten erin.';
-const FOLLOW_UP_INCLUDED =
-  'Probleemopvolging tot zes maanden na je fit is inbegrepen. Onder 16: € 150 zonder opvolging, € 275 met.';
-const SECOND_VISIT_EXTRA = 'Een tweede bezoek na meer dan zes maanden: € 75.';
-const SECOND_BIKE_EXTRA = 'Een tweede fiets erbij: vanaf € 75.';
-/** The extras a visitor may tick when booking a bikefit, in this order (Toshoni, 20 Oct 2026). */
-export const BIKEFIT_ADDON_SLUGS = [
-  'bikefit-tweede-fiets',
-  'voetanalyse',
-  'zadelanalyse',
-  'afstellen-schoenplaatjes',
-] as const;
+/**
+ * The follow-up lines of a bikefit, as two bullets (one line would pass the 300
+ * characters a bullet may hold once the tokens are typed). Nothing here is a
+ * number: the adult window, the youth window and the three prices are copy
+ * tokens that the public site resolves from the master (`{{opvolging:…}}`, the
+ * variants' prices), so a changed price or window never leaves this text behind.
+ * Toshoni, 27 Oct 2026: under 16, a one-off fit or the package, which we recommend.
+ */
+function followUpIncluded(slug: string): string[] {
+  return [
+    'Probleemopvolging tot {{opvolging:volwassene}} na je fit is inbegrepen.',
+    `Jeugd (onder 16): {{prijs:${slug}:youth}} voor een eenmalige fit zonder opvolging, of {{prijs:${slug}:youth-package}} voor het volledige pakket met {{opvolging:jeugd-pakket}} gratis opvolging. Dat raden we aan, want jonge renners groeien snel.`,
+  ];
+}
+/** The adjustment of the new bike after the purchase belongs to the follow-up, so it is in the adult price (Toshoni, 27 Oct 2026). */
+const NEW_BIKE_ADJUSTMENT_INCLUDED =
+  'De afstelling van je nieuwe fiets na de aankoop is inbegrepen in de {{prijs:bikefit-nieuwe-fiets:adult}}: ze hoort bij de opvolging tot {{opvolging:volwassene}} na je fit.';
+const SECOND_VISIT_EXTRA =
+  'Een tweede bezoek na meer dan {{tweede-bezoek-gratis}}: {{prijs:bikefit-tweede-bezoek:all}}.';
+const SECOND_BIKE_EXTRA = 'Een tweede fiets erbij: vanaf {{prijs:bikefit-tweede-fiets:all}}.';
+/**
+ * The extras a visitor may tick when booking a bikefit, in this order. Only the
+ * second bike: Toshoni, 27 Oct 2026: voetanalyse, zadelanalyse and
+ * afstellen-schoenplaatjes are included in every bikefit, so they are never a
+ * paid extra of one (the first version of 20 Oct 2026 charged for them twice).
+ */
+export const BIKEFIT_ADDON_SLUGS = ['bikefit-tweede-fiets'] as const;
 /** Why a single analysis is often not enough (Toshoni, 20 Oct 2026), per analysis. */
 function oneAnalysisNote(what: string): string {
   return `Een losse analyse is vaak niet genoeg: wie één element aanpast, verandert de hele fietspositie. Daarom zit ${what} in elke bikefit.`;
@@ -175,16 +206,14 @@ export const DEFAULT_OFFERS: DefaultOffering[] = [
         'We bekijken je houding en hoe beweeglijk je bent.',
         'Je krijgt advies over een passende maat, geometrie en afstelling voor je nieuwe fiets.',
         INCLUDED_ANALYSES,
-        FOLLOW_UP_INCLUDED,
+        NEW_BIKE_ADJUSTMENT_INCLUDED,
+        ...followUpIncluded('bikefit-nieuwe-fiets'),
       ],
-      duration: '2 uur',
-      extras: [
-        'Afstelling van je nieuwe fiets na de aankoop.',
-        SECOND_VISIT_EXTRA,
-        SECOND_BIKE_EXTRA,
-      ],
+      // Asked for, but the fit is the one the Volwassenenfit service books: its length is the master.
+      duration: '{{duur:volwassenenfit}}',
+      extras: [SECOND_VISIT_EXTRA, SECOND_BIKE_EXTRA],
       metaDescription:
-        'Bikefit vóór je een nieuwe fiets koopt: gesprek, blik op je houding en beweeglijkheid, en advies over maat, geometrie en afstelling. € 275, onder 16 € 150.',
+        'Bikefit vóór je een nieuwe fiets koopt: gesprek, blik op je houding en beweeglijkheid, en advies over maat, geometrie en afstelling. {{prijs:bikefit-nieuwe-fiets:adult}}; onder 16 {{prijs:bikefit-nieuwe-fiets:youth}} eenmalig of {{prijs:bikefit-nieuwe-fiets:youth-package}} met {{opvolging:jeugd-pakket}} opvolging.',
     },
     {
       bookingMode: 'enquiry',
@@ -192,6 +221,7 @@ export const DEFAULT_OFFERS: DefaultOffering[] = [
       variants: [
         { audience: 'adult', serviceSlug: null, priceCents: PRICES.bikefit },
         { audience: 'youth', serviceSlug: null, priceCents: PRICES.bikefitUnder16 },
+        { audience: 'youth-package', serviceSlug: null, priceCents: PRICES.bikefitYouthPackage },
       ],
     },
     { addonSlugs: [...BIKEFIT_ADDON_SLUGS] },
@@ -211,7 +241,7 @@ export const DEFAULT_OFFERS: DefaultOffering[] = [
         'We kijken je zadel, stuur en schoenplaatjes na.',
         'Aanpassingen testen we samen uit, met uitleg bij elke stap.',
         INCLUDED_ANALYSES,
-        FOLLOW_UP_INCLUDED,
+        ...followUpIncluded('bikefit-huidige-fiets'),
       ],
       duration: OFFER_DURATION_FALLBACK,
       extras: [
@@ -220,7 +250,7 @@ export const DEFAULT_OFFERS: DefaultOffering[] = [
         'Nieuwe onderdelen, altijd apart en vooraf besproken.',
       ],
       metaDescription:
-        'Bikefit op je huidige fiets: intake, 3D-bewegingsanalyse, zadel, stuur en schoenplaatjes, en aanpassingen die we samen uittesten. € 275, onder 16 € 150.',
+        'Bikefit op je huidige fiets: intake, 3D-bewegingsanalyse, zadel, stuur en schoenplaatjes, en aanpassingen die we samen uittesten. {{prijs:bikefit-huidige-fiets:adult}}; onder 16 {{prijs:bikefit-huidige-fiets:youth}} eenmalig of {{prijs:bikefit-huidige-fiets:youth-package}} met {{opvolging:jeugd-pakket}} opvolging.',
     },
     {
       bookingMode: 'direct',
@@ -228,6 +258,11 @@ export const DEFAULT_OFFERS: DefaultOffering[] = [
       variants: [
         { audience: 'adult', serviceSlug: 'volwassenenfit', priceCents: PRICES.bikefit },
         { audience: 'youth', serviceSlug: 'jeugdfit', priceCents: PRICES.bikefitUnder16 },
+        {
+          audience: 'youth-package',
+          serviceSlug: 'jeugdfit-pakket',
+          priceCents: PRICES.bikefitYouthPackage,
+        },
       ],
     },
     { addonSlugs: [...BIKEFIT_ADDON_SLUGS] },
@@ -238,19 +273,24 @@ export const DEFAULT_OFFERS: DefaultOffering[] = [
       category: 'bikefit',
       sortOrder: 25,
       title: 'Bikefit – tweede bezoek',
-      summary: 'Een opvolgmoment na je bikefit: gratis tot zes maanden na je fit, daarna € 75.',
+      summary:
+        'Een opvolgmoment na je bikefit: gratis tot {{tweede-bezoek-gratis}} na je fit, daarna {{prijs:bikefit-tweede-bezoek:all}}.',
       intro: 'Loop je na je fit toch nog ergens tegenaan? Dan kijken we er samen nog eens naar.',
-      goal: 'Een opvolgmoment na je bikefit: gratis tot zes maanden na je fit, daarna € 75.',
+      goal: 'Een opvolgmoment na je bikefit: gratis tot {{tweede-bezoek-gratis}} na je fit, daarna {{prijs:bikefit-tweede-bezoek:all}}.',
       contents: [
         'We bespreken wat je sinds je fit voelde op de fiets.',
         'We bekijken je positie opnieuw en sturen bij waar nodig.',
-        'Tot zes maanden na je bikefit is deze probleemopvolging gratis.',
-        'Na meer dan zes maanden kost een tweede bezoek € 75.',
+        'Tot {{tweede-bezoek-gratis}} na je bikefit is deze probleemopvolging gratis.',
+        'Na meer dan {{tweede-bezoek-gratis}} kost een tweede bezoek {{prijs:bikefit-tweede-bezoek:all}}.',
       ],
       duration: '1 uur',
+      // The page reads this instead of the price line. It names the variant's price (`:all`):
+      // the price line of this offering IS this text, so a token for the line would loop.
+      priceText:
+        'Gratis binnen {{tweede-bezoek-gratis}} na je fit, daarna {{prijs:bikefit-tweede-bezoek:all}}',
       extras: ['Een volledige nieuwe bikefit, als je fiets of je lichaam sterk veranderd is.'],
       metaDescription:
-        'Tweede bezoek na je bikefit: gratis probleemopvolging tot zes maanden na je fit, daarna € 75 voor een uur bijsturen.',
+        'Tweede bezoek na je bikefit: gratis probleemopvolging tot {{tweede-bezoek-gratis}} na je fit, daarna {{prijs:bikefit-tweede-bezoek:all}} voor het bijsturen.',
     },
     enquiry(PRICES.secondVisit),
   ),
@@ -265,14 +305,15 @@ export const DEFAULT_OFFERS: DefaultOffering[] = [
         'Fiets je op meer dan één fiets? Dan stemmen we je tweede fiets af tijdens dezelfde afspraak.',
       goal: 'Je tweede fiets afgestemd op dezelfde positie, aansluitend op je bikefit.',
       contents: [
-        'Zelfde type fiets: € 75 en 30 minuten extra; je afspraak duurt dan 2,5 uur.',
-        'Ander type fiets: € 150 en 1 uur extra; je afspraak duurt dan 3 uur.',
+        'Zelfde type fiets: {{extra:bikefit-tweede-fiets:zelfde-type}}.',
+        'Ander type fiets: {{extra:bikefit-tweede-fiets:ander-type}}.',
         'We nemen de maten van je eerste fiets over en stemmen de tweede erop af.',
       ],
-      duration: '30 minuten tot 1 uur extra, aansluitend op je bikefit',
+      // The time of each choice is `addonOptions` below (the page prints that), so no minutes here.
+      duration: 'Extra tijd bovenop je bikefit, aansluitend op je afspraak',
       extras: ['Een derde fiets, in overleg.'],
       metaDescription:
-        'Tweede fiets afstemmen tijdens je bikefit: € 75 voor hetzelfde type fiets (30 minuten extra), € 150 voor een ander type (1 uur extra).',
+        'Tweede fiets afstemmen tijdens je bikefit: voor hetzelfde type fiets {{extra:bikefit-tweede-fiets:zelfde-type}}, voor een ander type {{extra:bikefit-tweede-fiets:ander-type}}.',
     },
     enquiry(PRICES.secondBikeSameType),
     // An extra only: ticked when booking a bikefit, 30 min and € 75 for the same type.
@@ -316,10 +357,9 @@ export const DEFAULT_OFFERS: DefaultOffering[] = [
       duration: '30 minuten',
       extras: ['Je schoenplaatjes laten afstellen.', 'Een volledige bikefit.'],
       metaDescription:
-        'Voetanalyse voor fietsers: voetstand, ondersteuning, pasvorm van je schoenen en drukpunten, met persoonlijk advies. € 85, 30 minuten.',
+        'Voetanalyse voor fietsers: voetstand, ondersteuning, pasvorm van je schoenen en drukpunten, met persoonlijk advies. {{prijs:voetanalyse:all}}.',
     },
     enquiry(PRICES.foot),
-    { isAddon: true, addonMinutes: 30 },
   ),
   offer(
     {
@@ -343,10 +383,9 @@ export const DEFAULT_OFFERS: DefaultOffering[] = [
         'Een ander zadel of andere onderdelen, als dat nodig blijkt.',
       ],
       metaDescription:
-        'Zadelanalyse: we bekijken je zadel, houding en ondersteuning en testen samen een positie die beter bij jou past. € 60, 1 uur.',
+        'Zadelanalyse: we bekijken je zadel, houding en ondersteuning en testen samen een positie die beter bij jou past. {{prijs:zadelanalyse:all}}.',
     },
     enquiry(PRICES.saddle),
-    { isAddon: true, addonMinutes: 60 },
   ),
   offer(
     {
@@ -371,17 +410,18 @@ export const DEFAULT_OFFERS: DefaultOffering[] = [
         'Nieuwe schoenplaatjes, als dat nodig is.',
       ],
       metaDescription:
-        'Schoenplaatjes laten afstellen: we kijken je schoenen en plaatjes na, stellen ze af en controleren het resultaat samen. € 15, 15 minuten.',
+        'Schoenplaatjes laten afstellen: we kijken je schoenen en plaatjes na, stellen ze af en controleren het resultaat samen. {{prijs:afstellen-schoenplaatjes:all}}.',
     },
     enquiry(PRICES.cleats),
-    { isAddon: true, addonMinutes: 15 },
   ),
   offer(
     {
       slug: 'lactaattest',
       category: 'begeleiding',
       sortOrder: 10,
-      title: 'Lactaattest',
+      // "Inspanningstest" since 27 Oct 2026 (Toshoni, one term everywhere); the slug,
+      // so the URL /aanbod/lactaattest, stays.
+      title: 'Inspanningstest',
       summary: 'Gerichter trainen met inzicht in je inspanningsniveau.',
       intro:
         'Ontdek hoe je lichaam reageert op oplopende inspanning en wat dat betekent voor je training.',
@@ -395,7 +435,7 @@ export const DEFAULT_OFFERS: DefaultOffering[] = [
       duration: OFFER_DURATION_FALLBACK,
       extras: ['Coaching.', 'Een vervolgmeting, in overleg.'],
       metaDescription:
-        'Lactaattest voor fietsers: stapsgewijze inspanning met lactaatmetingen, en uitleg over wat de resultaten betekenen voor je training. € 120.',
+        'Inspanningstest voor fietsers: stapsgewijze inspanning met lactaatmetingen, en uitleg over wat de resultaten betekenen voor je training. {{prijs:lactaattest:all}}.',
     },
     enquiry(PRICES.lactate),
   ),
@@ -416,9 +456,9 @@ export const DEFAULT_OFFERS: DefaultOffering[] = [
         'Opvolging en bijsturing, zoals we samen afspreken.',
       ],
       duration: 'Traject en opvolging in overleg',
-      extras: ['Een lactaattest.', 'Een bikefit.', 'Aanvullende opvolging, in overleg.'],
+      extras: ['Een inspanningstest.', 'Een bikefit.', 'Aanvullende opvolging, in overleg.'],
       metaDescription:
-        'Fietscoaching: kennismaking, je doelen en beschikbare tijd, persoonlijk trainingsadvies en opvolging zoals we samen afspreken. € 65.',
+        'Fietscoaching: kennismaking, je doelen en beschikbare tijd, persoonlijk trainingsadvies en opvolging zoals we samen afspreken. {{prijs:coaching:all}}.',
     },
     enquiry(PRICES.coaching),
   ),

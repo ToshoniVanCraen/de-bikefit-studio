@@ -120,6 +120,13 @@
       "when": 1792512532546,
       "tag": "0016_cms_offering_addon_options",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1793089571947,
+      "tag": "0017_cms_offering_price_text",
+      "breakpoints": true
     }
   ]
 }

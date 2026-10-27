@@ -49,6 +49,19 @@ function plainSpaces(value: string): string {
   return value.replace(/\s/g, ' ');
 }
 
+/**
+ * The Duur an offering that is asked for shows: its editorial text, where a
+ * `{{duur:<service>}}` token reads the length of that booking service (27 Oct
+ * 2026: Bikefit – aankoop nieuwe fiets is the Volwassenenfit, "2 uur").
+ */
+function shownDuration(duration: string): string {
+  return duration.replace(/\{\{duur:([a-z0-9-]+)\}\}/g, (_match, slug: string) => {
+    const service = DEFAULT_SERVICES.find((entry) => entry.slug === slug);
+    if (!service) throw new Error(`no default service ${slug}`);
+    return formatDuration(service.durationMinutes);
+  });
+}
+
 function rowsOf(series: string): Row[] {
   return ROWS.filter((entry) => entry.id.startsWith(`${series}-`));
 }
@@ -120,7 +133,7 @@ describe('content placeholder register', () => {
         })
         .join(' · ');
       if (offer.bookingMode === 'direct') expect(duration.cells[2]).toContain(linked);
-      else expect(duration.cells[2]).toBe(offer.content.duration);
+      else expect(duration.cells[2]).toBe(shownDuration(offer.content.duration));
       rowMentioning('E', path);
     }
   });

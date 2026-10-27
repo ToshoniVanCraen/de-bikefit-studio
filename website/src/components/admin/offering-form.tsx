@@ -13,40 +13,32 @@ import {
   StatusMessage,
   SubmitButton,
 } from '@/components/admin/form';
-import {
-  centsToEuroInput,
-  locationOptionLabel,
-  type LocationOption,
-} from '@/components/admin/booking-labels';
+import type { LocationOption } from '@/components/admin/booking-labels';
+import { CopyTokenHelp } from '@/components/admin/copy-token-help';
 import { MediaPicker, type MediaOption } from '@/components/admin/media-picker';
 import {
   OfferingAddonsFields,
   type AddonCandidate,
 } from '@/components/admin/offering-addons-fields';
+import {
+  OfferingVariantsFields,
+  type OfferingFormVariant,
+} from '@/components/admin/offering-variants-fields';
 import { deleteOfferingAction, saveOfferingAction } from '@/lib/cms/actions/offerings';
 import { IDLE_STATE } from '@/lib/cms/actions/state';
-import { OFFER_CATEGORIES, OFFER_CATEGORY_LABELS, OFFER_CTA_LABEL } from '@/lib/offers/catalogue';
+import {
+  OFFER_CATEGORIES,
+  OFFER_CATEGORY_LABELS,
+  OFFER_CTA_LABEL,
+  OFFER_PRICE_TEXT_MAX,
+} from '@/lib/offers/catalogue';
 import {
   AUDIENCE_LABELS,
   audiencesFor,
-  type AddonChoice,
-  type OfferingAudience,
-  type OfferingBookingMode,
   type OfferingVariantMode,
-} from '@/lib/offers/offering';
+} from '@/lib/offers/offering-audience';
+import type { AddonChoice, OfferingBookingMode } from '@/lib/offers/offering';
 import type { OfferingContent } from '@/lib/offers/offering-content';
-
-/** One variant as the form shows it: the stored price and its service's facts. */
-export type OfferingFormVariant = {
-  audience: OfferingAudience;
-  serviceId: string | null;
-  priceCents: number | null;
-  durationMinutes: number | null;
-  bufferAfterMinutes: number | null;
-  locationId: string | null;
-  requiresGuardian: boolean;
-  providerNames: string[];
-};
 
 export type OfferingFormValues = {
   id: string | null;
@@ -91,8 +83,7 @@ export function OfferingForm({
   const [bookingMode, setBookingMode] = useState<OfferingBookingMode>(offering.bookingMode);
   const { content } = offering;
   const id = (name: string) => `offering-${name}`;
-  const variant = (audience: OfferingAudience) =>
-    offering.variants.find((entry) => entry.audience === audience) ?? null;
+  const splitLabels = audiencesFor('audience').map((audience) => AUDIENCE_LABELS[audience]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -144,6 +135,7 @@ export function OfferingForm({
             </Field>
           </div>
           <div className="mt-3 flex flex-col gap-3">
+            <CopyTokenHelp />
             <Field
               label="Korte omschrijving"
               htmlFor={id('summary')}
@@ -245,7 +237,7 @@ export function OfferingForm({
                 checked={variantMode === 'audience'}
                 onChange={() => setVariantMode('audience')}
                 label="Volwassene en Jeugd apart"
-                hint="Elk met een eigen duur, ouderregel en prijs."
+                hint={`Per variant (${splitLabels.join(', ')}) een eigen duur, ouderregel en prijs.`}
               />
             </fieldset>
             <fieldset className="flex flex-col gap-1.5">
@@ -268,15 +260,32 @@ export function OfferingForm({
               />
             </fieldset>
             {bookingMode === 'enquiry' ? (
-              <Field
-                label="Duur (tekst)"
-                htmlFor={id('duration')}
-                hint="Vrije tekst voor aanbod op aanvraag, bv. “ongeveer 90 minuten”. Leeg = “Duur in overleg”."
-              >
-                <Input id={id('duration')} name="duration" defaultValue={content.duration} />
-              </Field>
+              <>
+                <Field
+                  label="Duur (tekst)"
+                  htmlFor={id('duration')}
+                  hint="Vrije tekst voor aanbod op aanvraag, bv. “ongeveer 90 minuten”. Leeg = “Duur in overleg”."
+                >
+                  <Input id={id('duration')} name="duration" defaultValue={content.duration} />
+                </Field>
+                <Field
+                  label="Prijs (tekst)"
+                  htmlFor={id('priceText')}
+                  hint="Vrije tekst voor aanbod op aanvraag, bv. “Gratis binnen 6 maanden na je fit, daarna € 75”. Leeg = de prijs van de varianten."
+                >
+                  <Input
+                    id={id('priceText')}
+                    name="priceText"
+                    defaultValue={content.priceText}
+                    maxLength={OFFER_PRICE_TEXT_MAX}
+                  />
+                </Field>
+              </>
             ) : (
-              <input type="hidden" name="duration" value={content.duration} />
+              <>
+                <input type="hidden" name="duration" value={content.duration} />
+                <input type="hidden" name="priceText" value={content.priceText} />
+              </>
             )}
           </div>
         </SectionCard>
@@ -290,121 +299,16 @@ export function OfferingForm({
             addonOptions: offering.addonOptions,
           }}
           candidates={addonCandidates}
+          offeringSlug={content.slug}
         />
 
-        <SectionCard
-          title={variantMode === 'audience' ? 'Varianten' : 'Boeking'}
-          description={
-            bookingMode === 'direct'
-              ? 'Per variant: hoe lang de afspraak duurt in de agenda, de buffer erna, de locatie, of een ouder of voogd verplicht is, en de prijs. Aanbieders kiezen zelf wat ze aanbieden (Mijn agenda).'
-              : 'Op aanvraag: enkel de prijs telt. Een ingevulde duur wordt bewaard voor als je later rechtstreeks online boeken aanzet.'
-          }
-        >
-          <div className="flex flex-col gap-3">
-            {audiencesFor(variantMode).map((audience) => {
-              const label = AUDIENCE_LABELS[audience] || 'Het aanbod';
-              const current = variant(audience);
-              return (
-                <fieldset
-                  key={audience}
-                  className="grid gap-3 border border-border bg-background p-3 sm:grid-cols-2"
-                >
-                  <legend className="admin-label px-1 text-xs text-muted-foreground">
-                    {label}
-                  </legend>
-                  <input
-                    type="hidden"
-                    name={`serviceId:${audience}`}
-                    value={current?.serviceId ?? ''}
-                  />
-                  <Field
-                    label="Duur in de agenda (minuten)"
-                    htmlFor={id(`duration-${audience}`)}
-                    hint={bookingMode === 'direct' ? 'Verplicht om online te boeken.' : undefined}
-                  >
-                    <Input
-                      id={id(`duration-${audience}`)}
-                      name={`duration:${audience}`}
-                      type="number"
-                      min={5}
-                      max={720}
-                      step={5}
-                      defaultValue={
-                        current?.durationMinutes ?? (bookingMode === 'direct' ? 60 : '')
-                      }
-                      required={bookingMode === 'direct'}
-                    />
-                  </Field>
-                  <Field
-                    label="Buffer na afloop (minuten)"
-                    htmlFor={id(`buffer-${audience}`)}
-                    hint={`Leeg = standaard uit de instellingen (${defaultBuffer} min).`}
-                  >
-                    <Input
-                      id={id(`buffer-${audience}`)}
-                      name={`buffer:${audience}`}
-                      type="number"
-                      min={0}
-                      max={240}
-                      step={5}
-                      defaultValue={current?.bufferAfterMinutes ?? ''}
-                    />
-                  </Field>
-                  <Field
-                    label="Locatie"
-                    htmlFor={id(`location-${audience}`)}
-                    hint="Leeg = de standaardlocatie van de aanbieder."
-                  >
-                    <Select
-                      id={id(`location-${audience}`)}
-                      name={`location:${audience}`}
-                      defaultValue={current?.locationId ?? ''}
-                    >
-                      <option value="">Standaardlocatie van de aanbieder</option>
-                      {locations.map((location) => (
-                        <option key={location.id} value={location.id}>
-                          {locationOptionLabel(location)}
-                        </option>
-                      ))}
-                    </Select>
-                  </Field>
-                  <Field
-                    label="Prijs (euro)"
-                    htmlFor={id(`price-${audience}`)}
-                    hint="Bv. 150 of 149,50. Leeg = “Prijs op aanvraag”."
-                  >
-                    <Input
-                      id={id(`price-${audience}`)}
-                      name={`price:${audience}`}
-                      inputMode="decimal"
-                      defaultValue={centsToEuroInput(current?.priceCents ?? null)}
-                    />
-                  </Field>
-                  <div className="sm:col-span-2">
-                    <CheckboxField
-                      name={`guardian:${audience}`}
-                      label="Ouder of voogd verplicht"
-                      defaultChecked={current?.requiresGuardian ?? audience === 'youth'}
-                      hint="Het boekingsformulier vraagt dan de gegevens van een ouder."
-                    />
-                  </div>
-                  {bookingMode === 'direct' && current?.serviceId ? (
-                    <p className="text-xs text-muted-foreground sm:col-span-2">
-                      {current.providerNames.length > 0
-                        ? `Aangeboden door ${current.providerNames.join(', ')}.`
-                        : 'Nog geen aanbieder: deze variant is tijdelijk niet online te boeken. Aanbieders vinken dit zelf aan onder Mijn agenda → Mijn aanbod.'}
-                    </p>
-                  ) : bookingMode === 'direct' ? (
-                    <p className="text-xs text-muted-foreground sm:col-span-2">
-                      Na het opslaan kunnen aanbieders deze variant aanvinken onder Mijn agenda →
-                      Mijn aanbod.
-                    </p>
-                  ) : null}
-                </fieldset>
-              );
-            })}
-          </div>
-        </SectionCard>
+        <OfferingVariantsFields
+          variantMode={variantMode}
+          bookingMode={bookingMode}
+          variants={offering.variants}
+          locations={locations}
+          defaultBuffer={defaultBuffer}
+        />
 
         <StatusMessage state={state} />
         <div>

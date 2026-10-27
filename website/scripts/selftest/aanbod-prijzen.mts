@@ -191,13 +191,14 @@ export async function aanbodPrijzenSection(ctx: {
   const huidige = catalogue.bySlug['bikefit-huidige-fiets'];
   const nieuwe = catalogue.bySlug['bikefit-nieuwe-fiets'];
   const voet = catalogue.bySlug['voetanalyse'];
+  // The 20 Oct patch writes the pair Volwassene + Jeugd; since 27 Oct 2026 the third variant
+  // ("Jeugd – volledig pakket") reads as empty on such data until its own patch has run.
+  const pair = `Volwassene ${formatPrice(27500)} · Jeugd – eenmalig ${formatPrice(15000)}`;
   check(
-    'catalogue: the fit shows € 275 / € 150 and 2 u, the new-bike fit per audience, the foot analysis € 85 and 30 min',
-    huidige?.offer.priceLabel ===
-      `Volwassene ${formatPrice(27500)} · Jeugd ${formatPrice(15000)}` &&
-      huidige.offer.durationLabel === 'Volwassene: 2 uur · Jeugd: 2 uur' &&
-      nieuwe?.offer.priceLabel ===
-        `Volwassene ${formatPrice(27500)} · Jeugd ${formatPrice(15000)}` &&
+    'catalogue: the fit shows € 275 / € 150 and 2 u (the package still empty), the new-bike fit per audience, the foot analysis € 85 and 30 min',
+    huidige?.offer.priceLabel === `${pair} · Jeugd – volledig pakket op aanvraag` &&
+      huidige.offer.durationLabel === 'Volwassene: 2 uur · Jeugd – eenmalig: 2 uur' &&
+      nieuwe?.offer.priceLabel === `${pair} · Jeugd – volledig pakket op aanvraag` &&
       nieuwe.offer.durationLabel === '2 uur' &&
       voet?.offer.priceLabel === formatPrice(8500) &&
       voet.offer.durationLabel === '30 minuten' &&

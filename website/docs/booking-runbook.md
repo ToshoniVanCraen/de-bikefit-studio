@@ -706,6 +706,13 @@ production** (§11.5).
   bottom row (it reopens the banner).
 - The banner links to `/privacy` automatically once that page is published.
 - Test it as in §9.5, in a private window.
+- **Google Maps is a separate choice, made per view.** The `location` block on `/afspraak`
+  (`cms-architecture.md` §5) never loads its map by itself: the page holds a notice and the button
+  "Kaart tonen", and only that click mounts the Google frame (Google then receives the visitor's IP
+  address and may set cookies). It does not depend on the banner or on GA4, nothing is stored, and
+  without the click there is no request to `google.com`. Check it in a private window: DevTools →
+  Network shows no `google.com` request until the click. **Open:** the privacy statement does not
+  name Google Maps yet; add it (Google Ireland Ltd, on the visitor's own click) before production.
 
 ### 11.2 Privacyverklaring and Algemene voorwaarden
 
@@ -737,11 +744,13 @@ hero + one text block each):
   opt-in basis (art. XII.13 WER, legitimate interest) and consent for non-customers, always
   with an unsubscribe link in every such e-mail and an opt-out by e-mail. No commercial mail
   exists in the code yet; whatever sends one must carry that link and respect the opt-out.
-- **E-mail address in the texts**: at seed time the `[E-MAILADRES]`
-  placeholder is filled from *Instellingen → Contact → e-mail*; when that is
-  empty the seed writes `info@debikefitstudio.be` and prints a `!` warning.
-  **That address is unverified.** Once Toshoni confirms the real address, set
-  it in the admin and refresh both pages.
+- **The studio's facts in the texts** (since 27 Oct 2026): both pages state the e-mail
+  address, the phone number, the company name, the registered office and the enterprise
+  number as copy tokens (`{{e-mail}}`, `{{telefoon}}`, `{{bedrijf}}`, `{{zetel}}`, `{{kbo}}`),
+  which the site fills in from *Instellingen → Contact* and *Instellingen → Bedrijfsgegevens*
+  at render time. Change a fact there and both pages follow; there is nothing to refresh.
+  (Before that, the `[E-MAILADRES]` placeholder was filled from the e-mail setting at seed
+  time; the seed script no longer does that.)
 
 **Refresh on staging** (or any existing database). Run after the usual order
 migrate → `cms:bootstrap` → `cms:seed-booking`, with the environment's
@@ -767,7 +776,7 @@ mode automatically (a "Tekst"/"HTML" switch above the box); edit the source
 there and save. Do not switch the block to "Tekst": that conversion flattens
 headings and lists (the admin asks for confirmation first). Keep the seed as
 the source of record: after a change in the admin, mirror the wording in
-`PRIVACY_HTML` / `TERMS_HTML` in `scripts/cms-seed.mts` and update the date on
+`PRIVACY_HTML` / `TERMS_HTML` in `src/lib/studio/seed-content/legal.ts` and update the date on
 the first line, or the next `--refresh-slug` will overwrite it. The title and
 SEO fields can be edited in the admin as usual.
 
@@ -922,7 +931,7 @@ the contact details and the reference.
 
 **What has to be set for it to work** (until then every order says "Je bestelling is niet
 verstuurd", keeps the form filled in and shows the phone number, from Contact or else the
-legal identity's 0473 95 26 33; nothing is sent):
+legal identity's +32 473 95 26 33; nothing is sent):
 
 | Setting | Where | Notes |
 | --- | --- | --- |

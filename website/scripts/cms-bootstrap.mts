@@ -10,10 +10,11 @@
  *   3. empty `main` and `footer` navigation menus for `nl`
  *   4. booking: the `booking` setting (defaults), the default studio location
  *      "De Bikefit Studio, Ninove", the "Bij jou thuis" location (kind
- *      `customer`, for hours at the customer's) and the two initial services
- *      (Volwassenenfit, Jeugdfit; the older Gezinspakket, Fit aan huis and
+ *      `customer`, for hours at the customer's) and the three initial services
+ *      (Volwassenenfit, Jeugdfit – eenmalig, Jeugdfit – volledig pakket, the
+ *      last since 27 Oct 2026; the older Gezinspakket, Fit aan huis and
  *      Inspanningstest are retired since 17 Oct 2026, `RETIRED_SERVICE_SLUGS`)
- *   5. the offer (Beheer → Aanbod): the seven offerings of 13 Oct 2026, each
+ *   5. the offer (Beheer → Aanbod): the nine default offerings, each
  *      linked to its services
  *      (`src/lib/offers/defaults.ts`, `scripts/lib/offerings-bootstrap.mts`)
  *
@@ -39,6 +40,7 @@ import {
 } from '@/db/cms-schema';
 import { hashPassword, validatePasswordStrength } from '@/lib/cms/password';
 import { NAVIGATION_KEYS, siteSettingSchemas } from '@/lib/cms/blocks';
+import { STUDIO_CONTACT_ADDRESS } from '@/lib/studio/seed-content/location-section';
 import {
   CUSTOMER_LOCATION,
   DEFAULT_SERVICES,
@@ -62,18 +64,16 @@ const DEFAULT_SETTINGS = {
     phoneHref: 'tel:+32473952633',
     // Confirmed by Toshoni on 13 Oct 2026 (register G-01).
     email: 'info@debikefitstudio.be',
-    addressLines: [],
-    postalCode: '',
-    city: 'Ninove',
-    country: 'BE',
+    // The studio's address (Toshoni, 27 Oct 2026): addressLines, postalCode, city, country.
+    ...STUDIO_CONTACT_ADDRESS,
     hours: 'Op afspraak',
     website: 'www.debikefitstudio.be',
   },
   seo: {
-    defaultMetaTitle: 'De Bikefit Studio — professionele bikefit in Ninove',
+    defaultMetaTitle: 'De Bikefit Studio: professionele bikefit in Ninove',
     titleTemplate: '%s · De Bikefit Studio',
     defaultMetaDescription:
-      'Fiets met comfort. Een bikefit lijnt de fiets uit op jou — niet omgekeerd — zodat elke rit beter voelt en je langer gezond blijft op de fiets.',
+      'Fiets met comfort. Een bikefit lijnt de fiets uit op jou, niet omgekeerd, zodat elke rit beter voelt en je langer gezond blijft op de fiets.',
     defaultOgImageMediaId: null,
     // Staging must stay out of search results until launch.
     allowIndexing: false,

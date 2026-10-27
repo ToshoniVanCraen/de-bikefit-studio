@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_SERVICES } from '@/lib/booking/defaults';
 import { formatPrice } from '@/lib/booking/format';
-import { DEFAULT_OFFERS } from './defaults';
 import {
   OFFERING_STATUS_LABELS,
   offeringBookingSlugs,
@@ -15,7 +14,6 @@ import {
   type OfferingServiceInfo,
   type OfferingSettings,
 } from './offering';
-import { deriveLegacyOffering, legacyFieldsOf } from './offering-legacy';
 
 /**
  * The three services retired on 17 Oct 2026, as a database that still has
@@ -62,17 +60,6 @@ const SERVICES: OfferingServiceInfo[] = [...DEFAULT_SERVICES, ...RETIRED_SERVICE
 
 const ADULT = 'svc-volwassenenfit';
 const YOUTH = 'svc-jeugdfit';
-
-/** The legacy `offer` block of a seeded offer page (before 17 Oct 2026). */
-function seeded(slug: string) {
-  const offer = DEFAULT_OFFERS.find((entry) => entry.content.slug === slug);
-  if (!offer) throw new Error(slug);
-  return legacyFieldsOf({
-    bookingServiceSlugs: offer.variants.map((variant) => variant.serviceSlug).filter(Boolean),
-    priceCents: null,
-    priceLabel: 'Prijs op aanvraag',
-  });
-}
 
 const FACTS = {
   durationMinutes: 90,
@@ -131,7 +118,7 @@ describe('validateOfferingInput (Beheer → Aanbod)', () => {
     });
     expect(result).toEqual({
       ok: false,
-      message: 'Vul voor Jeugd de duur in om het online te boeken.',
+      message: 'Vul voor Jeugd – eenmalig de duur in om het online te boeken.',
     });
     expect(
       validateOfferingInput({
@@ -214,6 +201,7 @@ describe('settingsFromRows (stored rows, read defensively)', () => {
       variants: [
         { audience: 'adult', serviceId: null, priceCents: null },
         { audience: 'youth', serviceId: YOUTH, priceCents: 9500 },
+        { audience: 'youth-package', serviceId: null, priceCents: null },
       ],
     });
   });
@@ -238,89 +226,6 @@ describe('settingsFromRows (stored rows, read defensively)', () => {
   });
 });
 
-describe('deriveLegacyOffering (the settings an offer page had before Beheer → Aanbod)', () => {
-  it('Bikefit – huidige fiets: booked directly, Volwassene = Volwassenenfit, Jeugd = Jeugdfit, no price', () => {
-    expect(deriveLegacyOffering(seeded('bikefit-huidige-fiets'), SERVICES)).toEqual({
-      settings: audienceDirect,
-      exact: true,
-      notes: [],
-    });
-  });
-
-  it('every other seeded offer is asked for, one option, "Prijs op aanvraag", exactly', () => {
-    for (const offer of DEFAULT_OFFERS.filter((entry) => entry.bookingMode === 'enquiry')) {
-      expect(
-        deriveLegacyOffering(seeded(offer.content.slug), SERVICES),
-        offer.content.slug,
-      ).toEqual({
-        settings: {
-          isListed: true,
-          isAddon: false,
-          soldAlone: true,
-          addonMinutes: null,
-          addonIds: [],
-          addonOptions: [],
-          bookingMode: 'enquiry',
-          variantMode: 'single',
-          variants: [{ audience: 'all', serviceId: null, priceCents: null }],
-        },
-        exact: true,
-        notes: [],
-      });
-    }
-  });
-
-  it('keeps an editorial amount of an unlinked offer, never a free-text label', () => {
-    expect(
-      deriveLegacyOffering({ bookingServiceSlugs: [], priceCents: 9900, priceLabel: '' }, SERVICES)
-        .settings.variants,
-    ).toEqual([{ audience: 'all', serviceId: null, priceCents: 9900 }]);
-    const label = deriveLegacyOffering(
-      { bookingServiceSlugs: [], priceCents: 9900, priceLabel: 'vanaf € 120' },
-      SERVICES,
-    );
-    expect(label.exact).toBe(false);
-    expect(label.settings.variants[0].priceCents).toBeNull();
-    expect(label.notes[0]).toContain('vanaf € 120');
-  });
-
-  it('never copies a service price onto the offer, and says so', () => {
-    const priced = SERVICES.map((service) =>
-      service.id === ADULT ? { ...service, priceCents: 15000, showPrice: true } : service,
-    );
-    const result = deriveLegacyOffering(seeded('bikefit-huidige-fiets'), priced);
-    expect(result.settings.variants.every((variant) => variant.priceCents === null)).toBe(true);
-    expect(result.exact).toBe(false);
-    expect(result.notes[0]).toContain('Volwassenenfit');
-  });
-
-  it('one linked service is one option; unknown or unsplittable links are not exact', () => {
-    expect(
-      deriveLegacyOffering(
-        { bookingServiceSlugs: ['gezinspakket'], priceCents: null, priceLabel: '' },
-        SERVICES,
-      ),
-    ).toMatchObject({
-      exact: true,
-      settings: {
-        bookingMode: 'direct',
-        variantMode: 'single',
-        variants: [{ audience: 'all', serviceId: 'svc-gezinspakket' }],
-      },
-    });
-    const unknown = deriveLegacyOffering(
-      { bookingServiceSlugs: ['bestaat-niet'], priceCents: null, priceLabel: '' },
-      SERVICES,
-    );
-    expect(unknown).toMatchObject({ exact: false, settings: { bookingMode: 'enquiry' } });
-    const two = deriveLegacyOffering(
-      { bookingServiceSlugs: ['gezinspakket', 'fit-aan-huis'], priceCents: null, priceLabel: '' },
-      SERVICES,
-    );
-    expect(two).toMatchObject({ exact: false, settings: { variantMode: 'single' } });
-  });
-});
-
 describe('resolveOffering and its labels', () => {
   const bothOffered = new Set([ADULT, YOUTH]);
 
@@ -333,7 +238,7 @@ describe('resolveOffering and its labels', () => {
     });
     expect(resolved.status).toBe('bookable');
     expect(offeringDurationLabel(resolved, 'Duur in overleg')).toBe(
-      'Volwassene: 2 uur · Jeugd: 2 uur',
+      'Volwassene: 2 uur · Jeugd – eenmalig: 2 uur',
     );
     expect(offeringPriceLabel(resolved)).toBe('Prijs op aanvraag');
     expect(offeringBookingSlugs(resolved)).toEqual(['volwassenenfit', 'jeugdfit']);
@@ -348,7 +253,7 @@ describe('resolveOffering and its labels', () => {
     });
     expect(resolved.status).toBe('unavailable');
     expect(offeringBookingSlugs(resolved)).toEqual([]);
-    expect(offeringDurationLabel(resolved, '')).toBe('Volwassene: 2 uur · Jeugd: 2 uur');
+    expect(offeringDurationLabel(resolved, '')).toBe('Volwassene: 2 uur · Jeugd – eenmalig: 2 uur');
   });
 
   it('a variant without a provider is left out of the booking, the other stays bookable', () => {
@@ -423,7 +328,7 @@ describe('resolveOffering and its labels', () => {
       bookableServiceIds: bothOffered,
     });
     expect(offeringPriceLabel(resolved)).toBe(
-      `Volwassene ${formatPrice(15000)} · Jeugd op aanvraag`,
+      `Volwassene ${formatPrice(15000)} · Jeugd – eenmalig op aanvraag`,
     );
   });
 });

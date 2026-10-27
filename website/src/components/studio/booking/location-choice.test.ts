@@ -54,7 +54,6 @@ function provider(
 ): BookingProviderOption {
   return {
     name: partial.id,
-    bio: '',
     services: partial.serviceIds.map((serviceId) => ({ serviceId, location: ninove })),
     locations: [],
     ...partial,

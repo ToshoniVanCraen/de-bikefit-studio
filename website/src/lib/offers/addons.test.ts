@@ -7,6 +7,7 @@ import {
   addonMetaLabel,
   addonOptionsFor,
   addonPriceFor,
+  addonProseLabel,
   addonTotals,
   pickAddons,
   preselectAddonIds,
@@ -97,6 +98,25 @@ describe('addonPriceFor', () => {
       ),
     ).toBeNull();
   });
+
+  it('prices Jeugd – volledig pakket like Jeugd unless the extra has a price of its own for it', () => {
+    const variants = (youth: number | null, pack: number | null) => [
+      { audience: 'adult' as const, serviceId: null, priceCents: 9000 },
+      { audience: 'youth' as const, serviceId: null, priceCents: youth },
+      { audience: 'youth-package' as const, serviceId: null, priceCents: pack },
+    ];
+    const priced = (youth: number | null, pack: number | null) =>
+      source({ id: 'x', settings: { ...perAudience.settings, variants: variants(youth, pack) } });
+    // Own price first, then the base audience (Jeugd), never the other way round.
+    expect(addonPriceFor(priced(6000, 5000), 'youth-package')).toBe(5000);
+    expect(addonPriceFor(priced(6000, null), 'youth-package')).toBe(6000);
+    expect(addonPriceFor(priced(6000, 5000), 'youth')).toBe(6000);
+    // No Jeugd price at all: the first priced variant, and the package's price is not lent to Jeugd.
+    expect(addonPriceFor(priced(null, 5000), 'youth')).toBe(9000);
+    expect(addonPriceFor(priced(null, null), 'youth-package')).toBe(9000);
+    // One price for everyone applies to the package too.
+    expect(addonPriceFor(foot, 'youth-package')).toBe(8500);
+  });
 });
 
 describe('addonOptionsFor', () => {
@@ -133,6 +153,29 @@ describe('addonOptionsFor', () => {
       priceCents: 7500,
       priceLabel: formatPrice(7500),
     });
+  });
+
+  it('prices an option for the audience of the variant it is added to, Jeugd – volledig pakket included', () => {
+    const youthPriced = source({
+      id: 'jeugd-extra',
+      settings: {
+        ...perAudience.settings,
+        variants: [
+          { audience: 'adult', serviceId: null, priceCents: 7500 },
+          { audience: 'youth', serviceId: null, priceCents: 6500 },
+          { audience: 'youth-package', serviceId: null, priceCents: null },
+        ],
+      },
+    });
+    const prices = (audience: 'adult' | 'youth' | 'youth-package') =>
+      addonOptionsFor({ id: 'h', settings: { addonIds: ['jeugd-extra'] } }, audience, [
+        youthPriced,
+      ]).map((option) => option.priceCents);
+    expect([prices('adult'), prices('youth'), prices('youth-package')]).toEqual([
+      [7500],
+      [6500],
+      [6500],
+    ]);
   });
 
   it('leaves out what cannot be booked as an extra: hidden, not an extra, no minutes, no price, itself, unknown, twice', () => {
@@ -191,6 +234,17 @@ describe('addonTotals and labels', () => {
     );
     expect(addonChoicesDurationLabel(secondBike.settings.addonOptions)).toBe(
       'Zelfde type fiets: 30 min · Ander type fiets: 1 uur',
+    );
+  });
+
+  it('writes an extra for a sentence: price, then time, no label and no total', () => {
+    const plain = (value: string) => value.replace(/\s/g, ' ');
+    expect(plain(addonProseLabel({ minutes: 30, priceCents: 7500 }))).toBe(
+      '€ 75 en 30 minuten extra',
+    );
+    expect(plain(addonProseLabel({ minutes: 60, priceCents: 15000 }))).toBe('€ 150 en 1 uur extra');
+    expect(plain(addonProseLabel({ minutes: 90, priceCents: 8550 }))).toBe(
+      '€ 85,50 en 1 uur 30 minuten extra',
     );
   });
 });

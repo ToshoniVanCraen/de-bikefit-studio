@@ -6,6 +6,7 @@ import {
   type BookingSelection,
 } from '@/lib/offers/catalogue';
 import type { OfferCatalogue } from '@/lib/offers/offer-catalogue';
+import { resolveCopy } from '@/lib/studio/copy-token-lookup';
 import { BookingWidget } from '../booking/booking-widget';
 import { BookingHeadingLevel } from '../booking/heading-level';
 import { loadBookingOptions, type BookingOptions } from '../booking/load';
@@ -24,7 +25,8 @@ import type { BlockProps } from './types';
  *
  * The widget asks "Bij wie?" first (a provider, or "Iedereen": the beheerder
  * assigns afterwards), then the fit; a chosen provider narrows the fits to
- * what they offer. Slots carry their location (a provider may work from
+ * what they offer. With only one provider for the service it does not ask
+ * (`provider-choice.ts`). Slots carry their location (a provider may work from
  * several places), so `locations` lists every place a slot may name.
  *
  * `?dienst=<slug>` (validated by the route, passed as `page.requestedService`)
@@ -110,7 +112,8 @@ export async function BookingBlock({
     services: options?.services ?? [],
   });
 
-  const rules = options?.rules ?? settings.booking;
+  // `options.rules` is already resolved by the loader; the settings' own texts need it here.
+  const rules = options?.rules ?? (await resolveCopy(settings.booking, locale));
   // Headings inside the section sit one level below its title.
   const innerHeading = headingLevel === 1 ? 'h2' : 'h3';
   const section = {

@@ -82,7 +82,7 @@ describe('aanbod rollout pages', () => {
       'Voetanalyse',
       'Zadelanalyse',
       'Afstellen schoenplaatjes',
-      'Lactaattest',
+      'Inspanningstest',
       'Coaching',
     ]);
     for (const entry of DEFAULT_OFFERS) {
@@ -91,15 +91,13 @@ describe('aanbod rollout pages', () => {
       expect(entry.content.image.url).toMatch(/^\/images\/editorial\//);
       expect(entry.content.metaDescription.length).toBeGreaterThan(40);
     }
-    // Only the amounts Toshoni gave (20 Oct 2026) appear in the copy, and "gratis" only for
-    // the six-month follow-up he named.
-    for (const amount of text.match(/€ \d+/g) ?? []) {
-      expect(['€ 15', '€ 60', '€ 65', '€ 75', '€ 85', '€ 120', '€ 150', '€ 275'], amount).toContain(
-        amount,
-      );
-    }
+    // No amount and no follow-up window is typed in the copy (27 Oct 2026): they are tokens that
+    // read the master (the variants' prices, the follow-up windows). "Gratis" only for the
+    // follow-up Toshoni named.
+    expect(text).not.toMatch(/€ ?\d/);
+    expect(text).not.toMatch(/zes maanden|een jaar|\b6 maanden/);
     for (const line of text.match(/[^"]*\bgratis\b[^"]*/g) ?? []) {
-      expect(line).toMatch(/zes maanden/);
+      expect(line).toMatch(/\{\{(tweede-bezoek-gratis|opvolging:[a-z-]+)\}\}/);
     }
     expect(text).not.toMatch(/Retül|Retul|Vicon|Kinetic|Gebiomized|idmatch/i);
   });
@@ -163,7 +161,7 @@ describe('aanbod rollout pages', () => {
 });
 
 describe('aanbod navigation', () => {
-  it('main menu: Aanbod, Voor wie, Bikefit, Ons team, FAQ, Contact (→ /afspraak) — no Home', () => {
+  it('main menu: Aanbod, Voor wie, Bikefit, Ons team, FAQ, Cadeaubon, Contact (→ /afspraak) — no Home', () => {
     expect(validateNavigationItems(MAIN_MENU).ok).toBe(true);
     expect(MAIN_MENU.map((item) => [item.label, item.href])).toEqual([
       ['Aanbod', '/aanbod'],
@@ -171,6 +169,7 @@ describe('aanbod navigation', () => {
       ['Bikefit', '/bikefit'],
       ['Ons team', '/ons-team'],
       ['Veelgestelde vragen', '/veelgestelde-vragen'],
+      ['Cadeaubon', '/cadeaubon'],
       ['Contact', '/afspraak'],
     ]);
   });

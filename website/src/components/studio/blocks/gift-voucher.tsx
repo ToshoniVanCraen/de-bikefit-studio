@@ -6,7 +6,9 @@ import type { BlockProps } from './types';
 
 /**
  * `giftVoucher` — the "Cadeaubon" page at `/cadeaubon`: a page head in
- * the offer-page style (it owns the `<h1>`), then the order form.
+ * the offer-page style (it owns the `<h1>`) with the intro and the one-line
+ * validity ("Een cadeaubon is een jaar geldig na aankoop.", Toshoni, 27 Oct
+ * 2026), then the order form with its suggested amounts.
  *
  * The form posts to a server action that e-mails the studio; there is no
  * payment, invoice or voucher code on the site. The phone number from
@@ -35,6 +37,9 @@ export async function GiftVoucherBlock({
               {data.title}
             </SectionHeading>
             {data.intro ? <p className="studio-pagehead__lede">{data.intro}</p> : null}
+            {data.validityNote ? (
+              <p className="studio-pagehead__lede studio-voucher__validity">{data.validityNote}</p>
+            ) : null}
           </div>
         </div>
       </section>
@@ -45,6 +50,8 @@ export async function GiftVoucherBlock({
             formTitle={data.formTitle}
             sentTitle={data.sentTitle}
             sentText={data.sentText}
+            validityNote={data.validityNote}
+            amounts={data.amounts}
             headingTag={innerHeading}
             phoneLabel={phoneLabel}
             phoneHref={phoneHref}

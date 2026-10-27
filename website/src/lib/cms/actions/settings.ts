@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { DEFAULT_LOCALE } from '@/db/cms-schema';
 import { isValidTimeZone } from '@/lib/booking/time';
-import { isSiteSettingKey, type SiteSettingKey } from '@/lib/cms/blocks';
+import { isSiteSettingKey, siteSettingSchemas, type SiteSettingKey } from '@/lib/cms/blocks';
 import { updateSiteSetting } from '@/lib/cms/repo';
 import { isUnsafeUrl } from './sanitize';
 import { runAction } from './run';
@@ -68,8 +68,6 @@ function valueFor(key: SiteSettingKey, form: FormData): unknown {
     case 'organization':
       return {
         type: field(form, 'type') || 'LocalBusiness',
-        legalName: field(form, 'legalName'),
-        vatNumber: field(form, 'vatNumber'),
         sameAs: lines(form, 'sameAs'),
         priceRange: field(form, 'priceRange'),
         areaServed: lines(form, 'areaServed'),
@@ -94,7 +92,64 @@ function valueFor(key: SiteSettingKey, form: FormData): unknown {
         confirmationText: field(form, 'confirmationText') || undefined,
         showProviderChoice: boolField(form, 'showProviderChoice'),
       };
+    case 'business':
+      return {
+        legalName: field(form, 'legalName'),
+        seatAddressLines: lines(form, 'seatAddressLines'),
+        seatPostalCode: field(form, 'seatPostalCode'),
+        seatCity: field(form, 'seatCity'),
+        seatCountry: field(form, 'seatCountry').toUpperCase(),
+        enterpriseNumber: field(form, 'enterpriseNumber'),
+        vatNumber: field(form, 'vatNumber'),
+      };
+    case 'rules':
+      return {
+        followUpMonthsAdult: monthsOrUndefined(form, 'followUpMonthsAdult'),
+        followUpMonthsYouthPackage: monthsOrUndefined(form, 'followUpMonthsYouthPackage'),
+        secondVisitFreeMonths: monthsOrUndefined(form, 'secondVisitFreeMonths'),
+        voucherValidityMonths: monthsOrUndefined(form, 'voucherValidityMonths'),
+      };
   }
+}
+
+/**
+ * A number of months from a form field: `undefined` when empty (the default
+ * applies), the typed number otherwise: a decimal or a word reaches the schema
+ * as it is and is refused there with a Dutch message.
+ */
+function monthsOrUndefined(form: FormData, name: string): number | undefined {
+  const raw = field(form, name).replace(',', '.');
+  return raw ? Number(raw) : undefined;
+}
+
+/** What the form calls each field of the two groups the schema checks for us. */
+const FIELD_LABELS: Readonly<Record<string, string>> = {
+  legalName: 'Juridische naam',
+  seatAddressLines: 'Adresregels',
+  seatPostalCode: 'Postcode',
+  seatCity: 'Gemeente',
+  seatCountry: 'Land',
+  enterpriseNumber: 'Ondernemingsnummer',
+  vatNumber: 'Btw-nummer',
+  followUpMonthsAdult: 'Probleemopvolging volwassene',
+  followUpMonthsYouthPackage: 'Opvolging jeugd – volledig pakket',
+  secondVisitFreeMonths: 'Gratis tweede bezoek',
+  voucherValidityMonths: 'Geldigheid cadeaubon',
+};
+
+/**
+ * `parseSiteSetting()` in the repo falls back to the defaults for the WHOLE key
+ * when a value does not validate, which would silently reset the legal identity
+ * or every length in the copy. For the two groups of 27 Oct 2026 the schema
+ * itself says what is wrong, in Dutch, before anything is saved.
+ */
+function schemaProblem(key: SiteSettingKey, value: unknown): string | null {
+  if (key !== 'business' && key !== 'rules') return null;
+  const parsed = siteSettingSchemas[key].safeParse(value);
+  if (parsed.success) return null;
+  const issue = parsed.error.issues[0];
+  const label = FIELD_LABELS[String(issue.path[0])];
+  return label ? `${label}: ${issue.message}` : issue.message;
 }
 
 /**
@@ -139,6 +194,8 @@ export async function updateSettingAction(
       if (problem) return actionError(problem);
     }
     const value = valueFor(key, form);
+    const problem = schemaProblem(key, value);
+    if (problem) return actionError(problem);
 
     for (const candidate of [field(form, 'phoneHref'), field(form, 'website')]) {
       if (candidate && isUnsafeUrl(candidate)) {

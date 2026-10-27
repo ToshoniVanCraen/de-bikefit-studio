@@ -7,6 +7,7 @@ import { getSiteSettings } from '@/lib/cms/content';
 import { loadOfferCatalogue } from '@/lib/cms/offers-content';
 import { sendEmail } from '@/lib/email/send';
 import { loadEmailSettings } from '@/lib/email/settings';
+import { isSplitAudience } from '@/lib/offers/offering-audience';
 import { reserveRateLimit } from '@/lib/rate-limit';
 import { absoluteUrl } from '@/lib/studio/site';
 import {
@@ -73,9 +74,7 @@ export async function findEnquiryOffer(
   const catalogue = await loadOfferCatalogue(locale);
   const offer = catalogue.offers.find((entry) => entry.slug === slug && entry.status === 'enquiry');
   if (!offer) return null;
-  const audiences = offer.variants
-    .map((variant) => variant.audience)
-    .filter((audience): audience is 'adult' | 'youth' => audience !== 'all');
+  const audiences = offer.variants.map((variant) => variant.audience).filter(isSplitAudience);
   return { title: offer.title, url: absoluteUrl(offer.path), audiences };
 }
 
