@@ -319,7 +319,10 @@ the self-tests call it directly, and a server action accepts a body of up to 6 M
    stops here: `invalid` with, per field over its cap, the message the rules give a value over
    its limit (`Maximaal N tekens.`; for a phone `Vul een geldig telefoonnummer in.`), or for
    the other fields, which the widget never sends as free text (ids, start, an age sent as
-   text, honeypot, locale), `Ongeldige invoer.`, as for a value of the wrong type.
+   text, honeypot, locale), `Ongeldige invoer.`, as for a value of the wrong type. The cap is
+   a plain UTF-16 length check that emits a `too_big` issue: Zod 4.6.7's `.max()` runs a
+   code-point regex on the full string, even when it is over the cap. Trimming runs only
+   within the cap. The over-long-input tests spy on every regex execution at this boundary.
 2. **Honeypot**: `website` non-empty after trimming → `invalid` (unchanged).
 3. **Field rules** (`validateBookingFields()`, limits in `PUBLIC_BOOKING_LIMITS`), every
    field's message at once, **length before pattern**: the e-mail pattern backtracks
