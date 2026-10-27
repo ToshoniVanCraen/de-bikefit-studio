@@ -40,7 +40,14 @@ and recreate the isolated schema-only branch, then repeat the preflight.
 
 ## Fixture setup
 
-Use the exact host (not URL) of the verified branch and exact preview origin:
+Use the exact host (not URL) of the verified branch and exact preview origin. The
+commands run in the operator's local shell, so the Vercel branch-scoped variables
+alone are **not** enough: securely inject the rehearsal branch's `DATABASE_URL`,
+the same `NEXT_PUBLIC_SITE_URL`, `CMS_SESSION_SECRET`, and
+`CMS_MFA_ENCRYPTION_KEY`, plus the branch-specific `CMS_REHEARSAL_MARKER`, into
+each fixture command's process environment. Do not print or commit their values;
+never substitute the preview-shared or production database URL. The marker in
+the process must match the single marker row created above.
 
 ```bash
 cd website
