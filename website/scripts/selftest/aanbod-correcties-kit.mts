@@ -1,8 +1,10 @@
 /**
  * Shared helpers of self-test section 17d (`aanbod-correcties.mts`): the
  * context `cms-selftest.mts` hands to the section, `run()` which drives
- * `cms:patch-aanbod-correcties` through the entry point of the CLI and keeps
- * what it printed in `lines`, and the three things that make the section leave
+ * `cms:patch-aanbod-correcties` through the entry point of the CLI (in either
+ * provider mode) and keeps what it printed in `lines`, `applyWatched()` which
+ * proves a refused `--apply` wrote nothing, the edits an editor makes (a page's
+ * texts, a provider's profile), and the three things that make the section leave
  * the throwaway PGlite as it found it:
  *
  *  - {@link snapshotState} / {@link restoreState}: every row of the tables the
@@ -15,11 +17,14 @@
  *    rows that are re-made), so "restore returns the state before" is one
  *    comparison.
  */
+import { readdir } from 'node:fs/promises';
 import * as orm from 'drizzle-orm';
 import type { CmsDatabase } from '@/db/cms';
 import { cmsOfferingAddons, cmsOfferings, cmsOfferingVariants } from '@/db/cms-offering-schema';
 import { runAanbodCorrectiesPatch } from '../lib/aanbod-correcties-patch.mjs';
 import { canonicalJson } from '../lib/aanbod-correcties-targets.mjs';
+import type { ProviderMode } from '../lib/aanbod-correcties-youth.mjs';
+import { withAdminSession } from '../lib/aanbod-rollout-run.mjs';
 
 export type Check = (label: string, condition: boolean, detail?: string) => void;
 
@@ -34,8 +39,11 @@ export type CorrectiesSectionContext = {
 
 type Schema = typeof import('@/db/cms-schema');
 
+/** The methods a Drizzle write starts from: a call to one of them is a write. */
+const WRITES = ['insert', 'update', 'delete', 'execute', 'transaction', 'batch'];
+
 export async function createCorrectiesKit(
-  ctx: Pick<CorrectiesSectionContext, 'db' | 'cookieJar' | 'backupDir'>,
+  ctx: Pick<CorrectiesSectionContext, 'db' | 'cookieJar' | 'backupDir' | 'admin'>,
 ) {
   const { db, cookieJar, backupDir } = ctx;
   const schema = await import('@/db/cms-schema');
@@ -46,12 +54,31 @@ export async function createCorrectiesKit(
   const log = (symbol: string, message: string) => {
     lines.push(`${symbol} ${message}`);
   };
-  const run = (options: { apply: boolean; restore: string | null }) => {
+  /** One run through the CLI's entry point; provider mode `remove` unless one is given. */
+  const run = (options: {
+    apply: boolean;
+    restore: string | null;
+    providerMode?: ProviderMode;
+  }) => {
     lines.length = 0;
     return runAanbodCorrectiesPatch(
-      { ...options, backupDir },
+      {
+        apply: options.apply,
+        restore: options.restore,
+        backupDir,
+        providerMode: options.providerMode ?? 'remove',
+      },
       { db, driver: 'pglite', cookieJar, log },
     );
+  };
+  /** The error a run ends with ('' when it ends well), so a refusal is a value. */
+  const attempt = async (work: () => Promise<unknown>) => {
+    try {
+      await work();
+      return '';
+    } catch (error) {
+      return error instanceof Error ? error.message : String(error);
+    }
   };
   const backupPathOf = () =>
     lines.find((line) => line.startsWith('✓ backup written: '))?.slice('✓ backup written: '.length);
@@ -93,6 +120,74 @@ export async function createCorrectiesKit(
         .where(eq(schema.cmsProviderServices.providerId, providerId))
     ).sort((a, b) => a.serviceId.localeCompare(b.serviceId));
   const sessions = async () => (await db.select().from(schema.cmsSessions)).length;
+  const backups = async () => (await readdir(backupDir).catch(() => [] as string[])).sort().join();
+
+  /**
+   * `--apply` through the CLI's entry point on a handle that counts every write
+   * call: the refusal ('' when it ran), and whether nothing moved (no write call,
+   * sessions, audit entries, backup files, cookie and every table as they were).
+   */
+  const applyWatched = async (providerMode: ProviderMode = 'remove') => {
+    const writes: string[] = [];
+    const watched = new Proxy(db, {
+      get(target, property, receiver) {
+        if (typeof property === 'string' && WRITES.includes(property)) writes.push(property);
+        const value = Reflect.get(target, property, receiver);
+        return typeof value === 'function' ? value.bind(target) : value;
+      },
+    });
+    const state = async () => [
+      await sessions(),
+      await auditCount(),
+      await backups(),
+      await fingerprint(db, schema),
+    ];
+    const before = await state();
+    const refusal = await attempt(() =>
+      runAanbodCorrectiesPatch(
+        { apply: true, restore: null, backupDir, providerMode },
+        { db: watched, driver: 'pglite', cookieJar, log: () => {} },
+      ),
+    );
+    const after = await state();
+    return {
+      refusal,
+      untouched:
+        writes.length === 0 &&
+        !cookieJar.has('cms_session') &&
+        after.every((value, index) => value === before[index]),
+      detail: `writes: ${writes.join() || 'none'} | ${refusal.split('\n').slice(0, 3).join(' ')}`,
+    };
+  };
+
+  /** A page's own texts, saved and published the way an editor (or a seed) does. */
+  const editPage = async (
+    slug: string,
+    texts: { metaTitle?: string; metaDescription?: string },
+  ) => {
+    const page = await pageRow(slug);
+    if (!page) throw new Error(`17d: no page /${slug}`);
+    await withAdminSession({ db, cookieJar }, ctx.admin.id, 'cms-selftest-17d', async () => {
+      const repo = await import('@/lib/cms/repo');
+      const saved = await repo.updatePage(page.id, texts);
+      if (!saved.ok) throw new Error(`17d: /${slug}: ${saved.message}`);
+      const published = await repo.publishPage(page.id);
+      if (!published.ok) throw new Error(`17d: /${slug}: ${published.message}`);
+    });
+  };
+
+  /** A provider's display name and the login of its user. */
+  const setProviderProfile = async (providerId: string, displayName: string, login: string) => {
+    const [{ userId }] = await db
+      .select({ userId: schema.cmsProviders.userId })
+      .from(schema.cmsProviders)
+      .where(eq(schema.cmsProviders.id, providerId));
+    await db.update(schema.cmsUsers).set({ email: login }).where(eq(schema.cmsUsers.id, userId));
+    await db
+      .update(schema.cmsProviders)
+      .set({ displayName })
+      .where(eq(schema.cmsProviders.id, providerId));
+  };
 
   return {
     db,
@@ -100,6 +195,8 @@ export async function createCorrectiesKit(
     locale,
     lines,
     run,
+    attempt,
+    applyWatched,
     backupPathOf,
     auditCount,
     serviceRow,
@@ -107,6 +204,8 @@ export async function createCorrectiesKit(
     pageRow,
     subscriptions,
     sessions,
+    editPage,
+    setProviderProfile,
   };
 }
 

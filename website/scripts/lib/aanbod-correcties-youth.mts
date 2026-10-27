@@ -2,9 +2,10 @@
  * The youth package and the provider Toshoni, the two sections of
  * `npm run cms:patch-aanbod-correcties` that look at who offers what: the third
  * variant "Jeugd – volledig pakket" (€ 275) of both bikefits with its booking
- * service and providers, and Toshoni's offerings as Aanbieder. Pure (no
- * database, no I/O): `aanbod-correcties-plan.mts` feeds the rows in,
- * `aanbod-correcties-youth.test.ts` and `-youth-toshoni.test.ts` pin the rules.
+ * service and providers, and Toshoni's offerings as Aanbieder (they go, or on
+ * staging they stay: {@link ProviderMode}). Pure (no database, no I/O):
+ * `aanbod-correcties-plan.mts` feeds the rows in, `aanbod-correcties-youth.test.ts`,
+ * `-youth-toshoni.test.ts` and `-youth-retain.test.ts` pin the rules.
  * The other sections are `aanbod-correcties-targets.mts`; the same rule applies
  * (the target is done, the old state moves, anything else is an admin's edit and
  * blocks the patch). Runbook: `docs/staging-runbook.md` §24.
@@ -18,6 +19,18 @@ import { FIRST_PROVIDER } from './first-provider.mjs';
 // ---------------------------------------------------------------------------
 // The provider Toshoni
 // ---------------------------------------------------------------------------
+
+/**
+ * What a run does with Toshoni as Aanbieder. `remove`, the default and the rule
+ * for production (where it still waits for Toshoni's go): his offerings go and the
+ * youth package goes to the other providers. `staging-retain`, chosen with
+ * {@link STAGING_RETAIN_FLAG} (Toshoni, 27 Oct 2026, 15:12, for staging only): he
+ * stays a provider with every offering he has and is offered the youth package like
+ * anybody else; only on a database whose one provider is him (`keepSoleProvider`).
+ */
+export const PROVIDER_MODES = ['remove', 'staging-retain'] as const;
+export type ProviderMode = (typeof PROVIDER_MODES)[number];
+export const STAGING_RETAIN_FLAG = '--staging-retain-toshoni';
 
 export type ProviderRow = {
   id: string;
@@ -35,7 +48,8 @@ export type ServiceRef = { id: string; slug: string; name: string; isActive: boo
 /**
  * Who Toshoni is, fixed, so that every place that needs him means the same
  * provider: his offerings go (`decideProviderRemoval`), the youth package is not
- * offered by him (`decideYouthPackage`), the verify looks for him. A provider is
+ * offered by him (`decideYouthPackage`), the verify looks for him; on staging he
+ * stays and is offered it (`staging-retain`). A provider is
  * Toshoni when the login of his profile is the first provider `cms:seed-booking`
  * creates by default, or when his display name is one of these names; both
  * compared whole after `normalizeEmail` (`@/lib/email-address`) /
@@ -105,13 +119,19 @@ export type ProviderRemoval = {
  * (a renamed profile on another login would otherwise be treated as anybody
  * else: offered the package, nothing removed, nothing verified), or when more
  * than one matches. A database without providers has nothing to remove.
+ *
+ * With `staging-retain` nothing is removed, so no service can be left without
+ * him; that mode has a guard of its own (`keepSoleProvider`).
  */
 export function decideProviderRemoval(input: {
   providers: readonly ProviderRow[];
   subscriptions: readonly SubscriptionRow[];
   services: readonly ServiceRef[];
   planned: ReadonlyArray<Pick<SubscriptionRow, 'providerId' | 'serviceId'>>;
+  /** Default `remove`; `staging-retain` keeps him ({@link ProviderMode}). */
+  providerMode?: ProviderMode;
 }): ProviderRemoval {
+  if (input.providerMode === 'staging-retain') return keepSoleProvider(input.providers);
   const matches = input.providers.filter((candidate) => isToshoni(candidate));
   const nobody = (blockers: string[]): ProviderRemoval => ({
     provider: null,
@@ -161,6 +181,40 @@ export function decideProviderRemoval(input: {
     changes: rows.length > 0 ? [`${rows.length} offering(s) removed: ${names.join(', ')}`] : [],
     blockers,
   };
+}
+
+/**
+ * `staging-retain`: Toshoni stays a provider with every offering he has; nothing
+ * is removed. Only for the database it was decided for, staging on 27 Oct 2026:
+ * exactly one provider row in all (active or not), which is Toshoni, active on an
+ * active login. Anything else stops the run (`!`), so the flag cannot reach
+ * production, which has a second provider.
+ */
+function keepSoleProvider(providers: readonly ProviderRow[]): ProviderRemoval {
+  const decision = (blockers: string[], provider: ProviderRef | null = null): ProviderRemoval => ({
+    provider,
+    rows: [],
+    changes: [],
+    blockers,
+  });
+  const scope = `${STAGING_RETAIN_FLAG} is for a database whose only provider is Toshoni (staging)`;
+  if (providers.length !== 1) {
+    return decision([
+      `provider Toshoni: ${scope}; this one has ${providers.length} provider(s) — run without it`,
+    ]);
+  }
+  const [only] = providers;
+  if (!isToshoni(only)) {
+    return decision([
+      `provider Toshoni: ${scope}; its one provider "${only.displayName}" is not him (display name ${KNOWN_NAMES}, or the login of cms:seed-booking) — stop and report`,
+    ]);
+  }
+  if (!only.isActive || !only.userActive) {
+    return decision([
+      `provider ${only.displayName}: ${STAGING_RETAIN_FLAG} keeps him as the only provider, but his profile or its login is switched off — stop and report`,
+    ]);
+  }
+  return decision([], { id: only.id, displayName: only.displayName });
 }
 
 // ---------------------------------------------------------------------------
@@ -255,7 +309,8 @@ function freeSlug(base: string, taken: ReadonlySet<string>): string {
  *    used as it is;
  *  - subscribed to every active provider that offers the Jeugd – eenmalig
  *    service, except Toshoni ({@link isToshoni}), whose offerings go
- *    (`decideProviderRemoval`). A run that would leave the package's service
+ *    (`decideProviderRemoval`); with `staging-retain` he stays and is offered it
+ *    like anybody else. A run that would leave the package's service
  *    with no provider at all is refused (the package could not be booked):
  *    a replacement provider has to offer the Jeugd – eenmalig service first.
  */
@@ -269,6 +324,8 @@ export function decideYouthPackage(input: {
   /** The slug the defaults book the Jeugd – eenmalig variant of this offering through, if any. */
   defaultYouthServiceSlug: string | null;
   packageDefault?: DefaultService | undefined;
+  /** Default `remove`; `staging-retain` offers Toshoni the package too ({@link ProviderMode}). */
+  providerMode?: ProviderMode;
 }): YouthPackageDecision {
   const { offering, variants, services, subscriptions, providers, targetPriceCents } = input;
   const packageDefault =
@@ -356,11 +413,14 @@ export function decideYouthPackage(input: {
       };
     }
 
-    // Who offers it: whoever offers the Jeugd – eenmalig service, minus Toshoni.
+    // Who offers it: whoever offers the Jeugd – eenmalig service, minus Toshoni unless he stays.
+    const keepsToshoni = input.providerMode === 'staging-retain';
     const packageId = decision.service.kind === 'existing' ? decision.service.id : null;
     const offers = (providerId: string) => {
       const provider = providers.find((candidate) => candidate.id === providerId);
-      return Boolean(provider?.isActive && provider.userActive && !isToshoni(provider));
+      return Boolean(
+        provider?.isActive && provider.userActive && (keepsToshoni || !isToshoni(provider)),
+      );
     };
     const already = new Set(
       subscriptions.filter((row) => row.serviceId === packageId).map((row) => row.providerId),
@@ -369,7 +429,7 @@ export function decideYouthPackage(input: {
       if (!offers(row.providerId) || already.has(row.providerId)) continue;
       decision.subscribe.push({ providerId: row.providerId, locationId: row.locationId });
     }
-    // After the run: who offers it already (Toshoni's own rows go with his), and who is added.
+    // After the run: who offers it already (his rows go, unless he stays), and who is added.
     const offeredBy = [...already].filter(offers).length + decision.subscribe.length;
     if (offeredBy === 0) unbookableFor = youthService.slug;
   }

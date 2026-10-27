@@ -1498,9 +1498,9 @@ the rules (what a field must hold before, what it becomes, what blocks) in
 | `/afspraak` | ends with "Voor je komt" | + the `location` block "Waar vind je ons?" (address, route link, two-click map) as the last block | Pagina's → afspraak |
 | Cadeaubon | not promoted | the section "Geef fietsplezier cadeau" on the home page after the offer catalogue; suggested amounts (€ 75 / € 150 / € 275) and the validity line on `/cadeaubon`; the card text on `/aanbod`; "Cadeaubon" in the main menu before "Contact" | Pagina's, Menu's |
 | Offerings | the copy of 20 Oct | the corrected copy of the nine (contents, extra's, durations, meta descriptions; *Lactaattest* is now *Inspanningstest*; the Kostprijs of *Bikefit – tweede bezoek* is stored as "Gratis binnen {{tweede-bezoek-gratis}} na je fit, daarna {{prijs:bikefit-tweede-bezoek:all}}" and shown as "Gratis binnen zes maanden na je fit, daarna € 75") | Aanbod |
-| Youth package | two variants on the bikefits | + "Jeugd – volledig pakket" (€ 275) on both; on *Bikefit – huidige fiets* with its booking service `jeugdfit-pakket` ("Jeugdfit – volledig pakket", 2 hours, guardian required) offered by every active provider of *Jeugdfit – eenmalig* except Toshoni (none: the patch stops, `!`) | Aanbod |
+| Youth package | two variants on the bikefits | + "Jeugd – volledig pakket" (€ 275) on both; on *Bikefit – huidige fiets* with its booking service `jeugdfit-pakket` ("Jeugdfit – volledig pakket", 2 hours, guardian required) offered by every active provider of *Jeugdfit – eenmalig* except Toshoni (none: the patch stops, `!`); on staging, with `--staging-retain-toshoni`, by Toshoni Van Craen too (decision of 27 Oct 2026, 15:12, below) | Aanbod |
 | Booking services | `volwassenenfit`, `jeugdfit` with the texts of 20 Oct | the texts of `DEFAULT_SERVICES` ("Jeugdfit – eenmalig", label "Jeugd – eenmalig"); durations: the new-bike variants 2 hours, voetanalyse 30, zadelanalyse 60, schoenplaatjes 15 minutes, for an offering that has a booking service | Aanbod (variants) |
-| Toshoni | offers the booking services | offers none; his provider row, hours, calendar link and bookings stay | Aanbieders |
+| Toshoni | offers the booking services | default (production, still undecided): offers none; his provider row, hours, calendar link and bookings stay. Staging, with `--staging-retain-toshoni`: stays a provider with every offering he has, plus `jeugdfit-pakket` | Aanbieders |
 
 Every correction names the value it expects. A field that holds the old value is changed (`~`), one
 that already holds the target is left (`=`), one that holds neither was edited in Beheer since and
@@ -1519,14 +1519,35 @@ spacing and accents aside, never a part of a name); the output names him by his 
 The rule fails closed: when the database has providers and no profile matches, or more than one
 does, that is a `!` (below), never "no such provider" and carry on; only a database without any
 provider prints `= provider Toshoni — no providers in this database: nothing to remove` (neither
-staging nor production). The patch will not take him off a service that no other active provider
-offers, nor make a youth package that only he would offer (`!`), so on staging it stops at the dry
-run until a replacement provider offers `volwassenenfit` and `jeugdfit` (Beheer → Aanbieders): a
-decision for Toshoni, not for the tool. That provider then also gets the new package service.
+staging nor production). By default the patch will not take him off a service that no other active
+provider offers, nor make a youth package that only he would offer (`!`), so on staging, where he is
+the only provider, a run without the flag below stops at the dry run.
 Staging's `/afspraak` still has the meta description of the very first seed (24 Sep 2026, "Bikefits
 in Ninove gaan door op afspraak. Bel 0473 95 26 33, …"): `cms:seed -- --refresh-slug` never writes a
 page's title or SEO fields (§21). It is a seed's text, so the patch accepts it as an old state
 (`alsoFrom` of the page's guard) and writes the new one; any other text there still blocks.
+
+**Staging: Toshoni stays a provider** (Toshoni, 27 Oct 2026, 15:12; staging only). On staging
+Toshoni Van Craen stays a provider, keeps every service he offers, and also offers the new package
+service `jeugdfit-pakket` (one subscription more). Every staging run of the patch, the dry runs
+included, carries `--staging-retain-toshoni` (a flag without a value) and `--expect-host`: with the
+flag the dry run needs `--expect-host` on Neon too, equal to the host of `DATABASE_URL`. Use the
+same URL and host for the dry run and apply. **Before even the dry run, Arend must verify in Neon
+that this endpoint belongs to the recorded Staging branch ID, not Production, and that the deployed
+staging environment uses that endpoint; record the branch ID and endpoint host (never the URL or
+credential) in the handoff.** `--expect-host` only compares a typed host with `DATABASE_URL`;
+neither it nor the single-provider shape proves Neon branch identity. Stop on any mismatch. The
+flag removes none of his
+offerings and subscribes him to the package like any other provider of *Jeugdfit – eenmalig*. It
+is refused (`!`, before any write) unless the database has **exactly one provider row**, active or
+not, and that provider is Toshoni (the rule above), active and with an active login; with
+`--restore` it is refused outright (a restore takes no mode). **Production is undecided**:
+production has a second provider, so the flag refuses there (`! provider Toshoni:
+--staging-retain-toshoni is for a database whose only provider is Toshoni (staging); this one has 2
+provider(s) — run without it`). Never use it on production. Production's default behaviour (his
+offerings go, the package goes to the other provider) is unchanged and runs only after Toshoni's
+explicit go and his decision on the second provider; nothing in this section authorises a production
+run.
 
 **Order, per environment** (staging first; production only after Toshoni's explicit go, CLAUDE.md §7):
 
@@ -1539,7 +1560,8 @@ page's title or SEO fields (§21). It is a seed's text, so the patch accepts it 
 4. **Deploy this build** (release gate green, READY). It has to be live before step 5: the patch
    publishes a `location` block, and a build that does not know a block type counts a snapshot with
    it as unpublished (`cms-architecture.md` §5, "The `location` block"), so the page would go dark.
-5. `cms:patch-aanbod-correcties`: dry run, apply, dry run (below).
+5. `cms:patch-aanbod-correcties`: dry run, apply, dry run (below); on staging all three with
+   `--staging-retain-toshoni --expect-host '<host>'`.
 6. Verify after the 5-minute cache window (below).
 
 **Do not save a bikefit between steps 4 and 5.** *Bikefit – huidige fiets* and *Bikefit – aankoop
@@ -1552,15 +1574,16 @@ description of the other two services from the offering. The patch adopts a serv
 rewrite happens on every later save of a bikefit (§22), so the service texts this patch writes hold
 until the next save of that offering.
 
-1. **Dry run** (read-only like §9; no session, no write call, no audit entry):
+1. **Dry run** (read-only like §9; no session, no write call, no audit entry). On staging:
 
    ```bash
-   DATABASE_URL='<staging pooled url>' npm run cms:patch-aanbod-correcties
+   DATABASE_URL='<staging pooled url>' npm run cms:patch-aanbod-correcties -- --staging-retain-toshoni --expect-host '<host part of the staging DATABASE_URL>'
    ```
 
-   On a database in the state described above, with a second provider who offers the fits
-   (production; staging once it has one), it prints, in this order (`<n>` is a count of this
-   database; each page line is followed by an indented line per change):
+   Without the flag (the default, the form for production; `--expect-host` is then not needed for
+   a dry run), on a database in the state described above with a second provider who offers the
+   fits (production), it prints, in this order (`<n>` is a count of this database; each page line
+   is followed by an indented line per change):
 
    ```text
    → driver: neon-http (<host>)
@@ -1607,25 +1630,52 @@ until the next save of that offering.
    → dry run: run again with --apply to write
    ```
 
-   **On staging as it is now** (Toshoni Van Craen the only provider) the same lines come out with
-   these differences: the package line has no `offered by`, the provider line names him and is not
-   followed by the `→ provider list` line, the `/afspraak` page lists the first seed's text as the
-   old meta description, and the run ends on the stop:
+   **On staging, with `--staging-retain-toshoni`** (Toshoni Van Craen the only provider; Arend's
+   guards `services 5, subscriptions 5`) the same lines come out with these differences: the
+   provider-mode line after `→ mode:`, `offered by 1 provider(s)` on the package line (Toshoni Van
+   Craen himself), the provider line as `=` (he is kept, nothing of his moves) without the
+   `→ provider list` line, one subscription more after the apply instead of fewer, and the
+   `/afspraak` page with the first seed's text as the old meta description. No `!` line:
 
    ```text
-   ~ variant bikefit-huidige-fiets — Jeugd – volledig pakket: add variant at € 275; new service jeugdfit-pakket ("Jeugdfit – volledig pakket", 120 min, € 275)
-   ~ provider Toshoni Van Craen — <n> offering(s) removed: <the services he offers>
+   → driver: neon-http (<host>)
+   → mode: dry run (nothing is written)
+   → provider mode: staging retain — Toshoni stays a provider and gets the youth package (staging only)
+   = would act as <e-mail of the admin the tool uses> (no session is created in a dry run)
+   …
+   ~ variant bikefit-huidige-fiets — Jeugd – volledig pakket: add variant at € 275; new service jeugdfit-pakket ("Jeugdfit – volledig pakket", 120 min, € 275); offered by 1 provider(s)
+   …
+   = provider Toshoni Van Craen — kept as provider (--staging-retain-toshoni): 5 offering(s) stay
+   ~ menu main — insert "Cadeaubon" (/cadeaubon) before "Contact"
+   …
    ~ page /afspraak — <n> change(s), then publish
        metaDescription: "Bikefits in Ninove gaan door op afspraak. Bel 0473 95 26 33…" → "Boek je bikefit in Ninove online: kies je fit, een dag en e…"
+   …
+   = guards: pages <n>, blocks <n>, offerings 9, variants <n>, services 5, bookings <n>, providers 1, subscriptions 5
+   → after the apply: blocks <n> (+2), variants <n> (+2), services 6 (+1), subscriptions 6 (+1)
+   → dry run: run again with --apply to write
+   ```
+
+   **Without the flag** staging stops, as it did before the decision (this is what a run that forgot
+   the flag prints): the package line has no `offered by`, the provider line is `~ provider Toshoni
+   Van Craen — <n> offering(s) removed: <the services he offers>` without the `→ provider list`
+   line, and the run ends on
+
+   ```text
    ! offering bikefit-huidige-fiets: Jeugd – volledig pakket would be offered by no provider — add a replacement provider for jeugdfit in Beheer → Aanbieders first
    ! provider Toshoni Van Craen: service volwassenenfit would be left without a provider — add a replacement provider for it in Beheer → Aanbieders first
    ! provider Toshoni Van Craen: service jeugdfit would be left without a provider — add a replacement provider for it in Beheer → Aanbieders first
    → dry run: blocked — fix the items marked ! first
    ```
 
-   (one `! provider` line per active service he alone offers, in the order of his offerings). Once a
-   replacement provider offers both fits, the dry run prints the block above, with
-   `offered by <n> provider(s)` and `~ provider Toshoni Van Craen`.
+   (one `! provider` line per active service he alone offers, in the order of his offerings). On
+   staging the answer is the flag, not a replacement provider (decision of 27 Oct 2026, 15:12).
+   **Every staging run carries the same flags**: the dry run, the apply and the dry run after it.
+   After an apply with the flag, a dry run without it plans his removal (`~ provider Toshoni Van
+   Craen — 6 offering(s) removed: …`, now including `jeugdfit-pakket`) and stops on the same
+   `! provider Toshoni Van Craen: service … would be left without a provider …` lines, ending
+   `= dry run: blocked — fix the items marked ! first`. That is expected: nothing is written, run
+   it again with the flag.
 
    What varies by database, and is no reason to stop: the old values inside the `service` lines (the
    texts of `cms:bootstrap`, or what the save of the bikefit wrote on 20 Oct, "Bikefit – huidige
@@ -1643,13 +1693,21 @@ until the next save of that offering.
    **Stop and report on any `!` line.** The usual ones: `! provider <his display name>: service
    <slug> would be left without a provider — add a replacement provider for it in Beheer →
    Aanbieders first` and `! offering bikefit-huidige-fiets: Jeugd – volledig pakket would be offered
-   by no provider — add a replacement provider for jeugdfit in Beheer → Aanbieders first` (staging
-   until a replacement provider exists; production if the other provider does not offer every
-   service); `! provider Toshoni: no provider profile matches (display name "Toshoni" or "Toshoni
-   Van Craen", or the login of cms:seed-booking) — stop and report; check Beheer → Aanbieders, do not
-   rename a profile blindly` (his profile was renamed or is on another login: which profile is his
-   is Toshoni's answer, not the operator's guess; the line `= provider Toshoni — no such provider`
-   of earlier versions is no longer printed and never a reason to go on); `! provider Toshoni: <n>
+   by no provider — add a replacement provider for jeugdfit in Beheer → Aanbieders first` (on
+   staging: the run is missing `--staging-retain-toshoni`, run it again with the flag; on production:
+   the other provider does not offer every service); with the flag, `! provider Toshoni:
+   --staging-retain-toshoni is for a database whose only provider is Toshoni (staging); this one has
+   <n> provider(s) — run without it` (on production: the flag does not belong there, never use it;
+   on staging: a second provider row appeared, stop and report, do not drop the flag), `! provider
+   Toshoni: --staging-retain-toshoni is for a database whose only provider is Toshoni (staging); its
+   one provider "<name>" is not him (…) — stop and report` and `! provider <his display name>:
+   --staging-retain-toshoni keeps him as the only provider, but his profile or its login is switched
+   off — stop and report`; `! provider Toshoni: no provider profile matches (display name
+   "Toshoni" or "Toshoni Van Craen", or the login of cms:seed-booking) — stop and report; check
+   Beheer → Aanbieders, do not rename a profile blindly` (his profile was renamed or is on another
+   login: which profile is his is Toshoni's answer, not the operator's guess; the line `= provider
+   Toshoni — no such provider` of earlier versions is no longer printed and never a reason to go
+   on); `! provider Toshoni: <n>
    provider profiles match — "<name>" (by display name), "<name>" (by login), …; rename the one
    that is not his in Beheer → Aanbieders (or change its login), then run again` (the display name
    is the Weergavenaam in Beheer → Aanbieders; a login cannot be changed in Beheer, so renaming is
@@ -1663,44 +1721,55 @@ until the next save of that offering.
    ! first`, and `--apply` refuses with the same list before it writes anything: it plans on a
    read-only handle before it opens its admin session, so a refused apply leaves no session, no
    backup and no audit entry. Compare staging with production: the lines must be the same apart
-   from the counts, the old texts and the provider lines.
-2. **Apply on staging** (the tool writes its own backup before the first write):
+   from the counts, the old texts, the provider-mode line and the provider lines.
+2. **Apply on staging** (the tool writes its own backup before the first write), with the same
+   flags as the dry run:
 
    ```bash
-   DATABASE_URL='<staging pooled url>' npm run cms:patch-aanbod-correcties -- --apply \
-     --expect-host '<host part of the staging DATABASE_URL>' --backup-dir <dir>
+   DATABASE_URL='<staging pooled url>' npm run cms:patch-aanbod-correcties -- --apply --staging-retain-toshoni --expect-host '<host part of the staging DATABASE_URL>' --backup-dir <dir>
    ```
 
-   It prints `✓ backup written: <dir>/aanbod-correcties-patch-<timestamp>.json` (every row it is
-   about to change, as it is now, plus what it will create and remove), the same `~` lines, then
-   `✓ settings, menu, offerings, services and published pages verified on the public readers`,
-   `✓ row counts as planned (blocks <n> (+2), variants <n> (+2), services <n> (+1), subscriptions <n>
-   (-<m>)); bookings and providers unchanged`, `✓ apply complete` and `→ deployed sites pick this up
-   within 5 minutes (cache fallback); the provider list too`.
+   It prints the provider-mode line, `✓ backup written: <dir>/aanbod-correcties-patch-<timestamp>.json`
+   (every row it is about to change, as it is now, plus what it will create and remove, and the
+   provider mode), the same `~` lines, then `✓ settings, menu, offerings, services and published
+   pages verified on the public readers`, `✓ row counts as planned (blocks <n> (+2), variants <n>
+   (+2), services 6 (+1), subscriptions 6 (+1)); bookings and providers unchanged`, `✓ provider
+   Toshoni Van Craen kept (--staging-retain-toshoni): in the public provider list, with every
+   offering he had`, `✓ apply complete` and `→ deployed sites pick this up within 5 minutes (cache
+   fallback); the provider list too`. Without the flag (production) the counts line ends
+   `subscriptions <n> (-<m>)` and there is no `✓ provider … kept` line.
 
    The writes go in this order, settings first so that the contact tokens on the pages resolve to
    the new values from the moment a page publishes: the settings, the location, the youth package
    (service, variant, providers), the copy and durations of the services, the offerings, Toshoni's
    offerings, the menu, the pages (each published like `cms:patch-page-cleanup`; a page that is a
-   draft stays a draft). The verify is a second plan that must find nothing left, the row counts of
-   every table, and the public readers: the catalogue (three labelled variants on both bikefits,
+   draft stays a draft). With the flag the provider step writes nothing: his subscriptions are never
+   replaced by an empty set; the package is added to what he offers, so all his offerings stay. The
+   verify is a second plan, in the same provider mode, that must find nothing left, the row counts
+   of every table, and the public readers: the catalogue (three labelled variants on both bikefits,
    the Kostprijs text, the durations), the settings, the menu order, the location and voucher
    blocks in the draft and in the published snapshot, the provider list without Toshoni (the
-   provider the second plan finds by the same rule, looked up by id), and
+   provider the second plan finds by the same rule, looked up by id) or, with the flag, with him,
+   with every subscription he had before the apply and with the package service, and
    `correctionProblems` on each published page. Audit: the repos' own entries (`settings.update`,
    `location.update`, `service.create`, `service.update`, `provider.services`,
    `navigation.update`, `block.add`/`block.update`/`block.delete`, `page.update`, `page.publish`),
    `offering.update` for each offering and variant row it writes, and
-   `patch.aanbod-correcties.apply` with the backup's file name. The admin session of the run is
+   `patch.aanbod-correcties.apply` with the backup's file name and the provider mode
+   (`staging-retain` on staging, `remove` without the flag). The admin session of the run is
    always revoked.
-3. Dry run again: every line `=`, the closing line `= dry run: nothing to do`; the guards line shows
-   the counts after the apply.
+3. Dry run again, on staging with the same flags (`--staging-retain-toshoni --expect-host '<host>'`):
+   every line `=`, among them `= provider Toshoni Van Craen — kept as provider
+   (--staging-retain-toshoni): 6 offering(s) stay`, and the closing line `= dry run: nothing to do`;
+   the guards line shows the counts after the apply (`services 6`, `providers 1`, `subscriptions
+   6`). A second apply with the flags prints `= nothing to do: …` and `= nothing written`.
 4. **Verify** after the 5-minute window (the provider list is cached for as long), on the site:
    - `/afspraak`: the last section is "Waar vind je ons?" with Halsesteenweg 406 a, 9403 Neigem, the
      route link and the button "Kaart tonen" (no request to Google before the click); the fit
      choice offers Volwassene (€ 275), Jeugd – eenmalig (€ 150) and Jeugd – volledig pakket (€ 275);
-     the provider choice no longer lists Toshoni (on staging: Toshoni Van Craen); the phone number
-     is `+32 473 95 26 33`.
+     on staging Toshoni Van Craen is still in the provider choice, also for Jeugd – volledig pakket
+     (without the flag, on production, the provider choice no longer lists Toshoni); the phone
+     number is `+32 473 95 26 33`.
    - Home: "Geef fietsplezier cadeau" after the offer catalogue; the main menu has *Cadeaubon* before
      *Contact*; the footer and the contact block show the new address and phone number.
    - `/cadeaubon`: the three amounts and the validity line; `/aanbod`: the card text of the
@@ -1711,12 +1780,17 @@ until the next save of that offering.
      `/algemene-voorwaarden`: "Versie van 27 oktober 2026", article 3 without the old list of
      services.
    - Logged in: Instellingen → Contact, Bedrijfsgegevens and Regels in de teksten hold their values;
-     Aanbieders → Toshoni (on staging: Toshoni Van Craen) offers nothing, the other provider offers
-     the fits and the package;
+     on staging Aanbieders → Toshoni Van Craen offers the services he offered before plus
+     *Jeugdfit – volledig pakket* (without the flag, on production: Aanbieders → Toshoni offers
+     nothing, the other provider offers the fits and the package);
      Auditlog lists the entries above.
-5. **Production**: the order above again with the production `DATABASE_URL` and host, after
-   Toshoni's explicit go. The dry run must print the same lines as on staging, apart from the
-   counts and the provider lines.
+5. **Production** is undecided and not part of the staging decision: never with
+   `--staging-retain-toshoni` (it refuses a database with more than one provider; production has
+   two). The order above again, without the flag, with the production `DATABASE_URL` and host, only
+   after Toshoni's explicit go and his decision on the second provider: it takes Toshoni's
+   offerings away and gives the package to the other provider (the default, unchanged). The dry
+   run must print the same lines as on staging, apart from the counts, the provider-mode line and
+   the provider lines.
 
 **Rollback:** `npm run cms:patch-aanbod-correcties -- --restore <backup.json> --expect-host '<host>'`
 puts the rows of the backup back and removes what the apply created: the pages (draft blocks and
@@ -1726,7 +1800,15 @@ already uses it), the changed columns of the services and the offerings, the loc
 settings (the two rows the apply created are deleted). Audit: `patch.aanbod-correcties.restore`.
 Use the backup of the **first** run: an apply repeated after a partial failure writes a new backup
 of the half-done state. Afterwards the dry run lists everything as `~` again. Migration 0017 is
-additive and may stay.
+additive and may stay. The restore takes no provider mode (with `--staging-retain-toshoni` it is
+refused): it reverses what the backup lists. A staging backup (`"providerMode": "staging-retain"`)
+lists none of his offerings as removed, so his subscriptions are not written; deleting the package
+service takes his `jeugdfit-pakket` row with it, and the services he offered before stay as they
+are. If a booking already uses the created package service, restore keeps the booking and service,
+switches the service off, removes its provider subscriptions and disconnects the variant. A later
+patch run blocks on that inactive service: stop and review the booking/service before any manual
+reactivation or rerun. In that case the dry run cannot be expected to list everything as `~`.
+Backups written before the mode existed read as `remove`.
 
 **Notes.**
 
@@ -1736,8 +1818,10 @@ additive and may stay.
   its write side and the readers of the verify before its first query (the keep-alive lesson of
   §22).
 - **`cms:seed-booking` re-subscribes the first provider** to every bootstrap service (idempotent
-  inserts). Do not run it for Toshoni after this patch, or he is offered again; the next dry run
-  would plan his removal a second time.
+  inserts). Do not run it for Toshoni after this patch where it took his offerings away
+  (production), or he is offered again; the next dry run would plan his removal a second time. On
+  staging, where he stays, it only adds subscriptions; the next dry run with the flag still finds
+  nothing to do.
 - **A later save of a bikefit in Beheer → Aanbod** rewrites the name, label and description of its
   booking services from the offering ("<title> – <label>"); the service texts of this patch hold
   until then (§22).

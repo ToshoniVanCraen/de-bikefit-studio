@@ -76,7 +76,8 @@ async function applyLocation(deps: CorrectiesDeps, plan: CorrectiesPlan, summary
 
 /**
  * The providers get the package service by adding it to what they offer
- * already (`setProviderServices` replaces a provider's whole set).
+ * already (`setProviderServices` replaces a provider's whole set): with
+ * `staging-retain` that is how Toshoni keeps every offering he has.
  */
 async function subscribe(
   deps: CorrectiesDeps,
@@ -182,8 +183,12 @@ async function applyOfferings(deps: CorrectiesDeps, plan: CorrectiesPlan, summar
   }
 }
 
-/** Toshoni's offerings go; the provider row, its bookings and its calendar link stay. */
+/**
+ * Toshoni's offerings go; the provider row, its bookings and its calendar link stay.
+ * With `staging-retain` he stays: his set is never written here, so never emptied.
+ */
 async function applyProvider(deps: CorrectiesDeps, plan: CorrectiesPlan, summary: ApplySummary) {
+  if (plan.providerMode === 'staging-retain') return;
   const { provider, rows } = plan.provider;
   if (!provider || rows.length === 0) return;
   must(
@@ -235,6 +240,12 @@ export async function applyCorrecties(
   deps: CorrectiesDeps,
   plan: CorrectiesPlan,
 ): Promise<ApplySummary> {
+  // A plan that keeps Toshoni lists none of his offerings to remove: checked before any row.
+  if (plan.providerMode === 'staging-retain' && plan.provider.rows.length > 0) {
+    throw new Error(
+      'provider: a plan that keeps Toshoni lists offerings to remove; no row written',
+    );
+  }
   const summary: ApplySummary = {
     settings: [],
     location: false,

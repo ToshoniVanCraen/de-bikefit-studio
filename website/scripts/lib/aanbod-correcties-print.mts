@@ -19,9 +19,13 @@
  * `isToshoni` found ("Toshoni" on production, "Toshoni Van Craen" on staging),
  * never by his login. Only a database without any provider prints
  * `= provider Toshoni — no providers in this database`; providers without (or
- * with two) Toshoni are a blocker.
+ * with two) Toshoni are a blocker. With `--staging-retain-toshoni` (staging only)
+ * nothing of his moves, and the line says so instead:
+ *
+ *   = provider Toshoni Van Craen — kept as provider (--staging-retain-toshoni): 5 offering(s) stay
  */
 import { type CorrectiesPlan, type PagePlan } from './aanbod-correcties-plan.mjs';
+import { STAGING_RETAIN_FLAG } from './aanbod-correcties-youth.mjs';
 import type { Counts } from './aanbod-correcties-world.mjs';
 import type { PlanDeps } from './aanbod-rollout.mjs';
 
@@ -93,6 +97,12 @@ export function printCorrectiesPlan(plan: CorrectiesPlan, log: Log): void {
     if (plan.provider.blockers.length === 0) {
       log('=', 'provider Toshoni — no providers in this database: nothing to remove');
     }
+  } else if (plan.providerMode === 'staging-retain') {
+    // He stays (staging only): his offerings do not move, so neither does the provider list.
+    log(
+      '=',
+      `provider ${provider.displayName} — kept as provider (${STAGING_RETAIN_FLAG}): ${plan.provider.kept.length} offering(s) stay`,
+    );
   } else {
     show(log, plan.provider, `provider ${provider.displayName}`, 'no offerings left');
     if (plan.provider.action === 'update') {

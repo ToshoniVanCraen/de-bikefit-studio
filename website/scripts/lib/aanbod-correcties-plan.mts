@@ -18,7 +18,8 @@
  *              service and its providers
  *   services   the copy of the booking services, and their durations
  *   offerings  the copy of the nine offerings
- *   provider   Toshoni's offerings as Aanbieder
+ *   provider   Toshoni's offerings as Aanbieder: they go, or with `staging-retain`
+ *              (`--staging-retain-toshoni`, staging only) they all stay
  *   menu       "Cadeaubon" in the main menu
  *   pages      every page: the corrections of the day, the contact details, the
  *              location section, the gift voucher promotion; published last
@@ -53,6 +54,7 @@ import {
 } from './aanbod-correcties-plan-booking.mjs';
 import { planPages, type PagePlan } from './aanbod-correcties-plan-pages.mjs';
 import { statusOf, type Planned } from './aanbod-correcties-status.mjs';
+import type { ProviderMode } from './aanbod-correcties-youth.mjs';
 import {
   decideAddress,
   decideContact,
@@ -135,6 +137,8 @@ export type { PagePlan } from './aanbod-correcties-plan-pages.mjs';
 
 export type CorrectiesPlan = {
   locale: string;
+  /** What happens to Toshoni's offerings; the apply, its backup and its verify follow it. */
+  providerMode: ProviderMode;
   settings: SettingPlan[];
   location: LocationPlan;
   menu: MenuPlan;
@@ -321,10 +325,12 @@ function expectedCounts(plan: Omit<CorrectiesPlan, 'expected'>): Counts {
 export function planCorrecties(
   world: World,
   inputs: CorrectiesInputs = defaultInputs(),
+  providerMode: ProviderMode = 'remove',
 ): CorrectiesPlan {
-  const packages = planPackages(world, inputs.youthPackages);
+  const packages = planPackages(world, inputs.youthPackages, providerMode);
   const base = {
     locale: world.locale,
+    providerMode,
     settings: planSettings(world, inputs.settingTexts),
     location: planLocation(world),
     menu: planMenu(world),
@@ -333,7 +339,7 @@ export function planCorrecties(
     packages,
     services: planServiceTexts(world, inputs.serviceTexts),
     durations: planDurations(world, inputs.durations),
-    provider: planProvider(world, packages),
+    provider: planProvider(world, packages, providerMode),
     guards: world.counts,
   };
   return { ...base, expected: expectedCounts(base) };

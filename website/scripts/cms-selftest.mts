@@ -104,9 +104,9 @@
  *      the dry run writes nothing, apply changes settings, location, pages, menu,
  *      offerings, services, the youth package and Toshoni's offerings, verified,
  *      idempotent, restore returns every table, what must block does; staging's
- *      own state (first-seed /afspraak text; Toshoni Van Craen alone blocks, the
- *      apply refuses before any write; applies with a replacement); all put back
- *      (`scripts/selftest/aanbod-correcties.mts`)
+ *      state (first-seed /afspraak text; Toshoni Van Craen alone blocks before any
+ *      write, applies with a replacement, or stays with --staging-retain-toshoni,
+ *      which two providers refuse); all put back (`scripts/selftest/aanbod-correcties.mts`)
  *  18. gift voucher: the order service on the database with `fetch` replaced (missing
  *      key/sender or a refusal is "not sent", only an accepted request is a
  *      success, no double mail, rate limit, the recipient is its own setting

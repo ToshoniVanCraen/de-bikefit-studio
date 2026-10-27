@@ -20,14 +20,12 @@
  *  - a meta description and a meta title of neither state still block (`!`).
  *
  * Starts again from the section's clean slate with the fixture of 20 Oct 2026
- * (`seedBefore`), changed where staging differs; the section's clean-up gives the
- * database back.
+ * (`seedBefore`), changed where staging differs (`seedStaging`, which part 7,
+ * `aanbod-correcties-retain.mts`, starts from too); the section's clean-up gives
+ * the database back.
  */
-import { readdir } from 'node:fs/promises';
 import * as orm from 'drizzle-orm';
 import { AFSPRAAK_PAGE } from '@/lib/studio/seed-content/appointment';
-import { runAanbodCorrectiesPatch } from '../lib/aanbod-correcties-patch.mjs';
-import { withAdminSession } from '../lib/aanbod-rollout-run.mjs';
 import { seedBefore } from './aanbod-correcties-fixture.mjs';
 import {
   diffPrints,
@@ -42,14 +40,14 @@ import {
 const { eq } = orm;
 
 /** Staging's `/afspraak` meta description on 27 Oct 2026, exactly: the first seed's text. */
-const SEEDED_AFSPRAAK_META =
+export const SEEDED_AFSPRAAK_META =
   'Bikefits in Ninove gaan door op afspraak. Bel 0473 95 26 33, kies je fit en breng je fiets, schoenen en fietskleding mee.';
 /** The same text after an editor's change: neither state. */
 const EDITED_AFSPRAAK_META =
   'Bikefits in Ninove gaan door op afspraak. Bel ons, kies je fit en breng je fiets, schoenen en fietskleding mee.';
 /** Staging's provider profile, and the login it has (the default of `cms:seed-booking`). */
-const STAGING_NAME = 'Toshoni Van Craen';
-const STAGING_LOGIN = 'toshoni@gmail.com';
+export const STAGING_NAME = 'Toshoni Van Craen';
+export const STAGING_LOGIN = 'toshoni@gmail.com';
 /** A login that is not the seed's, for a profile renamed so that no rule knows it. */
 const RENAMED_LOGIN = 'toshoni.v@selftest.local';
 /** The stop when the database has providers and none of them is Toshoni. */
@@ -57,111 +55,50 @@ const NO_MATCH =
   'provider Toshoni: no provider profile matches (display name "Toshoni" or "Toshoni Van Craen", or the login of cms:seed-booking) — stop and report; check Beheer → Aanbieders, do not rename a profile blindly';
 
 const FITS = ['volwassenenfit', 'jeugdfit', 'voetanalyse'];
-const WRITES = ['insert', 'update', 'delete', 'execute', 'transaction', 'batch'];
 
-export async function stagingChecks(env: {
+type StagingEnv = {
   ctx: CorrectiesSectionContext;
   kit: CorrectiesKit;
   /** The tables as the section found them (`snapshotState`). */
   original: State;
-}): Promise<void> {
-  const { ctx, kit, original } = env;
-  const { db, check, cookieJar } = ctx;
-  const { schema, lines, run, backupPathOf, auditCount, sessions } = kit;
-  const { subscriptions, serviceRow, pageRow } = kit;
-  const { listPublicProviders } = await import('@/lib/booking/content');
-  const has = (prefix: string, ...parts: string[]) =>
-    lines.some((line) => line.startsWith(prefix) && parts.every((part) => line.includes(part)));
-  /** The error a run ends with ('' when it ends well), so a refusal is a value. */
-  const attempt = async (work: () => Promise<unknown>) => {
-    try {
-      await work();
-      return '';
-    } catch (error) {
-      return error instanceof Error ? error.message : String(error);
-    }
-  };
-  const backups = async () =>
-    (await readdir(ctx.backupDir).catch(() => [] as string[])).sort().join();
-  /**
-   * `--apply` through the CLI's entry point on a handle that counts every write
-   * call: the refusal ('' when it ran), and whether nothing moved (no write call,
-   * sessions, audit entries, backup files, cookie and every table as they were).
-   */
-  const applyWatched = async () => {
-    const writes: string[] = [];
-    const watched = new Proxy(db, {
-      get(target, property, receiver) {
-        if (typeof property === 'string' && WRITES.includes(property)) writes.push(property);
-        const value = Reflect.get(target, property, receiver);
-        return typeof value === 'function' ? value.bind(target) : value;
-      },
-    });
-    const before = [
-      await sessions(),
-      await auditCount(),
-      await backups(),
-      await fingerprint(db, schema),
-    ];
-    const refusal = await attempt(() =>
-      runAanbodCorrectiesPatch(
-        { apply: true, restore: null, backupDir: ctx.backupDir },
-        { db: watched, driver: 'pglite', cookieJar, log: () => {} },
-      ),
-    );
-    const after = [
-      await sessions(),
-      await auditCount(),
-      await backups(),
-      await fingerprint(db, schema),
-    ];
-    return {
-      refusal,
-      untouched:
-        writes.length === 0 &&
-        !cookieJar.has('cms_session') &&
-        after.every((v, i) => v === before[i]),
-      detail: `writes: ${writes.join() || 'none'} | ${refusal.split('\n').slice(0, 3).join(' ')}`,
-    };
-  };
-  /** The page's own texts, saved and published the way an editor (or a seed) does. */
-  const editPage = async (
-    slug: string,
-    texts: { metaTitle?: string; metaDescription?: string },
-  ) => {
-    const page = await pageRow(slug);
-    if (!page) throw new Error(`17d staging: no page /${slug}`);
-    await withAdminSession({ db, cookieJar }, ctx.admin.id, 'cms-selftest-17d', async () => {
-      const repo = await import('@/lib/cms/repo');
-      const saved = await repo.updatePage(page.id, texts);
-      if (!saved.ok) throw new Error(`17d staging: /${slug}: ${saved.message}`);
-      const published = await repo.publishPage(page.id);
-      if (!published.ok) throw new Error(`17d staging: /${slug}: ${published.message}`);
-    });
-  };
+};
 
-  // --- staging as it was on 27 Oct 2026 ----------------------------------------------------------
+/**
+ * Staging as it was on 27 Oct 2026, on the section's clean slate: the fixture, Toshoni's
+ * profile as staging has it ("Toshoni Van Craen" on the seed's login), nobody else
+ * offering anything (Winston's offerings are handed back, for a replacement) and the
+ * first seed's meta description on `/afspraak`, published.
+ */
+export async function seedStaging(env: StagingEnv) {
+  const { ctx, kit, original } = env;
+  const { db } = ctx;
+  const { schema, subscriptions, editPage, setProviderProfile } = kit;
   await restoreState(db, schema, original);
   const fx = await seedBefore(kit, ctx);
-  const [{ userId }] = await db
-    .select({ userId: schema.cmsProviders.userId })
-    .from(schema.cmsProviders)
-    .where(eq(schema.cmsProviders.id, fx.toshoniId));
-  /** Toshoni's profile: its display name and the login of its user. */
-  const setProfile = async (displayName: string, login: string) => {
-    await db.update(schema.cmsUsers).set({ email: login }).where(eq(schema.cmsUsers.id, userId));
-    await db
-      .update(schema.cmsProviders)
-      .set({ displayName })
-      .where(eq(schema.cmsProviders.id, fx.toshoniId));
-  };
-  await setProfile(STAGING_NAME, STAGING_LOGIN);
+  await setProviderProfile(fx.toshoniId, STAGING_NAME, STAGING_LOGIN);
   // One provider: what Winston offers in the fixture comes back later as the replacement.
   const replacement = await subscriptions(fx.winstonId);
   await db
     .delete(schema.cmsProviderServices)
     .where(eq(schema.cmsProviderServices.providerId, fx.winstonId));
   await editPage('afspraak', { metaDescription: SEEDED_AFSPRAAK_META });
+  return { fx, replacement };
+}
+
+export async function stagingChecks(env: StagingEnv): Promise<void> {
+  const { ctx, kit } = env;
+  const { db, check } = ctx;
+  const { schema, lines, run, backupPathOf, attempt, applyWatched } = kit;
+  const { subscriptions, serviceRow, pageRow, editPage, setProviderProfile } = kit;
+  const { listPublicProviders } = await import('@/lib/booking/content');
+  const has = (prefix: string, ...parts: string[]) =>
+    lines.some((line) => line.startsWith(prefix) && parts.every((part) => line.includes(part)));
+
+  // --- staging as it was on 27 Oct 2026 ----------------------------------------------------------
+  const { fx, replacement } = await seedStaging(env);
+  /** Toshoni's profile: its display name and the login of its user. */
+  const setProfile = (displayName: string, login: string) =>
+    setProviderProfile(fx.toshoniId, displayName, login);
   const staging = await fingerprint(db, schema);
 
   // --- the dry run ------------------------------------------------------------------------------

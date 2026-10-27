@@ -25,7 +25,11 @@
  *     and the apply refuses before any write; with a replacement provider it
  *     applies, verifies, finds nothing on a second run and restores
  *     (`aanbod-correcties-staging.mts`);
- *  7. clean-up: every table is put back, and checked.
+ *  7. staging with `--staging-retain-toshoni` (Toshoni, 27 Oct 2026, 15:12):
+ *     him the only provider row, the dry run is clean, the apply keeps his
+ *     offerings and adds the package, idempotent, restores; a second provider
+ *     makes the flag stop (`aanbod-correcties-retain.mts`);
+ *  8. clean-up: every table is put back, and checked.
  *
  * Imported lazily by `cms-selftest.mts` after its request-context stubs.
  */
@@ -50,6 +54,7 @@ import { runAanbodCorrectiesPatch } from '../lib/aanbod-correcties-patch.mjs';
 import { sameValue } from '../lib/aanbod-correcties-targets.mjs';
 import { seedBefore } from './aanbod-correcties-fixture.mjs';
 import { guardChecks } from './aanbod-correcties-guards.mjs';
+import { retainChecks } from './aanbod-correcties-retain.mjs';
 import { stagingChecks } from './aanbod-correcties-staging.mjs';
 import {
   createCorrectiesKit,
@@ -120,7 +125,7 @@ export async function aanbodCorrectiesSection(ctx: CorrectiesSectionContext) {
     const auditBefore = await auditCount();
     const watched: string[] = [];
     await runAanbodCorrectiesPatch(
-      { apply: false, restore: null, backupDir: ctx.backupDir },
+      { apply: false, restore: null, backupDir: ctx.backupDir, providerMode: 'remove' },
       {
         db: watchedDb,
         driver: 'pglite',
@@ -421,8 +426,11 @@ export async function aanbodCorrectiesSection(ctx: CorrectiesSectionContext) {
 
     // --- 6: the state staging held on 27 Oct 2026 --------------------------------------------------
     await stagingChecks({ ctx, kit, original });
+
+    // --- 7: staging with --staging-retain-toshoni --------------------------------------------------
+    await retainChecks({ ctx, kit, original });
   } finally {
-    // --- 7: clean-up -------------------------------------------------------------------------------
+    // --- 8: clean-up -------------------------------------------------------------------------------
     await restoreState(db, schema, original);
     cookieJar.delete('cms_session');
   }
