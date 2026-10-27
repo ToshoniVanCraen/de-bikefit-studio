@@ -17,7 +17,10 @@
  *              service and providers where the fit is booked online
  *   services   the copy of the booking services; durations (both bikefits 2 u,
  *              voetanalyse 30, zadelanalyse 60, schoenplaatjes 15 min)
- *   provider   Toshoni's offerings as Aanbieder, so his name no longer shows
+ *   provider   Toshoni's offerings as Aanbieder, so his name no longer shows; or,
+ *              with `providerMode: 'staging-retain'` (`--staging-retain-toshoni`,
+ *              staging only, Toshoni 27 Oct 2026), he stays with every offering
+ *              and is offered the youth package too
  *
  * Never touched: the extra's (`cms:patch-aanbod-extras` runs BEFORE this one),
  * prices, bookings, providers themselves, users, media. The rules:
@@ -34,6 +37,10 @@
  *            and `patch.aanbod-correcties.apply`
  *   restore  puts every backed-up row back and removes what the apply created
  *
+ * The provider mode is one value for the whole run: the dry run, the precheck,
+ * the plan of the apply and the second plan of its verify are all made in it,
+ * and the backup and the audit entry record it. A restore takes none.
+ *
  * Idempotent: a second run finds nothing to do. Dry run: no session, no audit
  * entry, planned against `readOnlyDb()`. Writing modes load their modules (the
  * write side AND the readers the verify uses) before the first query — the
@@ -42,9 +49,11 @@
  */
 import { buildCorrectiesBackup, readCorrectiesBackup } from './aanbod-correcties-backup.mjs';
 import { applyCorrecties, type CorrectiesDeps } from './aanbod-correcties-apply.mjs';
+import { assertRestoreTakesNoMode } from './aanbod-correcties-options.mjs';
 import {
   correctiesBlockers,
   correctiesHasChanges,
+  defaultInputs,
   planCorrecties,
   type CorrectiesPlan,
 } from './aanbod-correcties-plan.mjs';
@@ -52,6 +61,7 @@ import { describeCountChanges, printCorrectiesPlan } from './aanbod-correcties-p
 import { restoreCorrecties } from './aanbod-correcties-restore.mjs';
 import { verifyCorrecties } from './aanbod-correcties-verify.mjs';
 import { readWorld } from './aanbod-correcties-world.mjs';
+import { STAGING_RETAIN_FLAG, type ProviderMode } from './aanbod-correcties-youth.mjs';
 import { writeBackup, type PlanDeps } from './aanbod-rollout.mjs';
 import {
   findActor,
@@ -72,10 +82,10 @@ const NOTHING_TO_DO = 'nothing to do: the corrections of 27 Oct 2026 are already
 
 export async function applyAanbodCorrecties(
   deps: CorrectiesDeps,
-  options: { backupDir: string; driver: string },
+  options: { backupDir: string; driver: string; providerMode: ProviderMode },
 ): Promise<AanbodCorrectiesApplyResult> {
   const { log } = deps;
-  const plan = planCorrecties(await readWorld(deps));
+  const plan = planCorrecties(await readWorld(deps), defaultInputs(), options.providerMode);
   refuseIfBlocked(plan);
   if (!correctiesHasChanges(plan)) {
     log('=', NOTHING_TO_DO);
@@ -95,7 +105,7 @@ export async function applyAanbodCorrecties(
   const summary = await applyCorrecties(deps, plan);
 
   // 3. Verify on what visitors get, and that the tables moved by exactly the plan.
-  const problems = await verifyCorrecties(deps, plan.expected);
+  const problems = await verifyCorrecties(deps, plan);
   if (problems.length > 0) throw new Error(`verification failed:\n  - ${problems.join('\n  - ')}`);
   log(
     '✓',
@@ -105,11 +115,18 @@ export async function applyAanbodCorrecties(
     '✓',
     `row counts as planned (${describeCountChanges(plan.guards, plan.expected) || 'none added or removed'}); bookings and providers unchanged`,
   );
+  const kept = plan.providerMode === 'staging-retain' ? plan.provider.provider : null;
+  if (kept) {
+    log(
+      '✓',
+      `provider ${kept.displayName} kept (${STAGING_RETAIN_FLAG}): in the public provider list, with every offering he had`,
+    );
+  }
   await deps.auth.recordAudit(deps.db, deps.actor, {
     action: 'patch.aanbod-correcties.apply',
     entityType: 'cms_rollout',
     summary: 'correcties van 27 oktober 2026',
-    metadata: { backup: backupFile, ...summary },
+    metadata: { backup: backupFile, providerMode: plan.providerMode, ...summary },
   });
   return { changed: true, backupPath };
 }
@@ -118,14 +135,16 @@ export type AanbodCorrectiesRunOptions = {
   apply: boolean;
   restore: string | null;
   backupDir: string;
+  /** Toshoni's offerings go (`remove`) or stay (`staging-retain`); one value for the whole run. */
+  providerMode: ProviderMode;
 };
 
 /** The read-only mode: plan and print; no session, no audit entry, no write method on the handle. */
-async function dryRun(deps: PlanDeps): Promise<void> {
+async function dryRun(deps: PlanDeps, providerMode: ProviderMode): Promise<void> {
   const { log } = deps;
   const actor = await findActor(deps);
   log('=', `would act as ${actor.email} (no session is created in a dry run)`);
-  const plan = planCorrecties(await readWorld(deps));
+  const plan = planCorrecties(await readWorld(deps), defaultInputs(), providerMode);
   printCorrectiesPlan(plan, log);
   const blockers = correctiesBlockers(plan);
   for (const blocker of blockers) log('!', blocker);
@@ -147,6 +166,14 @@ export async function runAanbodCorrectiesPatch(
   context: RolloutRunContext,
 ): Promise<void> {
   const { log } = context;
+  const { providerMode } = options;
+  assertRestoreTakesNoMode(options);
+  if (providerMode === 'staging-retain') {
+    log(
+      '→',
+      'provider mode: staging retain — Toshoni stays a provider and gets the youth package (staging only)',
+    );
+  }
   const writing = options.apply || options.restore !== null;
   const schema = await import('@/db/cms-schema');
   const planDeps: PlanDeps = {
@@ -158,7 +185,7 @@ export async function runAanbodCorrectiesPatch(
     log,
   };
   if (!writing) {
-    await dryRun(planDeps);
+    await dryRun(planDeps, providerMode);
     return;
   }
 
@@ -178,7 +205,11 @@ export async function runAanbodCorrectiesPatch(
   // planned on the read-only handle, so no session row, no backup, no audit entry.
   // The apply plans again inside its session; what changed in between is caught there.
   if (options.restore === null) {
-    const precheck = planCorrecties(await readWorld({ ...planDeps, db: readOnlyDb(context.db) }));
+    const precheck = planCorrecties(
+      await readWorld({ ...planDeps, db: readOnlyDb(context.db) }),
+      defaultInputs(),
+      providerMode,
+    );
     refuseIfBlocked(precheck);
     if (!correctiesHasChanges(precheck)) {
       log('=', NOTHING_TO_DO);
@@ -197,6 +228,7 @@ export async function runAanbodCorrectiesPatch(
     const result = await applyAanbodCorrecties(deps, {
       backupDir: options.backupDir,
       driver: context.driver,
+      providerMode,
     });
     log(result.changed ? '✓' : '=', result.changed ? 'apply complete' : 'nothing written');
     if (result.changed) {

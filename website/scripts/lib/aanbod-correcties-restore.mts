@@ -10,7 +10,12 @@
  * Direct writes where a repo function would add its own rules: a created row is
  * deleted, a changed column is put back. A package service that bookings
  * already point at is not deleted (the bookings keep their service): it is
- * switched off and the variant stops pointing at it.
+ * switched off, its subscriptions are removed, and the variant stops pointing at it.
+ *
+ * Takes no mode: it reverses what the backup lists. The backup of a run with
+ * `--staging-retain-toshoni` removed none of Toshoni's offerings, so his set is
+ * not written here; his package row goes with the package service (or with the
+ * subscriptions the run added), the rest of what he offers stays as it is.
  */
 import { cmsOfferingVariants, cmsOfferings } from '@/db/cms-offering-schema';
 import type { SiteSettingKey } from '@/lib/cms/blocks';
@@ -40,6 +45,7 @@ async function restoreSubscriptions(deps: CorrectiesDeps, backup: AanbodCorrecti
   const { and, eq } = deps.orm;
   const table = deps.schema.cmsProviderServices;
   const { providerId, removed, created } = backup.subscriptions;
+  // Only when the apply removed his offerings (never with `staging-retain`); never a partial set.
   if (providerId && removed.length > 0) {
     // What he offers now (normally nothing) plus what was removed.
     const now = await deps.db
@@ -97,6 +103,7 @@ async function restoreVariantsAndServices(deps: CorrectiesDeps, backup: AanbodCo
   }
 
   // The created service, with its subscriptions (cascade), unless a booking uses it.
+  // A booked service stays for booking history, but its post-apply subscriptions do not.
   for (const service of created) {
     const used = await deps.db
       .select({ id: deps.schema.cmsBookings.id })
@@ -108,7 +115,13 @@ async function restoreVariantsAndServices(deps: CorrectiesDeps, backup: AanbodCo
         .update(services)
         .set({ isActive: false, updatedAt: new Date() })
         .where(eq(services.id, service.id));
-      deps.log('!', `service ${service.slug} has bookings: switched off, not deleted`);
+      await deps.db
+        .delete(deps.schema.cmsProviderServices)
+        .where(eq(deps.schema.cmsProviderServices.serviceId, service.id));
+      deps.log(
+        '!',
+        `service ${service.slug} has bookings: switched off and unsubscribed, not deleted`,
+      );
     } else {
       await deps.db.delete(services).where(eq(services.id, service.id));
       deps.log('-', `service ${service.slug} — removed (created by the apply)`);
@@ -194,6 +207,7 @@ export async function restoreCorrecties(
     entityType: 'cms_rollout',
     summary: 'correcties van 27 oktober 2026 teruggezet',
     metadata: {
+      providerMode: backup.providerMode,
       pages: backup.pages.length,
       offerings: backup.offerings.map((entry) => entry.slug),
       services: backup.services.updated.map((entry) => entry.slug),

@@ -5,8 +5,9 @@
  * exactly that: the pages (row and draft blocks, which also brings back the
  * published snapshot), the main menu, the settings, the location, the changed
  * columns of the offerings and the services, the third variant rows, Toshoni's
- * subscriptions, and what to delete again (the package service, the variant
- * row, the subscriptions the run added).
+ * subscriptions (none when `--staging-retain-toshoni` kept him), and what to
+ * delete again (the package service, the variant row, the subscriptions the run
+ * added, his package row included).
  *
  * Read by zod, like every backup of this family. `pages` and the menu are in
  * the shape of `aanbod-rollout-backup`, so the restore reuses
@@ -14,6 +15,7 @@
  */
 import { z } from 'zod';
 import type { CorrectiesPlan } from './aanbod-correcties-plan.mjs';
+import { PROVIDER_MODES } from './aanbod-correcties-youth.mjs';
 
 const rowSchema = z.record(z.string(), z.unknown());
 
@@ -23,6 +25,8 @@ export const aanbodCorrectiesBackupSchema = z.object({
   createdAt: z.string(),
   locale: z.string(),
   driver: z.string(),
+  /** What the apply did with Toshoni's offerings; a backup from before the mode: `remove`. */
+  providerMode: z.enum(PROVIDER_MODES).default('remove'),
   pages: z.array(z.object({ row: rowSchema, blocks: z.array(rowSchema) })),
   /** The main menu as it was (`null` = it had no row); absent = not touched. */
   menu: z.object({ items: z.array(z.unknown()).nullable() }).nullable(),
@@ -106,6 +110,7 @@ export function buildCorrectiesBackup(
     createdAt: new Date().toISOString(),
     locale: plan.locale,
     driver,
+    providerMode: plan.providerMode,
     pages: updated(plan.pages).flatMap((page) =>
       page.row ? [{ row: toJson(page.row), blocks: page.blocks.map(toJson) }] : [],
     ),

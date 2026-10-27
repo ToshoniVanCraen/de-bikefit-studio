@@ -1,7 +1,8 @@
 /**
  * The booking-service sections of the `cms:patch-aanbod-correcties` plan: the
  * third variant "Jeugd – volledig pakket" of both bikefits, the copy and the
- * durations of the booking services, and Toshoni's offerings as Aanbieder. Pure:
+ * durations of the booking services, and Toshoni's offerings as Aanbieder (they
+ * go, or with `staging-retain` they stay and he is offered the package). Pure:
  * the rules are `aanbod-correcties-targets.mts` and `aanbod-correcties-youth.mts`,
  * the rows come from `aanbod-correcties-world.mts`.
  *
@@ -23,7 +24,9 @@ import {
 import {
   decideProviderRemoval,
   decideYouthPackage,
+  type ProviderMode,
   type ProviderRemoval,
+  type SubscriptionRow,
   type YouthPackageDecision,
 } from './aanbod-correcties-youth.mjs';
 import type { OfferingRowFull, ServiceRowFull, World } from './aanbod-correcties-world.mjs';
@@ -56,9 +59,17 @@ export type DurationPlan = Planned & {
   minutes: number;
   note: string;
 };
-export type ProviderPlan = Planned & ProviderRemoval;
+export type ProviderPlan = Planned &
+  ProviderRemoval & {
+    /** His offerings as they are, every one of them kept (`staging-retain`); empty when they go. */
+    kept: SubscriptionRow[];
+  };
 
-export function planPackages(world: World, targets: readonly YouthPackageTarget[]): PackagePlan[] {
+export function planPackages(
+  world: World,
+  targets: readonly YouthPackageTarget[],
+  providerMode: ProviderMode = 'remove',
+): PackagePlan[] {
   return targets.map((target) => {
     const offering = world.offerings.find((entry) => entry.slug === target.slug) ?? null;
     if (!offering) {
@@ -85,6 +96,7 @@ export function planPackages(world: World, targets: readonly YouthPackageTarget[
       providers: world.providers,
       targetPriceCents: target.priceCents,
       defaultYouthServiceSlug: target.defaultYouthServiceSlug,
+      providerMode,
     });
     const third = variants.find((variant) => variant.audience === 'youth-package');
     return {
@@ -204,7 +216,11 @@ export function planDurations(world: World, targets: readonly DurationTarget[]):
   return plans;
 }
 
-export function planProvider(world: World, packages: readonly PackagePlan[]): ProviderPlan {
+export function planProvider(
+  world: World,
+  packages: readonly PackagePlan[],
+  providerMode: ProviderMode = 'remove',
+): ProviderPlan {
   const planned = packages.flatMap((entry) =>
     entry.subscribe.map((target) => ({
       providerId: target.providerId,
@@ -216,6 +232,10 @@ export function planProvider(world: World, packages: readonly PackagePlan[]): Pr
     subscriptions: world.subscriptions,
     services: world.services,
     planned,
+    providerMode,
   });
-  return { ...removal, action: statusOf(removal.blockers, removal.changes) };
+  // What stays his: the verify checks every one of these rows is still there after the apply.
+  const keptId = providerMode === 'staging-retain' ? removal.provider?.id : undefined;
+  const kept = keptId ? world.subscriptions.filter((row) => row.providerId === keptId) : [];
+  return { ...removal, kept, action: statusOf(removal.blockers, removal.changes) };
 }

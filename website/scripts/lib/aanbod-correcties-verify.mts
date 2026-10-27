@@ -1,9 +1,11 @@
 /**
  * The check after `npm run cms:patch-aanbod-correcties --apply`, on what
- * visitors get: a second plan finds nothing left, the row counts moved by
- * exactly the plan, and the public readers show the corrections (the catalogue,
- * the site settings, the main menu, the published pages, the provider list).
- * An empty list means the corrections are live as intended. Read-only.
+ * visitors get: a second plan (in the mode of the first) finds nothing left,
+ * the row counts moved by exactly the plan, and the public readers show the
+ * corrections (the catalogue, the site settings, the main menu, the published
+ * pages, the provider list: without Toshoni, or with `staging-retain` with him,
+ * every offering he had and the youth package). An empty list means the
+ * corrections are live as intended. Read-only.
  *
  * The readers are the cached ones the site uses; in a script `unstable_cache`
  * is a pass-through, so they read the database. The catalogue read is repeated
@@ -22,7 +24,8 @@ import {
 } from './aanbod-correcties-plan.mjs';
 import { describeCounts } from './aanbod-correcties-print.mjs';
 import { sameValue } from './aanbod-correcties-targets.mjs';
-import { readWorld, type Counts } from './aanbod-correcties-world.mjs';
+import { readWorld, type World } from './aanbod-correcties-world.mjs';
+import { STAGING_RETAIN_FLAG } from './aanbod-correcties-youth.mjs';
 import type { PlanDeps } from './aanbod-rollout.mjs';
 import {
   PHONE_HREF_AFTER,
@@ -52,16 +55,65 @@ function pendingSections(plan: CorrectiesPlan): string[] {
   ].filter((name): name is string => typeof name === 'string');
 }
 
-export async function verifyCorrecties(deps: PlanDeps, expected: Counts): Promise<string[]> {
+type ListPublicProviders = typeof import('@/lib/booking/content').listPublicProviders;
+
+/**
+ * `staging-retain`: Toshoni (the provider the second plan finds) is in the
+ * public provider list, still offers every service he offered before the apply
+ * (with the same location), and offers the package of every fit the plan gave
+ * him, as the public reader of that service lists him.
+ */
+async function keptProviderProblems(
+  world: World,
+  plan: CorrectiesPlan,
+  before: CorrectiesPlan,
+  listPublicProviders: ListPublicProviders,
+): Promise<string[]> {
+  const toshoni = plan.provider.provider;
+  if (!toshoni) return []; // the second plan's blocker says why
+  const listed = async (serviceId?: string) =>
+    (await listPublicProviders(serviceId)).some((provider) => provider.id === toshoni.id);
+  const problems: string[] = [];
+  if (!(await listed())) {
+    problems.push(
+      `providers: ${toshoni.displayName} is not in the public provider list (${STAGING_RETAIN_FLAG} keeps him)`,
+    );
+  }
+  const now = world.subscriptions.filter((row) => row.providerId === toshoni.id);
+  const lost = before.provider.kept.filter(
+    (row) =>
+      !now.some(
+        (entry) => entry.serviceId === row.serviceId && entry.locationId === row.locationId,
+      ),
+  );
+  if (lost.length > 0) {
+    problems.push(
+      `providers: ${toshoni.displayName} lost ${lost.length} of the ${before.provider.kept.length} offering(s) he had before the apply`,
+    );
+  }
+  for (const entry of before.packages) {
+    if (!entry.subscribe.some((target) => target.providerId === toshoni.id)) continue;
+    const service = plan.packages.find((item) => item.slug === entry.slug)?.service;
+    if (service?.kind !== 'existing' || !(await listed(service.id))) {
+      problems.push(
+        `providers: ${toshoni.displayName} does not offer the ${AUDIENCE_LABELS['youth-package']} of ${entry.slug}`,
+      );
+    }
+  }
+  return problems;
+}
+
+/** `before` is the plan the apply wrote: its mode, its counts and what it kept. */
+export async function verifyCorrecties(deps: PlanDeps, before: CorrectiesPlan): Promise<string[]> {
   const world = await readWorld(deps);
-  const plan = planCorrecties(world);
+  const plan = planCorrecties(world, defaultInputs(), before.providerMode);
   const problems = [...correctiesBlockers(plan)];
   if (correctiesHasChanges(plan)) {
     problems.push(`a second plan still finds work: ${pendingSections(plan).join(', ')}`);
   }
-  if (!sameValue(world.counts, expected)) {
+  if (!sameValue(world.counts, before.expected)) {
     problems.push(
-      `row counts are not what the plan expected: ${describeCounts(world.counts)} (expected ${describeCounts(expected)})`,
+      `row counts are not what the plan expected: ${describeCounts(world.counts)} (expected ${describeCounts(before.expected)})`,
     );
   }
 
@@ -171,10 +223,16 @@ export async function verifyCorrecties(deps: PlanDeps, expected: Counts): Promis
     }
   }
 
-  // Toshoni no longer shows as an Aanbieder: the provider the second plan finds by the
-  // same identity (`isToshoni`), looked up by id; two matches are a blocker of that plan.
+  // Toshoni no longer shows as an Aanbieder (or, with `staging-retain`, still does): the
+  // provider the second plan finds by the same identity (`isToshoni`), looked up by id;
+  // two matches are a blocker of that plan.
   const toshoni = plan.provider.provider;
-  if (toshoni && (await listPublicProviders()).some((provider) => provider.id === toshoni.id)) {
+  if (before.providerMode === 'staging-retain') {
+    problems.push(...(await keptProviderProblems(world, plan, before, listPublicProviders)));
+  } else if (
+    toshoni &&
+    (await listPublicProviders()).some((provider) => provider.id === toshoni.id)
+  ) {
     problems.push(`providers: ${toshoni.displayName} is still in the public provider list`);
   }
   return problems;
