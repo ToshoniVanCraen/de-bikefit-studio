@@ -1,3 +1,4 @@
+import { SPLIT_AUDIENCES, type SplitAudience } from '@/lib/offers/offering-audience';
 import { offerEnquiryEmail, offerEnquiryReference } from './email';
 import { OFFER_ENQUIRY_MESSAGES, validateOfferEnquiry, type OfferEnquiryField } from './input';
 
@@ -26,7 +27,7 @@ export type EnquiryOffer = {
   /** Absolute URL of the offer page (for the studio's mail). */
   url: string;
   /** The audience choices of the offering; empty for a single option. */
-  audiences: ('adult' | 'youth')[];
+  audiences: SplitAudience[];
 };
 
 export type OfferEnquiryStore = {
@@ -94,7 +95,7 @@ export async function deliverOfferEnquiry(
   const log = deps.log ?? (() => {});
 
   // Shape and caps first (no audience yet): a malformed request never costs a query.
-  const shape = validateOfferEnquiry(raw, ['adult', 'youth']);
+  const shape = validateOfferEnquiry(raw, SPLIT_AUDIENCES);
   if (!shape.ok) {
     const { audience: _ignored, ...rest } = shape.fieldErrors;
     void _ignored;

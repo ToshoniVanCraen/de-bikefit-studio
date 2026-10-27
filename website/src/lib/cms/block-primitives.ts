@@ -16,7 +16,7 @@ export type SectionVariant = z.infer<typeof sectionVariantSchema>;
 
 /**
  * Links may be internal paths (`/bikefit`), anchors (`#contact`), `tel:` URIs
- * (the prototype's main CTA dials 0473 95 26 33) or absolute URLs — so this is
+ * (the prototype's main CTA dials +32 473 95 26 33) or absolute URLs — so this is
  * a non-empty string, not a URL.
  */
 export const linkSchema = z.object({

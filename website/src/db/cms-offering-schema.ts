@@ -11,10 +11,11 @@
  *
  *  - the copy a visitor reads on `/aanbod` and `/aanbod/<slug>` (title,
  *    summary, intro, Doel, Inhoud, Mogelijke extra's, image, category, order,
- *    the free-text Duur of an offering that is asked for, the meta description);
+ *    the free-text Duur and Kostprijs of an offering that is asked for, the
+ *    meta description);
  *  - what an admin decides: shown on the website or not, one option or
- *    separate Volwassene/Jeugd variants, booked directly online or asked for
- *    through the enquiry form.
+ *    separate Volwassene / Jeugd – eenmalig / Jeugd – volledig pakket variants,
+ *    booked directly online or asked for through the enquiry form.
  *
  * `cms_offering_variants` keeps, per variant, the booking service it is booked
  * as (`cms_services`, which owns duration, buffer, guardian rule and location
@@ -88,6 +89,11 @@ export const cmsOfferings = pgTable(
     extrasNote: text('extras_note').default('').notNull(),
     /** Free-text Duur, public only for an offering that is asked for; '' = "Duur in overleg". */
     duration: text('duration').default('').notNull(),
+    /**
+     * Free-text Kostprijs, public only for an offering that is asked for (migration 0017,
+     * 27 Oct 2026): "Gratis binnen 6 maanden na je fit, daarna € 75". '' = the variants' prices.
+     */
+    priceText: text('price_text').default('').notNull(),
     /** Text of the booking button; '' = the default label. */
     ctaLabel: text('cta_label').default('').notNull(),
     image: jsonb('image').$type<CmsOfferingImage | null>(),
@@ -98,7 +104,7 @@ export const cmsOfferings = pgTable(
     isListed: boolean('is_listed').default(true).notNull(),
     /** `direct` (online booking) | `enquiry` (the enquiry form on the offer page). */
     bookingMode: text('booking_mode').default('enquiry').notNull(),
-    /** `single` (one option) | `audience` (Volwassene and Jeugd apart). */
+    /** `single` (one option) | `audience` (Volwassene, Jeugd – eenmalig and Jeugd – volledig pakket apart). */
     variantMode: text('variant_mode').default('single').notNull(),
     /** Can be ticked as an extra when booking an offering that lists it (needs `addonMinutes` and a price). */
     isAddon: boolean('is_addon').default(false).notNull(),
@@ -124,7 +130,11 @@ export const cmsOfferingVariants = pgTable(
     offeringId: text('offering_id')
       .notNull()
       .references(() => cmsOfferings.id, { onDelete: 'cascade' }),
-    /** `all` (single option) | `adult` (Volwassene) | `youth` (Jeugd). */
+    /**
+     * `all` (single option) | `adult` (Volwassene) | `youth` (Jeugd – eenmalig) |
+     * `youth-package` (Jeugd – volledig pakket, 27 Oct 2026). Plain text, no CHECK: a new
+     * audience needs no migration; `src/lib/offers/offering-audience.ts` is the closed set.
+     */
     audience: text('audience').notNull(),
     /** The booking service this variant is booked as; `null` = none (enquiry only). */
     serviceId: text('service_id').references(() => cmsServices.id, { onDelete: 'set null' }),

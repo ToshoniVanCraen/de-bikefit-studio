@@ -11,7 +11,7 @@ import { formatDuration } from '@/lib/booking/format';
 import { requireCmsUser } from '@/lib/cms/auth';
 import { can } from '@/lib/cms/permissions';
 import { OFFER_CATEGORY_LABELS } from '@/lib/offers/catalogue';
-import { OFFERING_STATUS_LABELS } from '@/lib/offers/offering';
+import { OFFERING_STATUS_LABELS, offeringPriceText } from '@/lib/offers/offering';
 import {
   listOfferingsForAdmin,
   type AdminOffering,
@@ -66,7 +66,7 @@ export default async function AdminOfferingsPage() {
     <>
       <PageHeading
         title="Aanbod"
-        description="Alles wat de studio aanbiedt, in één lijst: tekst, tonen of niet, Volwassene en Jeugd apart of één optie, duur en prijs per variant, en rechtstreeks online boeken of enkel op aanvraag. De website en de afspraakpagina volgen meteen. Aanbieders kiezen zelf wat ze aanbieden (Mijn agenda)."
+        description="Alles wat de studio aanbiedt, in één lijst: tekst, tonen of niet, Volwassene en Jeugd (eenmalig of volledig pakket) apart of één optie, duur en prijs per variant, en rechtstreeks online boeken of enkel op aanvraag. De website en de afspraakpagina volgen meteen. Aanbieders kiezen zelf wat ze aanbieden (Mijn agenda)."
         actions={
           <Button size="sm" render={<Link href="/admin/aanbod/nieuw" />}>
             Nieuw aanbod
@@ -150,6 +150,9 @@ export default async function AdminOfferingsPage() {
 }
 
 function offeringPrice(offering: AdminOffering): string {
+  // An offering that is asked for may show a free text instead (what the website prints).
+  const text = offeringPriceText(offering.resolved, offering.content.priceText);
+  if (text) return text;
   const priced = offering.resolved.variants.filter((variant) => variant.priceCents != null);
   if (priced.length === 0) return 'op aanvraag';
   return priced

@@ -121,6 +121,15 @@ const LABELS: Record<string, string> = {
   formTitle: 'Titel boven het formulier',
   sentTitle: 'Titel na versturen',
   sentText: 'Tekst na versturen (leeg = standaardtekst)',
+  amounts: 'Voorgestelde bedragen (leeg = enkel een vrij bedrag)',
+  cents: 'Bedrag in eurocent (7500 = € 75)',
+  caption: 'Bijschrift (optioneel, bv. Volledige bikefit)',
+  validityNote: 'Geldigheid (regel onder de inleiding en op de bevestiging)',
+  // `location` block
+  mapLabel: 'Knoptekst voor de kaart',
+  note: 'Opmerking onder het adres (leeg = geen opmerking)',
+  routeLabel: 'Linktekst voor de route',
+  showMap: 'Kaart tonen (laadt pas na een klik van de bezoeker)',
   // `booking` block
   serviceIds: 'Diensten (één dienst-ID per regel; leeg = alle actieve diensten)',
   showProviderChoice: 'Keuze van aanbieder tonen',

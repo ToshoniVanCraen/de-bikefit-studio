@@ -150,7 +150,7 @@ failure by `result.ok` alone, and does it carry a Dutch `message`? *Example:* `c
 
 **T5. Functions do not mutate inputs; read-only parameters are `readonly T[]` / `Readonly<T>` in new code.**
 *Check:* `.push/.splice/.sort/.reverse` on a parameter is a defect. *Example:* `extrasTargets(defaults:
-readonly DefaultOffering[])` (`scripts/lib/aanbod-extras-patch.mts`).
+readonly DefaultOffering[])` (`scripts/lib/aanbod-extras-targets.mts`).
 
 **T6. Values crossing a cache, action or server→client boundary are plain JSON:** instants as ISO strings,
 local dates `YYYY-MM-DD`, money as integer cents; never `Date`, `Map`, `Set`, class or function. *Example:*
@@ -391,17 +391,28 @@ only; line numbers move as files change. Strike an item here when it is fixed.
 - **S1 size.** `src/lib/booking/repo.ts` 1275, `src/lib/cms/blocks.ts` 986, `src/lib/cms/repo.ts` 917,
   `src/db/cms-schema.ts` 829, `src/components/admin/blocks/field-inputs.tsx` 655,
   `src/components/studio/booking/booking-widget.tsx` 631 (11 `useState`, K1), `src/lib/booking/public-booking.ts`
-  611, `src/lib/offers/repo.ts` 605, `src/components/admin/provider-editor.tsx` 575, `scripts/cms-selftest.mts`
-  1644, `scripts/lib/aanbod-migrate.mts` 1007, `scripts/cms-seed.mts` 734, `scripts/lib/aanbod-extras-patch.mts`
-  526, `scripts/selftest/offerings.mts` 907, `scripts/selftest/staging-gate.mts` 518,
-  `src/lib/offers/offering.test.ts` 549; `src/lib/cms/auth.ts` is at 500.
+  611, `src/components/admin/provider-editor.tsx` 575, `scripts/cms-selftest.mts`
+  1644, `scripts/lib/aanbod-migrate.mts` 1007, `scripts/cms-seed.mts` 734,
+  `scripts/selftest/offerings.mts` 907, `scripts/selftest/staging-gate.mts` 518; `src/lib/cms/auth.ts`
+  is at 500. (27 Oct 2026: `src/lib/offers/repo.ts` is down to 500 and `offering.test.ts` to 462 by
+  splitting out `repo-variant-services.ts`, `offering-labels.ts` and `offering-legacy.test.ts`;
+  `src/lib/offers/offering.ts` is 521, down from 566. Same day: the site settings moved out of
+  `src/lib/cms/blocks.ts` into `site-settings.ts`, so `blocks.ts` is 890, down from 988.)
 - **B2.** `src/lib/cms/{auth,users,session}.ts` and `cms/mfa/challenge.ts` reach the database or
   `next/headers` without `server-only` and without saying why in their own header (only `password-upgrade.ts:13`).
-- **B5.** `src/lib/offers/repo.ts:15` imports `locationExists` from booking's internal `repo-shared.ts`;
+- **B5.** `src/lib/offers/repo-variant-services.ts:6` (moved out of `repo.ts`) imports `locationExists`
+  from booking's internal `repo-shared.ts`;
   `offers/offering-store.ts:7` and `offers/repo.ts:13` take `BOOKING_TAG` from the reader `booking/content.ts`.
+  Copy tokens (27 Oct 2026) add three deliberate upward imports of pure `studio/` modules, to be settled in
+  the refactor pass: `cms/site-settings.ts` reads the defaults from `studio/legal.ts` and
+  `studio/months-in-words.ts` (the same as `email/templates.ts` already does with `legal.ts`), and
+  `email/resolve-copy.ts` imports the pure engine `studio/copy-tokens.ts` and loads the server-only
+  `studio/copy-token-lookup.ts` lazily, because `sendEmail()` is the one place every mail passes. Moving
+  `legal.ts`, `copy-tokens.ts` and `months-in-words.ts` to a neutral area would remove all three.
 - **B6.** `src/lib/booking/public-actions.ts:6-18` imports `createConfirmationRef`/`confirmationPath` (server-only
   HMAC module `components/studio/booking/confirmation-ref.ts`) and `PENDING_PROVIDER_TEXT` (`.../types.ts`).
-- **B7.** Cycle `src/lib/offers/catalogue.ts:10` ↔ `src/lib/offers/offering.ts:3`, the only one found in `src/`.
+- **B7.** Cycle `src/lib/offers/catalogue.ts:10` ↔ `src/lib/offers/offering-labels.ts:2` (it was `offering.ts`
+  until the labels moved out on 27 Oct 2026; `offering.ts` re-exports them), the only one found in `src/`.
 - **Placement, N1.** `src/lib/cms/repo.ts:38` imports the write-path sanitiser from `./actions/sanitize`;
   `src/lib/analytics/ga4-tag.tsx` is a client component in `src/lib`; `admin/analytics-panel.tsx` uses `export default`.
 - **N4 duplicates.** `ok`/`err`: `cms/repo.ts:63-64`, `email/repo.ts:52-53`, `booking/repo-shared.ts:17-18`,
@@ -433,13 +444,14 @@ only; line numbers move as files change. Strike an item here when it is fixed.
 - **X3, X5, X6.** `scripts/cms-retention.mts` deletes on `--apply` without `--expect-host` and echoes an unknown
   argument (`:65`); `cms-seed.mts`, `cms-seed-booking.mts`, `cms-bootstrap.mts` write to Neon without it;
   `cms-rollout-aanbod.mts:102`, `cms-mfa-reset.mts:66`, `staging-access.mts:125` print `error.message`, not
-  `describeError()`; `aanbod-extras-patch.mts` takes `withTransportRetry` from `aanbod-prices-plan.mts`,
-  `writeBackup` from `aanbod-rollout.mts`, `readOnlyDb`/`withAdminSession` from `aanbod-rollout-run.mts`.
+  `describeError()`; `aanbod-extras-plan.mts` takes `withTransportRetry` from `aanbod-prices-plan.mts`;
+  `aanbod-extras-patch.mts` takes `writeBackup` from `aanbod-rollout.mts`, `readOnlyDb`/`withAdminSession`
+  from `aanbod-rollout-run.mts`.
 - **K4.** Palette classes `components/ui/badge.tsx:14-15`; `text-[Npx]` in `admin/analytics-panel.tsx:232`,
   `admin/blocks/block-editor.tsx:134`, `admin/charts/bar-list.tsx:56`, `admin/email-service-manager.tsx:26`,
   `admin/media-picker.tsx:63`, `admin/nav.tsx:32`; `rgb()` in `studio/consent-banner.tsx:84`; `bg-black/10` in
   `ui/sheet.tsx:31`; hex `themeColor` in `app/layout.tsx:66`.
-- **F3.** `components/admin/page-settings-form.tsx:19` (client) imports a value from the 986-line `cms/blocks.ts`.
+- **F3.** `components/admin/page-settings-form.tsx:19` (client) imports a value from the 890-line `cms/blocks.ts`.
 - **Q1.** No own test: `components/studio/booking/dates.ts` (197), `components/admin/blocks/field-spec.ts` (322),
   `lib/analytics/dates.ts`; `lib/cms/blocks.ts` only indirectly (seed-content tests, self-test §6).
 - **Q4, W1 docs.** The `scripts/cms-selftest.mts` header omits the follow-ups, aanbod-prijzen and aanbod-extras

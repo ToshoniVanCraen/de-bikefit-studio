@@ -4,6 +4,11 @@ import { useId, useRef, useState } from 'react';
 import { formatPrice } from '@/lib/booking/format';
 import { orderGiftVoucherAction } from '@/lib/gift-voucher/actions';
 import {
+  GIFT_VOUCHER_OTHER_AMOUNT,
+  formatAmountInput,
+  type GiftVoucherAmount,
+} from '@/lib/gift-voucher/amounts';
+import {
   GIFT_VOUCHER_LIMITS,
   GIFT_VOUCHER_MESSAGES,
   GIFT_VOUCHER_SUBMIT_LABEL,
@@ -11,12 +16,16 @@ import {
   type GiftVoucherField,
 } from '@/lib/gift-voucher/order';
 import { LEGAL_LINKS } from '@/lib/studio/legal';
+import { AmountPicker } from './amount-picker';
 
 type Values = Record<GiftVoucherField | 'website', string>;
 type Errors = Partial<Record<GiftVoucherField, string>>;
 
 const EMPTY: Values = { amount: '', message: '', name: '', email: '', phone: '', website: '' };
 const FIELD_ORDER: GiftVoucherField[] = ['amount', 'message', 'name', 'email', 'phone'];
+
+/** Shown under the suggested amounts when the visitor sends the form without choosing one. */
+const CHOOSE_AMOUNT_MESSAGE = 'Kies een bedrag.';
 
 /** One id per filled-in form, so a repeated submit is recognised server-side. */
 function newRequestId(): string {
@@ -34,11 +43,18 @@ function newRequestId(): string {
  * and says the order was not sent, with the phone number as the way out. A
  * submit in flight blocks a second one (ref, not just the disabled button),
  * and the server ignores a repeat of a form it already sent.
+ *
+ * Suggested amounts (Toshoni, 27 Oct 2026) are a convenience on top of the
+ * amount field: choosing one only fills `values.amount`, "Ander bedrag" shows
+ * the field, and the validation is the same as for a typed amount. Without
+ * suggestions the form is the plain amount field it always was.
  */
 export function GiftVoucherForm({
   formTitle,
   sentTitle,
   sentText,
+  validityNote,
+  amounts,
   headingTag,
   phoneLabel,
   phoneHref,
@@ -46,6 +62,10 @@ export function GiftVoucherForm({
   formTitle: string;
   sentTitle: string;
   sentText: string;
+  /** How long a voucher is valid; repeated on the confirmation. Empty = none. */
+  validityNote: string;
+  /** The suggested amounts; empty = only the free amount field. */
+  amounts: readonly GiftVoucherAmount[];
   headingTag: 'h2' | 'h3';
   phoneLabel: string;
   phoneHref: string;
@@ -60,7 +80,10 @@ export function GiftVoucherForm({
   const [formError, setFormError] = useState('');
   const [pending, setPending] = useState(false);
   const [sent, setSent] = useState<{ amountCents: number; email: string } | null>(null);
+  /** The chosen suggestion's key, {@link GIFT_VOUCHER_OTHER_AMOUNT}, or `''` while nothing is chosen. */
+  const [choice, setChoice] = useState('');
   const hasPhone = Boolean(phoneLabel && phoneHref);
+  const hasSuggestions = amounts.length > 0;
 
   function update(field: keyof Values, value: string) {
     setValues((current) => ({ ...current, [field]: value }));
@@ -69,8 +92,22 @@ export function GiftVoucherForm({
     }
   }
 
+  /** The amount field, or (while it is hidden behind the suggestions) the first suggestion. */
   function focusField(field: GiftVoucherField) {
-    rootRef.current?.querySelector<HTMLElement>(`[name="${field}"]`)?.focus();
+    const root = rootRef.current;
+    const target =
+      root?.querySelector<HTMLElement>(`[name="${field}"]`) ??
+      (field === 'amount' ? root?.querySelector<HTMLElement>('[name="amountChoice"]') : null);
+    target?.focus();
+  }
+
+  function chooseAmount(next: string) {
+    setChoice(next);
+    setErrors((current) => ({ ...current, amount: undefined }));
+    setValues((current) => ({
+      ...current,
+      amount: next === GIFT_VOUCHER_OTHER_AMOUNT ? '' : formatAmountInput(Number(next)),
+    }));
   }
 
   function showErrors(fieldErrors: Errors, message: string) {
@@ -123,6 +160,7 @@ export function GiftVoucherForm({
     }));
     setErrors({});
     setFormError('');
+    setChoice('');
     setSent(null);
     requestAnimationFrame(() => focusField('amount'));
   }
@@ -138,6 +176,7 @@ export function GiftVoucherForm({
             {sentText ||
               `Bedankt! We maken een factuur en een betaallink op en sturen die naar ${sent.email}.`}
           </p>
+          {validityNote ? <p className="studio-booking__confirm-text">{validityNote}</p> : null}
           <dl className="studio-booking__summary">
             <div>
               <dt>Bedrag</dt>
@@ -160,6 +199,22 @@ export function GiftVoucherForm({
     onChange: (value: string) => update(name, value),
   });
 
+  const amountField = (
+    <Field
+      {...field('amount')}
+      label="Bedrag in euro"
+      hint="Kies zelf het bedrag, bijvoorbeeld 50 of 75,50."
+      inputMode="decimal"
+      autoComplete="off"
+      maxLength={GIFT_VOUCHER_LIMITS.amount}
+    />
+  );
+  // While the amount field is hidden behind the suggestions, its error is shown on the choice.
+  let choiceError: string | undefined;
+  if (errors.amount && choice !== GIFT_VOUCHER_OTHER_AMOUNT) {
+    choiceError = choice ? errors.amount : CHOOSE_AMOUNT_MESSAGE;
+  }
+
   return (
     <div className="studio-booking studio-voucher" ref={rootRef}>
       {formTitle ? <Heading className="studio-booking__enquiry-title">{formTitle}</Heading> : null}
@@ -177,14 +232,20 @@ export function GiftVoucherForm({
       >
         <fieldset className="studio-booking__fieldset">
           <legend className="studio-booking__legend-title">Je cadeaubon</legend>
-          <Field
-            {...field('amount')}
-            label="Bedrag in euro"
-            hint="Kies zelf het bedrag, bijvoorbeeld 50 of 75,50."
-            inputMode="decimal"
-            autoComplete="off"
-            maxLength={GIFT_VOUCHER_LIMITS.amount}
-          />
+          {hasSuggestions ? (
+            <>
+              <AmountPicker
+                id={`${formId}-amount-picker`}
+                amounts={amounts}
+                choice={choice}
+                error={choiceError}
+                onChoose={chooseAmount}
+              />
+              {choice === GIFT_VOUCHER_OTHER_AMOUNT ? amountField : null}
+            </>
+          ) : (
+            amountField
+          )}
           <Field
             {...field('message')}
             label="Persoonlijke boodschap"

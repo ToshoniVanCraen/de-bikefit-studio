@@ -11,6 +11,7 @@ import {
   EXTRA_PARAM,
   SERVICE_PARAM,
 } from '@/lib/offers/catalogue';
+import { resolveCopy } from '@/lib/studio/copy-token-lookup';
 import { defaultLocale } from '@/lib/studio/locale';
 import { buildOfferMetadata, buildPageMetadata, notFoundMetadata } from '@/lib/studio/seo';
 import { getStudioPage } from '@/lib/studio/site';
@@ -73,16 +74,24 @@ export default async function OfferRoute({
   searchParams: Promise<RouteSearchParams>;
 }) {
   const { slug } = await params;
-  const entry = await loadOffer(slug);
-  if (entry) {
+  const offer = await loadOffer(slug);
+  if (offer) {
     const [settings, index] = await Promise.all([
       getSiteSettings(defaultLocale),
       getPublishedPage(defaultLocale, OFFER_PAGE_PREFIX),
     ]);
+    // Copy tokens in everything the offering says (summary, intro, Doel, Inhoud, extra's, the Duur
+    // and Kostprijs lines, the meta description), and in the default description the page falls
+    // back to. The page and its JSON-LD read these resolved copies; `generateMetadata` resolves
+    // the raw entry itself (`buildOfferMetadata`), so nothing is resolved from resolved text.
+    const [entry, seo] = await Promise.all([
+      resolveCopy(offer, defaultLocale),
+      resolveCopy(settings.seo, defaultLocale),
+    ]);
     return (
       <OfferPageView
         entry={entry}
-        settings={settings}
+        settings={{ ...settings, seo }}
         locale={defaultLocale}
         parentTitle={index?.title ?? 'Aanbod'}
       />

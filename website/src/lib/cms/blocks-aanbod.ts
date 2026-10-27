@@ -1,4 +1,9 @@
 import { z } from 'zod';
+import {
+  GIFT_VOUCHER_DEFAULT_AMOUNTS,
+  GIFT_VOUCHER_VALIDITY_NOTE,
+  giftVoucherAmountsSchema,
+} from '@/lib/gift-voucher/amounts';
 import { OFFER_CATEGORIES, OFFER_CATEGORY_LABELS, OFFER_INDEX_PATH } from '@/lib/offers/catalogue';
 import {
   emptyImage,
@@ -67,10 +72,15 @@ export const offerCatalogueSchema = z.object({
 
 /**
  * `giftVoucher` — the "Cadeaubon" page: a short intro and the order form
- * (amount of the visitor's choice, personal message, contact details, "Bestel
- * nu"). The form and its rules are code (`src/lib/gift-voucher/`); the block
- * owns only the copy around it. Its card on `/aanbod` is an `extraCards`
- * entry of that page's `offerCatalogue` block.
+ * (suggested amounts or an amount of the visitor's choice, personal message,
+ * contact details, "Bestel nu"). The form and its rules are code
+ * (`src/lib/gift-voucher/`); the block owns only the copy around it and the
+ * suggested amounts, which are a convenience: the amount stays the validated
+ * number. Its card on `/aanbod` is an `extraCards` entry of that page's
+ * `offerCatalogue` block.
+ *
+ * `amounts` and `validityNote` (Toshoni, 27 Oct 2026) default here, so a page
+ * saved before they existed shows them without a data change.
  */
 export const giftVoucherSchema = z.object({
   /** Kept for existing content; no longer used (the card is on the catalogue block). */
@@ -85,6 +95,12 @@ export const giftVoucherSchema = z.object({
   /** Shown once the mail provider accepted the request; empty = a neutral default. */
   sentTitle: z.string().default(''),
   sentText: z.string().default(''),
+  /** Suggested amounts above the free amount field; an empty list leaves only the free field. */
+  amounts: giftVoucherAmountsSchema.default(() =>
+    GIFT_VOUCHER_DEFAULT_AMOUNTS.map((amount) => ({ ...amount })),
+  ),
+  /** One line on how long a voucher is valid, under the intro and on the confirmation; empty = none. */
+  validityNote: z.string().default(GIFT_VOUCHER_VALIDITY_NOTE),
 });
 
 /**
@@ -135,9 +151,9 @@ export const aanbodBlockRegistry = {
   giftVoucher: {
     label: 'Cadeaubon (bestelformulier)',
     description:
-      'Bestelformulier voor een cadeaubon: bedrag naar keuze, persoonlijke boodschap en contactgegevens. “Bestel nu” mailt de aanvraag naar de ontvanger uit Beheer → E-mail; factuur en betaallink maak je zelf op. Hoort op /cadeaubon.',
+      'Bestelformulier voor een cadeaubon: voorgestelde bedragen (en een bedrag naar keuze), persoonlijke boodschap en contactgegevens. “Bestel nu” mailt de aanvraag naar de ontvanger uit Beheer → E-mail; factuur en betaallink maak je zelf op. Hoort op /cadeaubon.',
     editorHint:
-      'Zonder werkende e-mailverzending of zonder ontvanger (Beheer → E-mail) meldt het formulier dat de bestelling niet verstuurd is. Vermeld geen geldigheid of voorwaarden die nog niet beslist zijn.',
+      'Zonder werkende e-mailverzending of zonder ontvanger (Beheer → E-mail) meldt het formulier dat de bestelling niet verstuurd is. De geldigheid staat in het veld Geldigheid, met de variabele {{cadeaubon-geldigheid}} die de looptijd uit Instellingen → Regels toont (nu een jaar na aankoop); typ de looptijd niet zelf en vermeld geen andere voorwaarden die nog niet beslist zijn. Voorgestelde bedragen staan in eurocent (7500 = € 75), in de volgorde van de pagina; een leeg bijschrift toont enkel het bedrag.',
     schema: giftVoucherSchema,
     defaultData: {
       sortOrder: 0,
@@ -148,6 +164,8 @@ export const aanbodBlockRegistry = {
       formTitle: 'Bestel je cadeaubon',
       sentTitle: 'Je bestelling is verstuurd',
       sentText: '',
+      amounts: GIFT_VOUCHER_DEFAULT_AMOUNTS.map((amount) => ({ ...amount })),
+      validityNote: GIFT_VOUCHER_VALIDITY_NOTE,
     },
   },
 

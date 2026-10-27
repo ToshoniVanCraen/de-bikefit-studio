@@ -147,7 +147,10 @@ function form(fields: Record<string, string>): FormData {
   return data;
 }
 
-/** A new offering: Volwassene/Jeugd, booked directly, a price for Volwassene only. */
+/**
+ * A new offering: Volwassene, Jeugd – eenmalig and Jeugd – volledig pakket,
+ * booked directly, no price for Jeugd – eenmalig.
+ */
 const DIRECT = {
   offeringId: '',
   title: 'Bikefit – huidige fiets',
@@ -166,6 +169,10 @@ const DIRECT = {
   'buffer:youth': '10',
   'guardian:youth': 'on',
   'price:youth': '',
+  'duration:youth-package': '120',
+  'buffer:youth-package': '',
+  'guardian:youth-package': 'on',
+  'price:youth-package': '275',
 };
 
 const writesTo = (table: unknown) => fake.writes.filter((write) => write.table === table);
@@ -231,20 +238,35 @@ describe('saveOfferingAction: who may change the offer', () => {
       }),
       expect.objectContaining({
         slug: 'bikefit-huidige-fiets-jeugd',
-        choiceLabel: 'Jeugd',
+        name: 'Bikefit – huidige fiets – Jeugd – eenmalig',
+        choiceLabel: 'Jeugd – eenmalig',
         durationMinutes: 60,
         bufferAfterMinutes: 10,
         requiresGuardian: true,
       }),
+      expect.objectContaining({
+        slug: 'bikefit-huidige-fiets-jeugd-pakket',
+        name: 'Bikefit – huidige fiets – Jeugd – volledig pakket',
+        choiceLabel: 'Jeugd – volledig pakket',
+        durationMinutes: 120,
+        bufferAfterMinutes: null,
+        requiresGuardian: true,
+      }),
     ]);
+    // The services follow the audiences: one block per offering, three places in it.
+    const orders = writesTo(cmsServices).map(
+      (write) => (write.values as { sortOrder: number }).sortOrder,
+    );
+    expect(orders).toEqual([60, 61, 62]);
     expect(writesTo(cmsOfferingVariants).map((write) => write.values ?? write.kind)).toEqual([
       expect.objectContaining({ audience: 'adult', priceCents: 14950 }),
       expect.objectContaining({ audience: 'youth', priceCents: null }),
+      expect.objectContaining({ audience: 'youth-package', priceCents: 27500 }),
       'delete',
     ]);
     expect(
       writesTo(cmsAuditLog).map((write) => (write.values as { action: string }).action),
-    ).toEqual(['service.create', 'service.create', 'offering.create']);
+    ).toEqual(['service.create', 'service.create', 'service.create', 'offering.create']);
   });
 });
 
@@ -255,7 +277,15 @@ describe('saveOfferingAction: what it refuses (admin)', () => {
     const result = await saveOfferingAction(IDLE, form({ ...DIRECT, 'duration:youth': '' }));
     expect(result).toEqual({
       ok: false,
-      message: 'Vul voor Jeugd de duur in om het online te boeken.',
+      message: 'Vul voor Jeugd – eenmalig de duur in om het online te boeken.',
+    });
+    const noPackage = await saveOfferingAction(
+      IDLE,
+      form({ ...DIRECT, 'duration:youth-package': '' }),
+    );
+    expect(noPackage).toEqual({
+      ok: false,
+      message: 'Vul voor Jeugd – volledig pakket de duur in om het online te boeken.',
     });
     expect(fake.writes).toEqual([]);
   });
@@ -313,6 +343,7 @@ describe('saveOfferingAction: what it refuses (admin)', () => {
         variantMode: 'single',
         bookingMode: 'enquiry',
         duration: 'Traject in overleg',
+        priceText: '  Gratis binnen 6 maanden na je fit, daarna € 75  ',
         'price:all': '95',
       }),
     );
@@ -328,6 +359,7 @@ describe('saveOfferingAction: what it refuses (admin)', () => {
           isListed: false,
           bookingMode: 'enquiry',
           duration: 'Traject in overleg',
+          priceText: 'Gratis binnen 6 maanden na je fit, daarna € 75',
         }),
       },
     ]);
@@ -338,5 +370,70 @@ describe('saveOfferingAction: what it refuses (admin)', () => {
       serviceId: null,
       priceCents: 9500,
     });
+  });
+
+  it('a choice of an extra keeps its key when its label changes; a new row gets a key from its label', async () => {
+    const existing = { id: 'off-2', slug: 'bikefit-tweede-fiets', locale: 'nl' };
+    let calls = 0;
+    fake.rows.set(cmsOfferings, () => (calls++ === 0 ? [existing] : []));
+    const result = await saveOfferingAction(
+      IDLE,
+      form({
+        offeringId: 'off-2',
+        title: 'Bikefit – tweede fiets',
+        slug: 'bikefit-tweede-fiets',
+        variantMode: 'single',
+        bookingMode: 'enquiry',
+        'price:all': '75',
+        isAddon: 'on',
+        'addonOptionKey:0': 'zelfde-type',
+        'addonOptionLabel:0': 'Zelfde soort fiets',
+        'addonOptionMinutes:0': '30',
+        'addonOptionPrice:0': '75',
+        'addonOptionKey:1': '',
+        'addonOptionLabel:1': 'Ander type fiets',
+        'addonOptionMinutes:1': '60',
+        'addonOptionPrice:1': '150',
+        // A key that is no slug is not trusted: the label decides.
+        'addonOptionKey:2': 'Geen Slug!',
+        'addonOptionLabel:2': 'Derde fiets',
+        'addonOptionMinutes:2': '90',
+        'addonOptionPrice:2': '200',
+      }),
+    );
+    expect(result.ok).toBe(true);
+    expect(writesTo(cmsOfferings)[0].values).toMatchObject({
+      addonOptions: [
+        { key: 'zelfde-type', label: 'Zelfde soort fiets', minutes: 30, priceCents: 7500 },
+        { key: 'ander-type-fiets', label: 'Ander type fiets', minutes: 60, priceCents: 15000 },
+        { key: 'derde-fiets', label: 'Derde fiets', minutes: 90, priceCents: 20000 },
+      ],
+    });
+  });
+
+  it('a price text is optional and at most 120 characters; the cents stay the structured price', async () => {
+    const enquiry = {
+      title: 'Coaching',
+      slug: 'coaching',
+      variantMode: 'single',
+      bookingMode: 'enquiry',
+      'price:all': '65',
+    };
+    const tooLong = await saveOfferingAction(
+      IDLE,
+      form({ ...enquiry, priceText: 'x'.repeat(121) }),
+    );
+    expect(tooLong).toEqual({
+      ok: false,
+      message: 'De prijstekst is te lang (max. 120 tekens).',
+    });
+    expect(fake.writes).toEqual([]);
+    await expect(
+      saveOfferingAction(IDLE, form({ ...enquiry, priceText: 'x'.repeat(120) })),
+    ).rejects.toMatchObject({
+      url: '/admin/aanbod/row-1?created=1',
+    });
+    expect(writesTo(cmsOfferings)[0].values).toMatchObject({ priceText: 'x'.repeat(120) });
+    expect(writesTo(cmsOfferingVariants)[0].values).toMatchObject({ priceCents: 6500 });
   });
 });

@@ -11,6 +11,14 @@ vaste ID; IDs worden nooit hergebruikt of hernummerd.
   prestaties of merken zonder bron.
 - Wijzig je de inhoud, pas dan in hetzelfde werk de rij aan. Zet de status op *afgerond* met datum
   zodra de definitieve inhoud gepubliceerd is. Verwijder geen rijen.
+- **Sinds 27 okt 2026 typt geen tekst nog een bedrag, een duur, een opvolgperiode, het
+  telefoonnummer, het e-mailadres, het adres, de bedrijfsgegevens of de geldigheid van de
+  cadeaubon**: de tekst bevat een token (`{{prijs:…}}`, `{{extra:…}}`, `{{duur:…}}`,
+  `{{opvolging:…}}`, `{{tweede-bezoek-gratis}}`, `{{cadeaubon-geldigheid}}`, `{{telefoon}}`,
+  `{{e-mail}}`, `{{adres}}`, `{{bedrijf}}`, `{{zetel}}`, `{{kbo}}`, `{{btw}}`) dat de site op het
+  moment van tonen uit de bron haalt (`cms-architecture.md` §5). De rijen hieronder noemen de
+  bedragen zoals de bezoeker ze leest; een bedrag wijzig je op de plaats van de bron, nooit in de
+  tekst. `src/lib/studio/content-facts.test.ts` bewaakt dat.
 - "CMS" betekent: `/admin` → **Pagina's** → de pagina (titel zoals in de lijst) → het blok →
   **Inhoud bewerken** → het veld → **Blok opslaan** → **Publiceren**. Het blok *Team* toont
   bovenaan een korte hint die naar dit register verwijst.
@@ -33,13 +41,13 @@ datum).
 | --- | --- | --- | --- | --- | --- | --- |
 | P | Prijzen | 9 | 0 | 1 | 0 | 8 |
 | D | Duur | 9 | 2 | 0 | 0 | 7 |
-| E | Inhoud, extra's, pakketten | 10 | 1 | 9 | 0 | 0 |
+| E | Inhoud, extra's, pakketten | 10 | 1 | 8 | 0 | 1 |
 | T | Team | 5 | 1 | 2 | 1 | 1 |
 | B | AI-beelden en lege beeldvakken | 6 | 5 | 0 | 0 | 1 |
 | K | Online boeken per dienst | 6 | 2 | 1 | 0 | 3 |
-| G | Bestaande hiaten in aangeraakte inhoud | 7 | 2 | 1 | 2 | 2 |
+| G | Bestaande hiaten in aangeraakte inhoud | 7 | 0 | 1 | 3 | 3 |
 | C | Cadeaubon (bestelformulier) | 4 | 3 | 1 | 0 | 0 |
-| | **Totaal** | **56** | **16** | **15** | **3** | **22** |
+| | **Totaal** | **56** | **14** | **14** | **4** | **24** |
 
 ## 1. Prijzen (P)
 
@@ -48,6 +56,10 @@ aanvraag" (`cms-architecture.md` §14). Er is geen enkel bedrag ingevuld of verz
 2026 stonden deze velden in het blok *Dienst (aanbod)* van de dienstpagina; die pagina's bestaan
 niet meer.
 
+- Sinds 27 okt 2026: een aanbod **op aanvraag** kan een vrije **Prijs (tekst)** tonen (veld onder
+  **Duur (tekst)**, bv. "Gratis binnen 6 maanden na je fit, daarna € 75", P-08); leeg = de bedragen
+  per variant. "Volwassene en Jeugd apart" heeft drie varianten, elk met een eigen prijs:
+  **Volwassene**, **Jeugd – eenmalig** en **Jeugd – volledig pakket** (P-01, P-02).
 - Nu staat in **Prijslabel** de bewerkbare tekst "Prijs op aanvraag"; **Prijs in eurocent** is
   leeg. Voor een aanbod gekoppeld aan boekingsdiensten zijn deze twee redactionele velden
   **niet** de publieke prijsbron: kaart en detail tonen "Prijs op aanvraag" tot de dienstprijzen
@@ -68,14 +80,14 @@ niet meer.
 
 | ID | Pagina (titel in CMS) | Nu | Nodig | Status |
 | --- | --- | --- | --- | --- |
-| P-01 | `/aanbod/bikefit-nieuwe-fiets` (*Bikefit – aankoop nieuwe fiets*) | Volwassene € 275,00 · Jeugd € 150,00 (Toshoni, 20 okt 2026; `src/lib/offers/defaults.ts`, bestaande databank via `cms:patch-aanbod-prijzen`); onder 16 zonder probleemopvolging € 150, met € 275 | — | afgerond 2026-10-20 |
-| P-02 | `/aanbod/bikefit-huidige-fiets` (*Bikefit – huidige fiets*) | Volwassene € 275,00 · Jeugd € 150,00 (Toshoni, 20 okt 2026; `src/lib/offers/defaults.ts`, bestaande databank via `cms:patch-aanbod-prijzen`); de widget toont dezelfde bedragen uit `cms_services` (K-06) | — | afgerond 2026-10-20 |
+| P-01 | `/aanbod/bikefit-nieuwe-fiets` (*Bikefit – aankoop nieuwe fiets*) | Volwassene € 275,00 · Jeugd – eenmalig € 150,00 · Jeugd – volledig pakket € 275,00 (Toshoni, 20 en 27 okt 2026; `src/lib/offers/defaults.ts`, bestaande databank: de bedragen van 20 okt via `cms:patch-aanbod-prijzen`, de drie varianten van 27 okt via een eigen patch); onder 16 kies je € 150 voor een eenmalige fit zonder opvolging of € 275 voor het volledige pakket met een jaar gratis opvolging, dat we aanraden | — | afgerond 2026-10-20 |
+| P-02 | `/aanbod/bikefit-huidige-fiets` (*Bikefit – huidige fiets*) | Volwassene € 275,00 · Jeugd – eenmalig € 150,00 · Jeugd – volledig pakket € 275,00 (Toshoni, 20 en 27 okt 2026; `src/lib/offers/defaults.ts`, bestaande databank zoals bij P-01); de widget toont dezelfde bedragen en labels uit `cms_services` (K-06) | — | afgerond 2026-10-20 |
 | P-03 | `/aanbod/voetanalyse` (*Voetanalyse*) | € 85,00 (Toshoni, 20 okt 2026; `src/lib/offers/defaults.ts`, bestaande databank via `cms:patch-aanbod-prijzen`) | — | afgerond 2026-10-20 |
 | P-04 | `/aanbod/zadelanalyse` (*Zadelanalyse*) | € 60,00 (Toshoni, 20 okt 2026; `src/lib/offers/defaults.ts`, bestaande databank via `cms:patch-aanbod-prijzen`) | — | afgerond 2026-10-20 |
 | P-05 | `/aanbod/afstellen-schoenplaatjes` (*Afstellen schoenplaatjes*) | € 15,00 (Toshoni, 20 okt 2026; `src/lib/offers/defaults.ts`, bestaande databank via `cms:patch-aanbod-prijzen`) | — | afgerond 2026-10-20 |
-| P-06 | `/aanbod/lactaattest` (*Lactaattest*) | € 120,00 (Toshoni, 20 okt 2026; `src/lib/offers/defaults.ts`, bestaande databank via `cms:patch-aanbod-prijzen`) | — | afgerond 2026-10-20 |
+| P-06 | `/aanbod/lactaattest` (*Inspanningstest* sinds 27 okt 2026; het adres bleef) | € 120,00 (Toshoni, 20 okt 2026; `src/lib/offers/defaults.ts`, bestaande databank via `cms:patch-aanbod-prijzen`) | — | afgerond 2026-10-20 |
 | P-07 | `/aanbod/coaching` (*Coaching*) | € 65,00 (Toshoni, 20 okt 2026; `src/lib/offers/defaults.ts`, bestaande databank via `cms:patch-aanbod-prijzen`) | eenheid: per sessie, per maand of per traject? (Toshoni gaf enkel het bedrag) | te bevestigen |
-| P-08 | `/aanbod/bikefit-tweede-bezoek` (*Bikefit – tweede bezoek*) | € 75,00 (Toshoni, 20 okt 2026; `src/lib/offers/defaults.ts`, bestaande databank via `cms:patch-aanbod-prijzen`); gratis tot zes maanden na de fit | — | afgerond 2026-10-20 |
+| P-08 | `/aanbod/bikefit-tweede-bezoek` (*Bikefit – tweede bezoek*) | € 75,00 (Toshoni, 20 okt 2026; `src/lib/offers/defaults.ts`, bestaande databank via `cms:patch-aanbod-prijzen`); gratis tot zes maanden na de fit. Sinds 27 okt 2026 leest de prijsregel “Gratis binnen 6 maanden na je fit, daarna € 75”: het veld **Prijs (tekst)** van het aanbod (`price_text`, migratie 0017); de variant blijft € 75,00 | — | afgerond 2026-10-20 |
 | P-09 | `/aanbod/bikefit-tweede-fiets` (*Bikefit – tweede fiets*) | € 75,00 (Toshoni, 20 okt 2026; `src/lib/offers/defaults.ts`, bestaande databank via `cms:patch-aanbod-prijzen`); zelfde type fiets € 75 (30 min extra), ander type € 150 (1 u extra), in de inhoud | — | afgerond 2026-10-20 |
 
 Een redactionele aanbodprijs verandert **niets** aan de online boeking (zie K-06): die toont
@@ -92,17 +104,22 @@ veld **Duur in de agenda (minuten)**, dat zowel de agenda als de getoonde duur b
 | ID | Pagina (titel in CMS) | Nu | Nodig | Status |
 | --- | --- | --- | --- | --- |
 | D-01 | `/aanbod/bikefit-nieuwe-fiets` (*Bikefit – aankoop nieuwe fiets*) | 2 uur | — | afgerond 2026-10-20 |
-| D-02 | `/aanbod/bikefit-huidige-fiets` (*Bikefit – huidige fiets*) | Volwassene: 2 uur · Jeugd: 2 uur (uit gekoppelde `cms_services`; Toshoni, 20 okt 2026: "duurtijd 2u" voor de fit, voor Jeugd overgenomen) | bevestigen dat ook de jeugdfit 2 uur duurt | afgerond 2026-10-20 |
+| D-02 | `/aanbod/bikefit-huidige-fiets` (*Bikefit – huidige fiets*) | Volwassene: 2 uur · Jeugd – eenmalig: 2 uur · Jeugd – volledig pakket: 2 uur (uit gekoppelde `cms_services`; Toshoni, 20 okt 2026: "duurtijd 2u" voor de fit, voor beide Jeugd-varianten overgenomen) | bevestigen dat ook de jeugdfit 2 uur duurt | afgerond 2026-10-20 |
 | D-03 | `/aanbod/voetanalyse` (*Voetanalyse*) | 30 minuten | — | afgerond 2026-10-20 |
 | D-04 | `/aanbod/zadelanalyse` (*Zadelanalyse*) | 1 uur | — | afgerond 2026-10-20 |
 | D-05 | `/aanbod/afstellen-schoenplaatjes` (*Afstellen schoenplaatjes*) | 15 minuten | — | afgerond 2026-10-20 |
-| D-06 | `/aanbod/lactaattest` (*Lactaattest*) | Duur in overleg | bevestigde duur (Toshoni gaf op 20 okt 2026 enkel de prijs) | open |
+| D-06 | `/aanbod/lactaattest` (*Inspanningstest*) | Duur in overleg | bevestigde duur (Toshoni gaf op 20 okt 2026 enkel de prijs) | open |
 | D-07 | `/aanbod/coaching` (*Coaching*) | Traject en opvolging in overleg | bevestigde opzet en opvolgritme (geen vast ritme beloven zonder bevestiging) | open |
 | D-08 | `/aanbod/bikefit-tweede-bezoek` (*Bikefit – tweede bezoek*) | 1 uur | — | afgerond 2026-10-20 |
-| D-09 | `/aanbod/bikefit-tweede-fiets` (*Bikefit – tweede fiets*) | 30 minuten tot 1 uur extra, aansluitend op je bikefit | — | afgerond 2026-10-20 |
+| D-09 | `/aanbod/bikefit-tweede-fiets` (*Bikefit – tweede fiets*) | Extra tijd bovenop je bikefit, aansluitend op je afspraak | — | afgerond 2026-10-20 |
+
+Bij D-09 staan de minuten van de twee keuzes (zelfde type 30, ander type 60) enkel bij de keuzes
+zelf; de vrije tekst herhaalt ze niet (27 okt 2026). Bij D-01 volgt de duur de Volwassenenfit: het
+veld **Duur (tekst)** bevat sinds 27 okt 2026 `{{duur:volwassenenfit}}` en toont dus "2 uur" zolang
+die dienst 120 minuten duurt.
 
 De planningsduur van een **boekbare** dienst staat in `/admin` → **Diensten** → veld
-**Duur (minuten)** (Volwassenenfit 90, Jeugdfit 60: echte, bestaande seedwaarden).
+**Duur (minuten)** (Volwassenenfit, Jeugdfit – eenmalig en Jeugdfit – volledig pakket: 120, sinds 20 en 27 okt 2026).
 Bij een gekoppeld aanbod toont de publieke detailpagina elke boekbare variant met de actuele
 dienstduur; het redactionele veld **Duur** van het aanbod wordt dan genegeerd. Voor een
 niet-gekoppeld aanbod blijft dat veld de publieke tekst. Een duur op de aanbodpagina wijzigt
@@ -117,13 +134,13 @@ is overal: "Wat er precies bij komt en wat het kost, spreken we altijd vooraf sa
 
 | ID | Pagina | Nu (voorstel) | Nodig | Status |
 | --- | --- | --- | --- | --- |
-| E-01 | `/aanbod/bikefit-nieuwe-fiets` | extra's: afstelling van je nieuwe fiets na de aankoop; aanvullende voet- of zadelanalyse | bevestigen wat er echt bij kan | te bevestigen |
+| E-01 | `/aanbod/bikefit-nieuwe-fiets` | inhoud: de afstelling van je nieuwe fiets na de aankoop is inbegrepen in de € 275, als deel van de opvolging tot zes maanden na je fit (Toshoni, 27 okt 2026); extra's: een tweede bezoek na meer dan zes maanden; een tweede fiets erbij | bevestigen wat er echt bij kan | te bevestigen |
 | E-02 | `/aanbod/bikefit-huidige-fiets` | inhoud noemt 3D-bewegingsanalyse (G-06); extra's: vervolgafspraak; gerichte voet- of zadelanalyse; nieuwe onderdelen apart | idem; is een vervolgafspraak inbegrepen of apart? | te bevestigen |
-| E-03 | `/aanbod/voetanalyse` | extra's: schoenplaatjes afstellen; volledige bikefit. Toshoni (19 okt 2026): de studio maakt 3D-geprinte schoenzolen op maat; staat nu op `/bikefit` ("Meten om beter te kijken"), nog niet in de aanbodtekst | de aanbodtekst van Voetanalyse (Beheer → Aanbod) de zolen laten noemen; prijs en of ze apart te koop zijn | te bevestigen |
+| E-03 | `/aanbod/voetanalyse` | extra's: schoenplaatjes afstellen; volledige bikefit. De 3D-geprinte schoenzolen op maat (Toshoni, 19 okt 2026) heeft Toshoni op 27 okt 2026 van de website laten halen: ze staan niet meer op `/bikefit` ("Meten om beter te kijken") en komen niet in de aanbodtekst | — | afgerond 2026-10-27 |
 | E-04 | `/aanbod/zadelanalyse` | extra's: ruimer bikefittraject; ander zadel of onderdelen indien nodig. Toshoni (19 okt 2026): ruime keuze aan testzadels; staat nu op `/bikefit`, nog niet in de aanbodtekst. Drukmeting bewust niet vermeld | de aanbodtekst van Zadelanalyse de testzadels laten noemen; is er een drukmeetsysteem? | te bevestigen |
 | E-05 | `/aanbod/afstellen-schoenplaatjes` | extra's: voetanalyse; volledige bikefit; nieuwe schoenplaatjes indien nodig | idem; plaatjes nooit "inbegrepen" zonder bevestiging | te bevestigen |
 | E-06 | `/aanbod/lactaattest` | inhoud: stapsgewijze inspanning met lactaatmetingen; extra's: coaching; vervolgmeting in overleg | idem; protocol en materiaal (fiets of eigen fiets op trainer?) | te bevestigen |
-| E-07 | `/aanbod/coaching` | extra's: lactaattest; bikefit; aanvullende opvolging in overleg | idem; vorm van de opvolging (online, in de studio, ritme) | te bevestigen |
+| E-07 | `/aanbod/coaching` | extra's: inspanningstest; bikefit; aanvullende opvolging in overleg | idem; vorm van de opvolging (online, in de studio, ritme) | te bevestigen |
 | E-08 | alle negen dienstpagina's | geen pakketten of combinatieprijzen, wel: zadel-, voetanalyse en schoenplaatjes zitten in elke bikefit; tweede fiets € 75 / € 150 bovenop de fit (20 okt 2026) | bevestigen of er nog andere combinaties zijn | open |
 | E-09 | `/aanbod/bikefit-tweede-bezoek` | inhoud: opvolging gratis tot zes maanden na de fit, daarna € 75; extra: een volledige nieuwe bikefit | bevestigen dat een tweede bezoek altijd één uur is | te bevestigen |
 | E-10 | `/aanbod/bikefit-tweede-fiets` | inhoud: zelfde type € 75 (30 min), ander type € 150 (1 u); extra: een derde fiets in overleg | bevestigen hoe een tweede fiets geboekt wordt (bij de fit, niet apart) | te bevestigen |
@@ -147,7 +164,7 @@ verwijzing in het blok.
 | T-02 | Rutger Roelandts — Rol | "Oprichter" (volgt uit zijn eigen tekst) | bevestigen | te bevestigen |
 | T-03 | Rutger Roelandts — Kwalificaties | niets vermeld | diploma's of opleidingen, enkel met bron | open |
 | T-04 | Rutger Roelandts — Afbeelding | eigen foto, `public/images/team/rutger-roelandts-v1.webp` (4:5, aangeleverd door Toshoni op 20 okt 2026 via de mediabibliotheek, `npm run images:portrait`) | — | afgerond 2026-10-20 |
-| T-13 | Algemene claim: `/aanbod` → blok *Hero* → **Ondertitel** ("uitsluitend met ervaren, gediplomeerde professionals"); `/ons-team` → *Hero* → **Ondertitel** en home → blok *Oproep* → **Tekst** ("de nodige diploma's") | aangeleverd door Toshoni | blijft algemeen; geen individuele diploma's noemen zonder bron | bevestigd |
+| T-13 | Algemene claim: `/aanbod` → blok *Hero* → **Ondertitel** ("uitsluitend met ervaren professionals"); `/ons-team` → *Hero* → **Ondertitel** en home → blok *Oproep* → **Tekst** ("ervaring en mensenkennis", Toshoni, 27 okt 2026; voorheen "de nodige diploma's" en op `/aanbod` "gediplomeerde") | aangeleverd door Toshoni | blijft algemeen; geen individuele diploma's noemen zonder bron | bevestigd |
 
 ## 5. Beelden: AI-gegenereerd, tijdelijk of leeg (B)
 
@@ -190,21 +207,21 @@ dienst; K-03, K-04).
 
 | ID | Onderwerp | Nu | Nodig | Status |
 | --- | --- | --- | --- | --- |
-| K-01 | *Bikefit – huidige fiets* | gekoppeld aan de bestaande diensten `volwassenenfit` (90 min) en `jeugdfit` (60 min). Sinds 16 okt 2026 toont `/afspraak` dit aanbod **één keer**, met daaronder "Voor wie?": **Volwassene** en **Jeugd** (veld **Keuzelabel onder een aanbod** in **Diensten**); de gekozen dienst bepaalt duur, beschikbaarheid, formulier (ouder bij Jeugd) en wat geboekt wordt | bevestigen dat dit dezelfde dienst is | te bevestigen |
+| K-01 | *Bikefit – huidige fiets* | gekoppeld aan de diensten `volwassenenfit`, `jeugdfit` (*Jeugdfit – eenmalig*) en, sinds 27 okt 2026, `jeugdfit-pakket` (*Jeugdfit – volledig pakket*), alle drie 2 uur. Sinds 16 okt 2026 toont `/afspraak` dit aanbod **één keer**, met daaronder "Voor wie?": **Volwassene**, **Jeugd – eenmalig** en **Jeugd – volledig pakket** (het keuzelabel volgt het aanbod); de gekozen dienst bepaalt duur, beschikbaarheid, formulier (ouder bij beide Jeugd-varianten) en wat geboekt wordt | bevestigen dat dit dezelfde dienst is | te bevestigen |
 | K-02 | De andere acht diensten | op aanvraag: aanvraagformulier op de dienstpagina, niet online boekbaar; sinds 20 okt 2026 met prijs en (waar gegeven) duur | per dienst: aanbieder(s) die het zelf bevestigen (K-05); dan dienst aanmaken in **Beheer → Aanbod** op *Rechtstreeks online boeken* zetten | open |
-| K-03 | *Lactaattest* vs. bestaande dienst Inspanningstest | Inspanningstest uitgezet (17 okt 2026); *Lactaattest* blijft op aanvraag | als de Lactaattest online boekbaar moet worden: in **Beheer → Aanbod** op *Rechtstreeks online boeken* zetten met een echte duur | afgerond 2026-10-17 |
+| K-03 | Het aanbod *Inspanningstest* (adres `/aanbod/lactaattest`; tot 27 okt 2026 *Lactaattest*) vs. de bestaande dienst Inspanningstest | de dienst Inspanningstest is uitgezet (17 okt 2026); het aanbod blijft op aanvraag | als de inspanningstest online boekbaar moet worden: in **Beheer → Aanbod** op *Rechtstreeks online boeken* zetten met een echte duur | afgerond 2026-10-17 |
 | K-04 | Bestaande diensten Gezinspakket, Fit aan huis (en Inspanningstest, K-03) | uitgezet op 17 okt 2026 (beslissing Toshoni: enkel wat in het aanbod stond blijft); niet meer op `/afspraak`; bestaande boekingen behouden hun dienst | niets; wie een van deze weer wil aanbieden, maakt een nieuw aanbod in **Beheer → Aanbod** | afgerond 2026-10-17 |
 | K-05 | Aanbieders per dienst | ongewijzigd: enkel de bestaande aanbieder op de vijf oude diensten. Sinds 16 okt 2026 maakt een aanbieder geen diensten meer aan en past ze niet aan; hij of zij schrijft zich enkel in voor actieve diensten (**Mijn agenda** → **Mijn aanbod**, per aanbod en variant) | wie biedt welke nieuwe dienst aan, enkel door de persoon zelf bevestigd; een nieuwe dienst maakt een beheerder aan | open |
-| K-06 | Prijzen in de boekingswidget | Volwassenenfit € 275, Jeugdfit € 150, beide getoond (**Prijs tonen** aan) sinds 20 okt 2026 (`src/lib/booking/defaults.ts`; bestaande databank via `cms:patch-aanbod-prijzen`); onder *Bikefit – huidige fiets* toont de widget per keuze dat bedrag | — | afgerond 2026-10-20 |
+| K-06 | Prijzen in de boekingswidget | Volwassenenfit € 275, Jeugdfit – eenmalig € 150 en Jeugdfit – volledig pakket € 275, alle drie getoond (**Prijs tonen** aan); de eerste twee sinds 20 okt 2026 (`src/lib/booking/defaults.ts`; bestaande databank via `cms:patch-aanbod-prijzen`), het pakket sinds 27 okt 2026; onder *Bikefit – huidige fiets* toont de widget per keuze dat bedrag | — | afgerond 2026-10-20 |
 
 ## 7. Bestaande hiaten in aangeraakte inhoud (G)
 
 | ID | Waar (exacte plaats) | Nu | Nodig | Status |
 | --- | --- | --- | --- | --- |
-| G-01 | Publiek e-mailadres: `/admin` → **Instellingen** → Contact → **E-mail** (footer, contactvraag bij niet-boekbare diensten); `/afspraak` → *Vrije tekst* "Voor je komt" → "Andere vraag?"; `/privacy` en `/algemene-voorwaarden` (tekst) | `info@debikefitstudio.be`, bevestigd door Toshoni (review 13 okt 2026); in de instellingen gezet door `cms:patch-page-cleanup` (staging) en door de seed/bootstrap; blok *Contact* op home laat zijn eigen veld **E-mail** leeg | — | bevestigd |
-| G-02 | Adres van de studio: **Instellingen** → Contact → **Adresregels** en **Postcode**; blok *Contact* → **Adresregels** op home (sinds 13 okt niet meer op `/afspraak`; `/contact` verwijst door naar `/afspraak`); `/admin` → **Locaties** → "De Bikefit Studio, Ninove" → **Adresregels** | enkel "Ninove", geen straat en postcode; JSON-LD laat het adres weg | adres van de studio (optioneel ook **Kaart-embed URL** in blok *Contact*) | open |
+| G-01 | Publiek e-mailadres: `/admin` → **Instellingen** → Contact → **E-mail** (footer, contactvraag bij niet-boekbare diensten); `/afspraak` → *Vrije tekst* "Voor je komt" → "Andere vraag?"; `/privacy` en `/algemene-voorwaarden` (tekst) | `info@debikefitstudio.be`, bevestigd door Toshoni (review 13 okt 2026); in de instellingen gezet door `cms:patch-page-cleanup` (staging) en door de seed/bootstrap; blok *Contact* op home laat zijn eigen veld **E-mail** leeg. Sinds 27 okt 2026 typt geen pagina het adres meer: de teksten zeggen `{{e-mail}}` (en `{{telefoon}}` voor het nummer) en volgen de instelling | — | bevestigd |
+| G-02 | Adres van de studio: **Instellingen** → Contact → **Adresregels**, **Postcode** en **Gemeente** (footer, JSON-LD, voetteksten van de e-mails en de sectie *Locatie*); `/afspraak` → blok *Locatie* → **Opmerking onder het adres**; blok *Contact* → **Adresregels** op home (sinds 13 okt niet meer op `/afspraak`; `/contact` verwijst door naar `/afspraak`); `/admin` → **Locaties** → "De Bikefit Studio, Ninove" → **Adresregels** | Halsesteenweg 406 a, 9403 Neigem: straat en gemeente aangeleverd door Toshoni (27 okt 2026), de postcode uit zijn aanvraag is gecorrigeerd naar die van Neigem (9403), met de opmerking "Parking beschikbaar voor de deur." en een kaart die pas na een klik laadt. In de code: `lib/studio/seed-content/location-section.ts` (waarden en blok) en `lib/booking/defaults.ts` (boekingslocatie). Een bestaande databank (staging, productie) krijgt de instellingen, de locatie en de sectie *Locatie* op `/afspraak` met `cms:patch-aanbod-correcties`. Het blok *Contact* op home toont het adres sinds 27 okt 2026 als token (`{{adres}}`, Adresregels), en de privacyverklaring noemt Google Maps (de kaart laadt pas na een klik op "Kaart tonen") | Toshoni de postcode 9403 laten bevestigen; na de patch nakijken: footer, adres op home en kaartpin op `/afspraak` | bevestigd |
 | G-03 | `/afspraak` | "Vier manieren om te boeken" is op vraag van Toshoni verwijderd (review 13 okt 2026, `cms:patch-page-cleanup`); de pagina begint nu bij "Kies je moment" | — (de keuze in de widget zelf volgt K-02 – K-04) | afgerond 2026-10-13 |
-| G-04 | `/veelgestelde-vragen` (niet in deze rollout) | antwoorden noemen jeugdfit en 60/90 minuten | nakijken na D-01 – D-07 | open |
+| G-04 | `/veelgestelde-vragen` | het antwoord op "Hoe lang duurt een bikefit?" noemt geen uren meer, maar de pagina's van *Bikefit – huidige fiets* en *Bikefit – aankoop nieuwe fiets* (Toshoni, 27 okt 2026), zodat het de dienstpagina's niet meer kan tegenspreken | — | afgerond 2026-10-27 |
 | G-05 | Korte verbindingszinnen: inleidingen van de groepen Bikefit/Begeleiding in blok *Aanbod (overzicht)* (home, `/aanbod`, `/bikefit`); sectietitels op home ("Wat we voor je doen"), `/voor-wie` ("Waar je ook staat", op vraag van Toshoni verwijderd op 13 okt 2026) en `/bikefit` ("Meten om beter te kijken", "Onze bikefitdiensten") | neutraal geschreven door de implementatie, zonder nieuwe claims | nagekeken en aanvaard door Winston (review 13 okt 2026), geen wijziging nodig | afgerond 2026-10-13 |
 | G-06 | "nieuwste 3D-bewegingsanalyse": `/bikefit` en home → *Beeld + tekst* → **Alinea's**; `/aanbod/bikefit-huidige-fiets` → **Inhoud** | tekst aangeleverd door Toshoni; geen merk of toestel genoemd | merk of toestel enkel noemen met bron | bevestigd |
 | G-07 | "bij jou thuis / op locatie": home → *Hero* → **Ondertitel**; `/aanbod` → *Hero* → **Ondertitel**; `/bikefit` → *Beeld + tekst* "Kan een bikefit ook bij mij thuis?" | tekst aangeleverd (hero, aanbod) of uit het prototype (`/bikefit`); belooft fits aan huis | na K-04 nakijken: wordt Fit aan huis uitgezet, dan deze zinnen aanpassen | te bevestigen |

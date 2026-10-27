@@ -9,7 +9,7 @@ import {
   validateOfferEnquiry,
   type OfferEnquiryField,
 } from '@/lib/offer-enquiry/input';
-import { AUDIENCE_LABELS } from '@/lib/offers/offering';
+import { AUDIENCE_LABELS, type SplitAudience } from '@/lib/offers/offering-audience';
 import { LEGAL_LINKS } from '@/lib/studio/legal';
 import { PhoneField, TextField } from './booking/details-form';
 
@@ -48,7 +48,7 @@ export function OfferEnquiryForm({
   offerSlug: string;
   offerTitle: string;
   /** The offering's audience choices; empty for a single option. */
-  audiences: ('adult' | 'youth')[];
+  audiences: SplitAudience[];
   headingTag: 'h2' | 'h3';
   phoneLabel: string;
   phoneHref: string;

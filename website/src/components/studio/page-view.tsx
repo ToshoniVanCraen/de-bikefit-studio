@@ -8,6 +8,7 @@ import {
   webPageJsonLd,
   type BreadcrumbEntry,
 } from '@/lib/studio/jsonld';
+import { resolveCopy } from '@/lib/studio/copy-token-lookup';
 import { absoluteUrl, type StudioPage } from '@/lib/studio/site';
 import { BlockRenderer } from './blocks';
 import { JsonLd } from './json-ld';
@@ -25,8 +26,15 @@ import { JsonLd } from './json-ld';
  *
  * `requestedService` is the validated `?dienst=` value and `requestedExtra`
  * the validated `?extra=` value; only the booking block reads them.
+ *
+ * Copy tokens (`{{telefoon}}`, `{{prijs:…}}`, …): the structured data says what
+ * the page says, so the FAQ answers, the service descriptions and the page
+ * description are resolved here. `BlockRenderer` resolves the same blocks for
+ * the markup itself, from the raw snapshot: a text is resolved once and never
+ * again from what an earlier pass printed (the engine is single pass). The
+ * stored snapshot keeps the tokens as typed.
  */
-export function StudioPageView({
+export async function StudioPageView({
   studio,
   requestedService = null,
   requestedExtra = null,
@@ -39,6 +47,7 @@ export function StudioPageView({
   const origin = absoluteUrl('/').replace(/\/+$/, '');
   const isHome = page.slug === '';
   const blocks = page.snapshot.blocks;
+  const spoken = await resolveCopy(blocks, locale);
 
   const trail: BreadcrumbEntry[] = isHome
     ? []
@@ -48,10 +57,12 @@ export function StudioPageView({
         { name: page.title, url: canonical },
       ];
 
-  const description =
+  const description = await resolveCopy(
     page.snapshot.seo.metaDescription?.trim() ||
-    settings.seo.defaultMetaDescription.trim() ||
-    undefined;
+      settings.seo.defaultMetaDescription.trim() ||
+      undefined,
+    locale,
+  );
 
   const graph = jsonLdDocument([
     webPageJsonLd({
@@ -66,8 +77,8 @@ export function StudioPageView({
       hasBreadcrumb: trail.length > 0,
     }),
     trail.length > 0 ? breadcrumbJsonLd(canonical, trail) : null,
-    faqJsonLd(blocks, canonical),
-    ...servicesJsonLd(blocks, settings, origin),
+    faqJsonLd(spoken, canonical),
+    ...servicesJsonLd(spoken, settings, origin),
   ]);
 
   return (

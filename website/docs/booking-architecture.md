@@ -35,6 +35,7 @@ UTC (`timestamptz`).
 | `src/lib/booking/provider-calendar.ts` | server-only | a provider's busy times and events, degrading gracefully |
 | `src/lib/booking/provider-calendar-errors.ts` | plain | `describeProviderError()`: the fixed text stored as `google_sync_error` |
 | `src/lib/booking/content.ts` | server-only | public read API (cached lists, live availability) |
+| `src/lib/booking/location-store.ts` | server-only | `getDefaultStudioLocation()`: the cached read of the studio's booking location (default, active, kind studio): the master of the copy token `{{adres-studio}}` (`cms-architecture.md` §5, "Copy tokens") |
 | `src/lib/booking/repo.ts` | server-only | admin write API (`RepoResult<T>`); re-exports the catalogue |
 | `src/lib/booking/repo-services.ts` | server-only | the service catalogue: list/get/create/update/deactivate, all writes `service.manage` (§3, §14) |
 | `src/lib/booking/repo-shared.ts` | server-only | `ok`/`err`/`forbidden`/`bust`/`locationExists`, shared by the two repo files |
@@ -110,6 +111,11 @@ Closed sets are `text` validated by zod, like the CMS. The only enum change is
 | `0010_cms_offerings.sql` | `cms_offerings` + `cms_offering_variants` (§14, `cms-architecture.md` §14): guarded `CREATE TABLE`s, FKs, indexes; no data change, nothing on `cms_services`, `cms_provider_services` or `cms_bookings`. **Apply before deploying the build that uses it**: the booking actions ask it which services an offering holds back and fail closed without it (every availability and booking request answers "Deze dienst kun je niet online boeken." / the generic error). Self-test 14d re-runs it twice. |
 | `0011_cms_offerings_content.sql` | the offering IS the offer (17 Oct 2026, §14): guarded `ADD COLUMN IF NOT EXISTS` for the copy (slug, category, order, title, summary, intro, Doel, Inhoud, extra's, Duur, button label, image, meta description), `page_id` nullable, a unique index on (locale, slug). No data change; `cms:migrate-aanbod` fills the rows from the former offer pages (`staging-runbook.md` §19). Apply before the deploy; run the migration right after it. Self-test 14d re-runs it twice. |
 | `0012_cms_provider_locations_assignment.sql` | several locations per provider + "Iedereen" assigned by the beheerder (17 Oct 2026, §16): guarded `ADD COLUMN IF NOT EXISTS` for `cms_business_hours.location_id` (+ its FK in a `duplicate_object` guard) and for `cms_bookings.assignment` (default `'assigned'`) and `assigned_at`. No data change: every existing booking is `assigned`, every hours row stays at the default location. **Apply before deploying the build that uses it**: the new build selects these columns on every availability request and booking list. Self-test 14e re-runs it twice. |
+| `0013_cms_staging_gate.sql` | `cms_staging_gate_accounts` and `cms_staging_gate_sessions` (FK cascade, two indexes): the staging access gate (`staging-gate.md`), nothing to do with bookings. Guarded, additive; read only on the staging host. |
+| `0014_cms_booking_followups.sql` | follow-up mails and reviews (20 Oct 2026, §17): `cms_bookings.reminder_sent_at` and `review_requested_at`, and `cms_reviews` (one row per review request; `booking_id` unique, set null when the booking is purged). Guarded, no data change. **Apply before the build**: every booking list selects the two columns and the cron route reads the table. |
+| `0015_cms_offering_addons.sql` | extra's (20 Oct 2026, §18): `cms_offerings.is_addon` / `sold_alone` / `addon_minutes`, `cms_offering_addons` and `cms_booking_addons` (a snapshot of the extras of a booking, cascaded with it). Guarded, no data change; `cms:patch-aanbod-extras` fills in the set. **Apply before the build**: every offering read selects the columns. Self-test 17c re-runs it twice. |
+| `0016_cms_offering_addon_options.sql` | `cms_offerings.addon_options` (jsonb, default `[]`): the choices within an extra (§18). Guarded. **Apply before the build.** Self-test 17c re-runs it twice. |
+| `0017_cms_offering_price_text.sql` | `cms_offerings.price_text` (default `''`): the free-text Kostprijs of an offering that is asked for (27 Oct 2026, §14). Guarded, no data change; the third variant (`youth-package`, "Jeugd – volledig pakket") needs no migration, `cms_offering_variants.audience` being plain text. **Apply before the build.** |
 
 All are **additive only** and idempotent (verified by migrating a fresh
 PGlite twice). Note that drizzle's migrator runs *all pending files in one
@@ -172,7 +178,7 @@ calling the server actions directly (`src/lib/cms/actions/services.test.ts`) and
 
 ## 4. Settings
 
-`siteSettingSchemas.booking` in `src/lib/cms/blocks.ts` (every field has a default):
+`siteSettingSchemas.booking` in `src/lib/cms/site-settings.ts` (re-exported by `blocks.ts`; every field has a default):
 
 ```ts
 { slotStepMinutes: 30, minNoticeHours: 24, horizonDays: 56, defaultBufferAfterMinutes: 15,
@@ -249,6 +255,15 @@ active user account)** are public. `PublicService` includes `durationLabel`,
 (the service's own, or `null` = depends on the provider) and `providerCount`.
 `PublicProvider.services[]` carries the resolved location per service:
 **provider override → service location → provider default → global default location**.
+
+**Copy tokens in the widget's texts (27 Oct 2026).** A service's `description` (Beheer → Aanbod, per
+variant) and the booking settings' `introTitle`, `introText` and `confirmationText` may use the copy
+tokens (`{{opvolging:volwassene}}`, `{{prijs:…}}`, `{{duur:…}}`, `{{telefoon}}`, …; `cms-architecture.md` §5):
+a description states "probleemopvolging tot {{opvolging:volwassene}} na je fit" instead of a number that
+lives in Instellingen → Regels. `content.ts` returns them as typed (it is a lower layer and cannot import
+the lookup, which reads from it); `components/studio/booking/load.ts` resolves them on the server before
+the plain props reach the client widget, and the confirmation page resolves the confirmation text.
+`durationLabel` and `priceLabel` stay what they are: structured labels, not copy.
 
 `getAvailability` clamps the range to today…today + `horizonDays` and to at
 most 62 days, fetches Google free/busy **once per provider** for the whole
@@ -589,6 +604,16 @@ keys"). No key → one console line (only the number of recipients) and
 `{ sent: false, reason: 'not_configured' }`. A failing mail never fails a
 booking.
 
+**Copy tokens in mail (27 Oct 2026).** Template text, the booking settings' confirmation text and the
+follow-up mails may use the copy tokens (`{{telefoon}}`, `{{opvolging:volwassene}}`, `{{prijs:…}}`, …;
+`cms-architecture.md` §5): `sendEmail()` resolves them in the subject, the text part and the html part
+(escaped) just before the send (`src/lib/email/resolve-copy.ts`), so no template has to remember to and a
+mail never shows `{{…}}`. The lookup is the site's, loaded lazily and only for a mail that holds a token; when
+it cannot be built the tokens read their fallbacks ("in overleg", "op aanvraag", an empty fact) and the
+mail still goes out (`[email] copy_tokens_unavailable`). The calendar file is resolved before `buildIcs()`
+escapes and folds it (`notifications.ts#icsFor`), never after. The Google Calendar event is staff-facing and
+carries no editorial copy, so it needs no resolution.
+
 **What is logged.** `sendEmail()`'s log lines and its `reason` carry only the number of
 recipients, the HTTP status, Resend's error code (its `name`, only when it is a plain code such
 as `validation_error`) and the name of a thrown error (`TimeoutError`, `TypeError`): a refusal is
@@ -748,27 +773,34 @@ directly (CLAUDE.md §3).
 
 ```bash
 npm run db:migrate                                    # applies 0002 + 0003
-CMS_BOOTSTRAP_PASSWORD='…' npm run cms:bootstrap      # + booking setting, 2 locations, 5 services
+CMS_BOOTSTRAP_PASSWORD='…' npm run cms:bootstrap      # + booking setting, 2 locations, 3 services
 npm run cms:seed-booking                              # provider toshoni@gmail.com, hours, subscriptions
 PROVIDER_EMAIL=x@y.be PROVIDER_NAME='X' npm run cms:seed-booking   # another provider
 ```
 
 Bootstrap adds (idempotent, never overwrites): the `booking` setting, the
-default location **"De Bikefit Studio, Ninove"** (studio, no street address,
-`is_default`), a second location **"Bij jou thuis"** (kind `customer`, which
-hours at the customer's need) and the two services (Volwassenenfit 90,
-Jeugdfit 60 + guardian; prices null and hidden, buffer 15). Gezinspakket, Fit aan
+default location **"De Bikefit Studio, Ninove"** (studio, Halsesteenweg 406 a,
+9403 Neigem since 27 Oct 2026; `is_default`), a second location **"Bij jou thuis"** (kind `customer`, which
+hours at the customer's need) and the three services of `DEFAULT_SERVICES` (since 27 Oct 2026,
+Toshoni): **Volwassenenfit** (`volwassenenfit`, € 275, with six months of problem follow-up),
+**Jeugdfit – eenmalig** (`jeugdfit`, € 150, one fit without follow-up) and **Jeugdfit – volledig
+pakket** (`jeugdfit-pakket`, € 275, a year of free follow-up, recommended because young riders
+grow fast); 2 hours each, price shown, buffer 15, a guardian required for both Jeugdfit services.
+Gezinspakket, Fit aan
 huis and Inspanningstest are retired since 17 Oct 2026 (`RETIRED_SERVICE_SLUGS`):
-not created here, deactivated on an existing database by `cms:migrate-aanbod`. Choice labels "Volwassene" and
-"Jeugd" go on the first two; on a database that already has them (migration 0009 added the
-column empty), bootstrap fills only a label that is still empty and touches nothing else on
-the row (`~ service nl/jeugdfit: empty choice label set to “Jeugd”`).
+not created here, deactivated on an existing database by `cms:migrate-aanbod`. Choice labels
+"Volwassene", "Jeugd – eenmalig" and "Jeugd – volledig pakket" go on the three; on a database that
+already has a service (migration 0009 added the column empty), bootstrap fills only a label that
+is still empty and touches nothing else on the row (`~ service nl/jeugdfit: empty choice label set
+to “Jeugd – eenmalig”`); a missing service is created (so it also adds the third service to an
+existing database) and an existing one is never renamed: the new names and the third variant of
+the fits reach an existing database with the data patch of 27 Oct.
 
 `cms:seed-booking` (idempotent): user with role `provider` and
 `must_change_password`, temporary password **printed once**; profile at the
 default location; Mon–Fri 09:00–18:00 + Sat 09:00–13:00 (only when the
-provider has no hours yet); subscriptions to the five services. It never
-touches Google.
+provider has no hours yet); subscriptions to every service of `DEFAULT_SERVICES` (the three
+fits). It never touches Google.
 
 ---
 
@@ -868,8 +900,8 @@ For the offer step and the phone (16 Oct 2026): `phone.test.ts` (national, inter
 `public-booking-input.test.ts` (both phones accepted and refused, `storedPhone()`);
 `src/components/studio/booking/details.test.ts` (adult and Jeugdfit guardian phone sent
 normalized, the lone `+32 ` counts as empty); `catalogue.test.ts` (`groupBookingChoices()`:
-the seeded offers give "Bikefit – huidige fiets" once with Volwassenenfit and Jeugdfit and the
-other three services directly, every service reachable exactly once, order, unbookable slugs,
+the seeded offers give "Bikefit – huidige fiets" once with its fit services (Volwassenenfit and
+the two Jeugdfit services) and the other three services directly, every service reachable exactly once, order, unbookable slugs,
 two offers on one service, gift voucher, labels); `service-choice.test.ts` (open offer, meta
 and summary lines, "Prijs op aanvraag"); `src/lib/cms/actions/services.test.ts` (the four
 service actions called directly as a provider, also on a service with their `created_by`, and
@@ -975,10 +1007,11 @@ doomed token key).
 The public site speaks in **offerings** (`cms_offerings`, served at `/aanbod/<slug>`); booking
 speaks in **services** (`cms_services`). Since 17 Oct 2026 the two are written together: a
 directly bookable offering has one `cms_services` row per variant, created by the first save in
-Beheer → Aanbod (slug `<offering slug>`, `<offering slug>-volwassene`, `<offering slug>-jeugd`;
-name "Titel – Volwassene"; label "Volwassene" / "Jeugd") and updated by id afterwards
-(duration, buffer, location, guardian rule follow the form; the slug and existing bookings
-never change). Beheer → Diensten is gone.
+Beheer → Aanbod (slug `<offering slug>`, `<offering slug>-volwassene`, `<offering slug>-jeugd`,
+`<offering slug>-jeugd-pakket`; name "Titel – Volwassene" / "Titel – Jeugd – eenmalig" / "Titel –
+Jeugd – volledig pakket"; the label is the variant's: "Volwassene", "Jeugd – eenmalig", "Jeugd –
+volledig pakket") and updated by id afterwards (duration, buffer, location, guardian rule follow
+the form; the slug and existing bookings never change). Beheer → Diensten is gone.
 
 **What is bookable.** A variant is booked as its `cms_services` row (its id is what
 availability is fetched for and what a booking references). A **direct** offering is bookable
@@ -1012,11 +1045,22 @@ resolves it on the server with `resolveBookingSelection()`:
 | an unknown or hidden slug | the normal widget with "We vonden de gekozen dienst niet terug." |
 
 On the plain widget an offering appears **once** with its variants as a sub-selection
-("Voor wie?": Volwassene / Jeugd, `groupBookingChoices()`), labelled by the variant and priced
+("Voor wie?": Volwassene / Jeugd – eenmalig / Jeugd – volledig pakket, `groupBookingChoices()`),
+labelled by the variant and priced
 by the variant's price in Beheer → Aanbod (`variantDisplay`; empty = "Prijs op aanvraag"); the
 service's own `price_cents` / `show_price` no longer show there. The chosen SERVICE is what is
 booked, with its own duration, availability and guardian rule. "Opnieuw" after a booking returns
 to the same preselection. Provider choice, availability, guardian and address are unchanged.
+
+**Jeugd in two variants (Toshoni, 27 Oct 2026).** A rider under 16 books one of two services, so
+the offer page, the widget, the booking, the mails and Beheer all say the same: **Jeugdfit –
+eenmalig** (`jeugdfit`, € 150, one fit without follow-up) or **Jeugdfit – volledig pakket**
+(`jeugdfit-pakket`, € 275, a year of free follow-up, recommended because young riders grow
+fast); adults keep **Volwassenenfit** (€ 275, six months of problem follow-up). Before, the
+Jeugd service told a 15-year-old to "kies Volwassene (€ 275)" for follow-up. Both Jeugd services
+require a guardian, so the form, the confirmation and the mails (they print the service name)
+need no change. The model, labels and older data (an offering that still holds only the pair)
+are in `cms-architecture.md` §14; the extras' price for the package falls back to Jeugd (§18).
 
 **Enquiries.** An offering set to *Enkel op aanvraag* gets a form on its page
 (`src/lib/offer-enquiry/`): validated like the booking form, honeypot, race-free rate limit on
@@ -1063,13 +1107,25 @@ confirmation and the Google event show it, and a slot at a `customer`-kind locat
 an address, as a pinned "bij de klant" service did.
 
 **The widget** (`booking-widget.tsx`, provider first): step 1 "Bij wie?" when the setting
-`showProviderChoice` is on and more than one provider is bookable: "Iedereen" or a provider
-(with the places they work). A provider narrows step 2 to the services they offer
-(`narrowChoices()`) and the calendar to their agenda; "Iedereen" lists every free moment, one
-per time and location, without names. `/afspraak?dienst=` still preselects the service; the
-provider step then offers only those who offer it. When the day's month has slots at more than
-one place, each time names its place. The widget sends `providerId: null` for "Iedereen" and
-the slot's `locationId`; `bookAction` passes both on.
+`showProviderChoice` is on and more than one provider can take the chosen service (every
+provider while none is chosen): "Iedereen" or a provider, shown with their name and the places
+they work, no bio (Toshoni, 27 Oct 2026: no text on the booking page; the field stays in
+Beheer). A provider narrows step 2 to the services they offer (`narrowChoices()`) and the
+calendar to their agenda; "Iedereen" lists every free moment, one per time and location,
+without names. `/afspraak?dienst=` still preselects the service; the provider step then offers
+only those who offer it. **One provider** (27 Oct 2026): when exactly one provider offers the
+chosen service (a preselected service only one of several offers, or a studio with a single
+provider) there is nothing to choose, so the step is left out, the numbering starts at the
+service and the visitor goes from the service (and its extras) straight to the day and time.
+That provider is selected: the widget sends their id instead of `null` and the confirmation
+names them. A visitor who has answered the step keeps it, whatever service follows
+("Wijzigen" reopens it), and a service with several providers still asks. The rule is
+`resolveProviderStep()` (`provider-choice.ts`, `provider-choice.test.ts`), the answer is held by
+`use-provider-choice.ts`, and `booking-widget.test.ts` renders the first paint per provider
+setup on the server (`react-dom/server`, server actions mocked). When the day's month has slots
+at more than one place, each time names its place. The widget sends `providerId: null` only for
+"Iedereen" while several providers can take the service, and the slot's `locationId`;
+`bookAction` passes both on.
 
 **Pending bookings.** `createPublicBooking()` stores `assignment = 'pending'` when no provider
 was chosen and more than one offers the service (`countEligibleProviders()`); the first free
@@ -1166,7 +1222,7 @@ purged with the booking's retention (`cms:retention` — to be extended to `cms_
 self-test section 19 (`scripts/selftest/follow-ups.mts`) runs a dry run, the run with an
 injected sender, the link, the submit, the admin decisions and the clean-up.
 
-## 18. Extra's (add-ons) and the location choice (20 Oct 2026)
+## 18. Extra's (add-ons) and the location choice (20 Oct 2026, corrected 27 Oct 2026)
 
 Toshoni's brief: some offerings can be ticked as an **extra** when booking another offering
 (the time and the price add up); an extra is sold on its own or only as an extra; the offering
@@ -1176,6 +1232,13 @@ books for, with its address, and with several places lets them choose. Migration
 (host → extra, ordered); `cms_booking_addons` (per booking a snapshot of each extra: title,
 minutes, price).
 
+**Which offerings are extras (Toshoni, 27 Oct 2026).** Only *Bikefit – tweede fiets* (two choices,
+below); both bikefits allow it and nothing else. Voetanalyse, zadelanalyse and afstellen
+schoenplaatjes are included in every bikefit, so they are sold on their own and never a paid extra
+of one. The first version (20 Oct 2026) offered them as extras too, and the widget then charged for
+what the fit already includes. The model still allows it (an admin can mark any offering as an
+extra); it is no longer a default.
+
 **Model.** `OfferingSettings` gained `isAddon`, `soldAlone`, `addonMinutes` and `addonIds`
 (`src/lib/offers/offering.ts`); the schema refuses an extra without minutes or without a price on
 every variant, and an offering that is neither sold alone nor an extra. `resolveOffering()`
@@ -1183,7 +1246,8 @@ gives an offering that is not sold alone the status `addon` ("Enkel als extra bi
 afspraak"): listed on `/aanbod` and served at `/aanbod/<slug>`, no booking service of its own,
 held back from `/afspraak`. `src/lib/offers/addons.ts` (pure) turns a host's `addonIds` into
 `BookingAddonOption`s for one audience (`addonOptionsFor()`: the extra's price for that
-audience, else its single option, else its first price; a hidden, un-marked, un-timed or
+audience, else for its base audience (Jeugd – volledig pakket falls back to Jeugd –
+eenmalig, `baseAudienceOf()`), else its single option, else its first price; a hidden, un-marked, un-timed or
 un-priced extra is left out), adds them up (`addonTotals()`) and checks a visitor's choice
 against the options (`pickAddons()`). The catalogue (`buildOfferCatalogue()`) exposes
 `addonsByService` (per service of a shown, direct, sold-alone offering) and per extra its
@@ -1205,7 +1269,7 @@ aan te vragen* (only meaningful for an extra; off = extra only), and *Extra's bi
 locale, never the offering itself; upsert, then prune).
 
 **The widget.** When the chosen service has extras, a step "Iets extra erbij?" (checkboxes with
-"+ 30 min · + € 85,00", a running total "Samen 2 u 30 min · € 360,00", "Verder" or "Verder
+"+ 30 min · + € 75,00", a running total "Samen 2 u 30 min · € 350,00", "Verder" or "Verder
 zonder extra's") comes before the calendar; changing the extras after a day was chosen clears
 the day and time. Availability is fetched per (service, extras, provider, month) with
 `addonIds`; the server resolves them (`resolveBookingAddons()`,
@@ -1215,14 +1279,15 @@ resolves them again, re-checks the slot for the longer appointment, stores `ends
 accordingly and one snapshot row per extra (`insertBookingAddons()`); an id that is no extra of
 the service refuses the request ("Een gekozen extra hoort niet bij deze dienst."). The minutes
 and prices never come from the client. `?extra=<slug>` (validated like `?dienst=`,
-`EXTRA_PARAM`) ticks an extra in advance; the page of an extra that is not sold alone links to
-`/afspraak?dienst=<host>&extra=<slug>` of its first bookable host ("Boek samen met …"), else
-shows its enquiry form.
+`EXTRA_PARAM`) ticks an extra in advance; the page of an extra that is not sold alone shows the
+button "Boek je bikefit" to `/afspraak#boeken` (`offerBookingPath()`, nothing preselected; the note
+under the facts names the offerings it goes with) when one of them is bookable, else its enquiry
+form.
 
 **Downstream.** The confirmation panel, `/afspraak/bevestigd` (the signed ref carries the
 extras' titles), every mail (an "Extra's" row with minutes; the duration is the booked span,
-`bookedMinutes()`), the ICS description, the Google event (title "Volwassenenfit + Voetanalyse —
-…", an "Extra's:" line) and the admin list (`BookingListItem.addons`, under the service) show
+`bookedMinutes()`), the ICS description, the Google event (title "Volwassenenfit + Bikefit – tweede
+fiets – Zelfde type fiets — …", an "Extra's:" line) and the admin list (`BookingListItem.addons`, under the service) show
 the extras. Prices stay out of the mails, as before.
 
 **Where.** `BookingLocationOption` carries the location's `addressLines` (Beheer → Locaties).
@@ -1234,17 +1299,24 @@ narrowed to the chosen ones (`filterSlotsByLocation()`), the address of each cho
 underneath. A place without a free moment in a month simply shows none. The slot's own location
 still decides the address question and what is stored.
 
-**Rollout.** `npm run cms:patch-aanbod-extras` (`scripts/lib/aanbod-extras-patch.mts`): dry run,
-`--apply --expect-host`, `--restore`; sets the three columns and the links of the six offerings
-from the defaults, refuses an offering whose extra settings were changed in Beheer or that has
-links of its own. Runbook §23.
+**Rollout.** `npm run cms:patch-aanbod-extras` (`scripts/lib/aanbod-extras-patch.mts`: backup,
+apply, verify, restore; the rules are in `aanbod-extras-targets.mts`, the plan in
+`aanbod-extras-plan.mts`): dry run, `--apply --expect-host`, `--restore`. It sets the extra columns,
+the choices and the links of the six offerings it manages (both bikefits, tweede fiets, the three
+analyses) to the defaults. Per offering and per group it knows three states: fresh (migration 0015
+only), the state of the first version of 20 Oct 2026 (the analyses as extras, four links per
+bikefit; staging and production hold it) and the target. The first two move to the target; anything
+else, an edit made in Beheer, blocks the patch. The run of 27 Oct 2026 on a database in the state of
+20 Oct unflags the three analyses and prunes three links on each bikefit, and its backup returns
+the state of 20 Oct. Runbook §23.
 
 **Tests.** `addons.test.ts`, `location-choice.test.ts`, `offering.test.ts`,
-`offer-catalogue.test.ts`; self-test 17c (migration guards, bootstrap, catalogue, availability
-and a booking with an extra, the mail, the admin list, the patch with restore and the Beheer
-guard).
+`offer-catalogue.test.ts` (also an admin marking an analysis as an extra), the rules of the patch in
+`scripts/lib/aanbod-extras-targets.test.ts`; self-test 17c (`scripts/selftest/aanbod-extras*.mts`:
+migration guards, bootstrap, catalogue, availability and a booking with the second bike, the mail,
+the admin list; the patch on a fresh database, on the state of 20 Oct 2026 with its backup and
+restore, and the Beheer guards).
 
-**Assumptions to confirm with Toshoni.** *Bikefit – tweede fiets* is seeded as one extra: € 75 and
-30 min (the same-type case); another bike type (€ 150, 1 u) is settled on site. Voetanalyse,
-zadelanalyse and schoenplaatjes are offered as extras to a bikefit although the fit's text says
-they are included.
+**Decisions (Toshoni).** *Bikefit – tweede fiets* is an extra only with two choices, zelfde type
+(€ 75, 30 min) and ander type (€ 150, 1 u) (20 Oct 2026). Voetanalyse, zadelanalyse and
+schoenplaatjes are included in every bikefit and therefore no extra of one (27 Oct 2026).

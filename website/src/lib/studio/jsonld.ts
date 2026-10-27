@@ -2,6 +2,7 @@ import type { BlockInstance, SiteSettings } from '@/lib/cms/blocks';
 import { OFFER_CATEGORY_LABELS } from '@/lib/offers/catalogue';
 import type { ResolvedOffering } from '@/lib/offers/offering';
 import type { OfferingContent } from '@/lib/offers/offering-content';
+import { offeringPriceText } from '@/lib/offers/offering-labels';
 import { isBookableServicesBlock, visibleBlocks } from './blocks';
 import { localeTag, type StudioLocale } from './locale';
 
@@ -64,23 +65,30 @@ function postalAddress(settings: SiteSettings): JsonLdNode | undefined {
   return Object.keys(address).length > 2 ? address : undefined;
 }
 
+/** `BE 1036.912.281` → `BE1036912281`: the compact form a VAT id has in structured data. */
+export function vatIdForSchema(vatNumber: string): string {
+  return vatNumber.replace(/[\s.]/g, '');
+}
+
 /**
  * The studio itself. `organization.type` is an editable setting so the schema
  * type can be narrowed (e.g. `HealthAndBeautyBusiness`, `SportsActivityLocation`)
- * without a code change; it falls back to `LocalBusiness`.
+ * without a code change; it falls back to `LocalBusiness`. The legal name and
+ * the VAT id come from the `business` settings (Instellingen → Bedrijfsgegevens),
+ * the one master the legal pages' tokens read as well.
  */
 export function organizationJsonLd(
   settings: SiteSettings,
   origin: string,
   options: { logoUrl?: string | null } = {},
 ): JsonLdNode {
-  const { organization, site, contact } = settings;
+  const { organization, site, contact, business } = settings;
 
   return compact({
     '@type': organization.type.trim() || 'LocalBusiness',
     '@id': organizationId(origin),
     name: site.name,
-    legalName: organization.legalName,
+    legalName: business.legalName,
     url: origin + '/',
     logo: options.logoUrl ?? undefined,
     image: options.logoUrl ?? undefined,
@@ -88,7 +96,7 @@ export function organizationJsonLd(
     slogan: site.tagline,
     telephone: telephoneOf(settings),
     email: contact.email,
-    vatID: organization.vatNumber,
+    vatID: vatIdForSchema(business.vatNumber),
     address: postalAddress(settings),
     areaServed: organization.areaServed,
     sameAs: organization.sameAs,
@@ -217,19 +225,31 @@ export function servicesJsonLd(
 
 /**
  * The `offers` of an offering, mirroring its Kostprijs: one `Offer` per
- * variant that has a price set in Beheer → Aanbod (named "Volwassene" /
- * "Jeugd" when the offering has both), nothing while every variant is "Prijs
- * op aanvraag".
+ * variant that has a price set in Beheer → Aanbod (named after its variant
+ * label — "Volwassene", "Jeugd – eenmalig", "Jeugd – volledig pakket" — when
+ * the offering has several), nothing while every variant is "Prijs op
+ * aanvraag". An offering that is asked for may show a free-text Kostprijs
+ * instead ("Gratis binnen 6 maanden na je fit, daarna € 75", 27 Oct 2026):
+ * the cents stay what they are (the price after the free period), and the
+ * text is the `Offer`'s description, so the data says what the page says.
  */
-function offeringOffers(offering: ResolvedOffering): JsonLdNode | JsonLdNode[] | null {
-  const priced = offering.variants.filter((variant) => variant.priceCents != null);
-  const nodes = priced.map((variant) =>
-    compact({
-      '@type': 'Offer',
-      name: offering.variants.length > 1 ? variant.label : '',
-      price: (variant.priceCents! / 100).toFixed(2),
-      priceCurrency: 'EUR',
-    }),
+function offeringOffers(
+  offering: ResolvedOffering,
+  priceText: string,
+): JsonLdNode | JsonLdNode[] | null {
+  const description = offeringPriceText(offering, priceText);
+  const nodes = offering.variants.flatMap((variant) =>
+    variant.priceCents == null
+      ? []
+      : [
+          compact({
+            '@type': 'Offer',
+            name: offering.variants.length > 1 ? variant.label : '',
+            price: (variant.priceCents / 100).toFixed(2),
+            priceCurrency: 'EUR',
+            description,
+          }),
+        ],
   );
   if (nodes.length === 0) return null;
   return nodes.length === 1 ? nodes[0] : nodes;
@@ -241,7 +261,7 @@ function offeringOffers(offering: ResolvedOffering): JsonLdNode | JsonLdNode[] |
  * ({@link offeringOffers}), never from any editorial text.
  */
 export function offeringServiceJsonLd(input: {
-  content: Pick<OfferingContent, 'title' | 'intro' | 'summary' | 'category'>;
+  content: Pick<OfferingContent, 'title' | 'intro' | 'summary' | 'category' | 'priceText'>;
   offering: ResolvedOffering;
   settings: SiteSettings;
   origin: string;
@@ -257,7 +277,7 @@ export function offeringServiceJsonLd(input: {
     url: canonical,
     provider: { '@id': organizationId(origin) },
     areaServed: settings.organization.areaServed,
-    offers: offeringOffers(offering),
+    offers: offeringOffers(offering, content.priceText),
   });
 }
 

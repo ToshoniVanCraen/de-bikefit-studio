@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_SERVICES, RETIRED_SERVICE_SLUGS } from '@/lib/booking/defaults';
+import { formatPrice } from '@/lib/booking/format';
 import {
   bookingChoiceLabel,
   GIFT_VOUCHER_PRICE_LABEL,
@@ -7,6 +8,7 @@ import {
   OFFER_CTA_LABEL,
   OFFER_PRICE_FALLBACK,
   offerBookingHref,
+  offerBookingPath,
   offerFromOffering,
   offerPagePath,
   offersInCategory,
@@ -71,6 +73,13 @@ describe('offer paths', () => {
     expect(offerBookingHref('bikefit-huidige-fiets')).toBe(
       '/afspraak?dienst=bikefit-huidige-fiets#boeken',
     );
+    expect(offerBookingHref('bikefit-huidige-fiets', 'bikefit-tweede-fiets')).toBe(
+      '/afspraak?dienst=bikefit-huidige-fiets&extra=bikefit-tweede-fiets#boeken',
+    );
+  });
+
+  it('links an extra that is not sold alone to the booking page itself, nothing preselected', () => {
+    expect(offerBookingPath()).toBe('/afspraak#boeken');
   });
 });
 
@@ -140,11 +149,39 @@ describe('offerFromOffering (the card and labels of one offering)', () => {
       category: 'bikefit',
       title: 'Bikefit – huidige fiets',
       status: 'bookable',
-      bookingServiceSlugs: ['volwassenenfit', 'jeugdfit'],
-      durationLabel: 'Volwassene: 2 uur · Jeugd: 2 uur',
+      bookingServiceSlugs: ['volwassenenfit', 'jeugdfit', 'jeugdfit-pakket'],
+      durationLabel: 'Volwassene: 2 uur · Jeugd – eenmalig: 2 uur · Jeugd – volledig pakket: 2 uur',
       priceLabel: OFFER_PRICE_FALLBACK,
     });
     expect(card.summary).toBe('Comfortabeler fietsen op de fiets die je al hebt.');
+  });
+
+  it('an offering that is asked for prints its free-text Kostprijs on the card; the cents stay on the variant', () => {
+    const entry = DEFAULT_OFFERINGS.find((d) => d.content.slug === 'bikefit-tweede-bezoek')!;
+    const settings = {
+      isListed: true,
+      isAddon: false,
+      soldAlone: true,
+      addonMinutes: null,
+      addonIds: [],
+      addonOptions: [],
+      bookingMode: entry.bookingMode,
+      variantMode: entry.variantMode,
+      variants: [{ audience: 'all' as const, serviceId: null, priceCents: 7500 }],
+    };
+    const resolvedOffering = resolveOffering({
+      settings,
+      source: 'stored',
+      services: SERVICES,
+      bookableServiceIds: new Set(),
+    });
+    const card = (priceText: string) =>
+      offerFromOffering({ id: 'x', content: { ...entry.content, priceText } }, resolvedOffering);
+    expect(card('Gratis binnen 6 maanden na je fit, daarna € 75').priceLabel).toBe(
+      'Gratis binnen 6 maanden na je fit, daarna € 75',
+    );
+    expect(card('').priceLabel).toBe(formatPrice(7500));
+    expect(card('').variants[0].priceCents).toBe(7500);
   });
 
   it('an enquiry offering: its editorial duration, no booking service', () => {
@@ -216,7 +253,7 @@ describe('resolveBookingSelection (service preselection)', () => {
       title: 'Voetanalyse',
       bookingServiceSlugs: ['voetanalyse-dienst'],
     }),
-    offer({ slug: 'lactaattest', title: 'Lactaattest', status: 'enquiry' }),
+    offer({ slug: 'lactaattest', title: 'Inspanningstest', status: 'enquiry' }),
     offer({ slug: 'zadelanalyse', title: 'Zadelanalyse', status: 'unavailable' }),
     offer({
       slug: 'jeugdfit',
@@ -297,8 +334,12 @@ describe('default offerings (what cms:bootstrap writes)', () => {
     expect(new Set(slugs).size).toBe(slugs.length);
   });
 
-  it('the two booking services are the fits; the older three are retired, not default', () => {
-    expect(DEFAULT_SERVICES.map((service) => service.slug)).toEqual(['volwassenenfit', 'jeugdfit']);
+  it('the three booking services are the fits; the older three are retired, not default', () => {
+    expect(DEFAULT_SERVICES.map((service) => service.slug)).toEqual([
+      'volwassenenfit',
+      'jeugdfit',
+      'jeugdfit-pakket',
+    ]);
     expect([...RETIRED_SERVICE_SLUGS]).toEqual(['gezinspakket', 'fit-aan-huis', 'inspanningstest']);
     const defaults = new Set(DEFAULT_SERVICES.map((service) => service.slug));
     expect(RETIRED_SERVICE_SLUGS.some((slug) => defaults.has(slug))).toBe(false);
@@ -313,8 +354,11 @@ describe('default offerings (what cms:bootstrap writes)', () => {
   it('every offer carries the default CTA, a price Toshoni gave and an honest duration', () => {
     for (const entry of DEFAULT_OFFERS) {
       expect(entry.content.ctaLabel).toBe('');
-      // A real duration (20 Oct 2026) or, where none was given, "in overleg".
-      expect(entry.content.duration).toMatch(/^(\d+ (uur|minuten).*|.*in overleg)$/);
+      // A real duration (20 Oct 2026), a token that reads the length of a service (27 Oct 2026),
+      // the extra's own words (the choices carry its minutes) or, where none was given, "in overleg".
+      expect(entry.content.duration).toMatch(
+        /^(\d+ (uur|minuten).*|\{\{duur:[a-z-]+\}\}|Extra tijd.*|.*in overleg)$/,
+      );
       expect(entry.content.title).not.toMatch(/€/);
       expect(entry.isListed).toBe(true);
       for (const variant of entry.variants) {
@@ -339,13 +383,14 @@ describe('default offerings (what cms:bootstrap writes)', () => {
     expect(used.sort()).toEqual([...known].sort());
   });
 
-  it('the current-bike fit is booked directly as Volwassene + Jeugd; the other six are asked for', () => {
+  it('the current-bike fit is booked directly as Volwassene, Jeugd – eenmalig and Jeugd – volledig pakket; the other eight are asked for', () => {
     const current = DEFAULT_OFFERS.find((entry) => entry.content.slug === 'bikefit-huidige-fiets')!;
     expect(current.bookingMode).toBe('direct');
     expect(current.variantMode).toBe('audience');
     expect(current.variants.map((v) => `${v.audience}:${v.serviceSlug}`)).toEqual([
       'adult:volwassenenfit',
       'youth:jeugdfit',
+      'youth-package:jeugdfit-pakket',
     ]);
     expect(DEFAULT_OFFERS.filter((entry) => entry.bookingMode === 'enquiry')).toHaveLength(8);
   });

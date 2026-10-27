@@ -215,6 +215,31 @@ describe('sanitizeRichTextHtml — seeded legal pages', () => {
   });
 });
 
+describe('copy tokens survive the write path (27 Oct 2026)', () => {
+  // The tokens are resolved at render time, after this sanitiser has run: they must come out of
+  // it exactly as they went in, in the text and in the targets of links.
+  const html =
+    '<p>Bel <a href="{{telefoon-href}}">{{telefoon}}</a> of mail <a href="mailto:{{e-mail}}">{{e-mail}}</a>. ' +
+    'Een tweede bezoek kost {{prijs:bikefit-tweede-bezoek:all}}; {{bedrijf}}, {{zetel}}.</p>';
+
+  it('leaves tokens in text and in link targets as they are', () => {
+    expect(sanitizeRichTextHtml(html)).toBe(html);
+  });
+
+  it('accepts a block whose links and text are tokens', () => {
+    const data = {
+      html,
+      cta: { label: 'Bel {{telefoon}}', href: '{{telefoon-href}}' },
+      phoneHref: '{{telefoon-href}}',
+    };
+    expect(sanitizeBlockData(data)).toEqual({ ok: true, data });
+  });
+
+  it('still refuses an unsafe scheme typed next to a token', () => {
+    expect(sanitizeBlockData({ href: 'javascript:{{telefoon}}' }).ok).toBe(false);
+  });
+});
+
 describe('sanitizeBlockData', () => {
   it('sanitises every html field, however deep', () => {
     const result = sanitizeBlockData({

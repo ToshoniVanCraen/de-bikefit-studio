@@ -5,6 +5,10 @@
 @import './studio-aanbod.css';
 /* Booking step 1: an offer with its services underneath (split out, same reason). */
 @import './studio-booking-choice.css';
+/* The location block: address, parking line and the two-click map (split out, same reason). */
+@import './studio-location.css';
+/* Cadeaubon promotion: amount cards, validity line, a seventh menu item (split out, same reason). */
+@import './studio-cadeaubon.css';
 
 @plugin "@tailwindcss/typography";
 

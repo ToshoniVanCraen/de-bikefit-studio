@@ -1,0 +1,112 @@
+/* ============================================================================
+   CADEAUBON PROMOTION (27 Oct 2026) — additive
+   ----------------------------------------------------------------------------
+   Imported by `globals.css` (kept apart: that file and `studio-aanbod.css` are
+   at the size limit). Only `--ds-*` tokens, every new class prefixed
+   `studio-voucher__`, square corners. Two things came with the promotion:
+
+   1. `/cadeaubon`: the validity line under the intro and the suggested
+      amounts (`blocks/gift-voucher.tsx`, `gift-voucher/amount-picker.tsx`).
+   2. Room for the seventh main-menu item ("Cadeaubon").
+   ========================================================================== */
+@layer components {
+  /* ---- /cadeaubon: the validity line under the intro ----------------------- */
+  /* Doubled class: `.studio-pagehead__lede` (globals.css) loads later in the layer. */
+  .studio-pagehead__lede.studio-voucher__validity {
+    margin-top: var(--ds-space-xs);
+    color: var(--ds-color-fg);
+    font-weight: 600;
+  }
+
+  /* ---- /cadeaubon: the suggested amounts ---------------------------------- */
+  /* Radio cards in the look of the booking widget's option cards
+     (`.studio-booking__option`): the card is the label, the real radio lies
+     invisibly over it, so a click anywhere on the card chooses it and the
+     browser keeps the keyboard and screen reader behaviour of a radio group. */
+  .studio-voucher__choice {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ds-space-2xs);
+    margin: 0;
+    padding: 0;
+    border: 0;
+    min-width: 0;
+  }
+  .studio-voucher__amounts {
+    display: grid;
+    /* 120px: two cards fit side by side on a 360px phone, four on the form's desktop width. */
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 120px), 1fr));
+    gap: var(--ds-space-xs);
+  }
+  .studio-voucher__amount {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--ds-space-3xs);
+    min-height: 64px;
+    padding: var(--ds-space-sm);
+    color: var(--ds-color-fg);
+    background: var(--ds-color-bg);
+    border: 1px solid var(--ds-color-border-strong);
+    border-top: 2px solid var(--ds-color-border-strong);
+    cursor: pointer;
+    transition:
+      background var(--ds-transition-fast),
+      border-color var(--ds-transition-fast);
+  }
+  .studio-voucher__amount:hover {
+    background: var(--ds-color-surface);
+    border-top-color: var(--ds-color-accent);
+  }
+  .studio-voucher__amount:has(:checked) {
+    color: var(--ds-color-fg-inverse);
+    background: var(--ds-color-surface-inverse);
+    border-color: var(--ds-color-surface-inverse);
+  }
+  .studio-voucher__amount:has(:focus-visible) {
+    outline: 2px solid var(--ds-color-accent);
+    outline-offset: 3px;
+  }
+  .studio-voucher__amount-input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+  .studio-voucher__amount-title {
+    font-family: var(--ds-font-display);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    font-size: var(--ds-text-heading-xs);
+    line-height: var(--ds-leading-heading);
+  }
+  .studio-voucher__amount-caption {
+    font-family: var(--ds-font-display);
+    font-size: var(--ds-text-micro);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--ds-color-fg-subtle);
+  }
+  .studio-voucher__amount:has(:checked) .studio-voucher__amount-caption {
+    color: var(--ds-color-fg-inverse-subtle);
+  }
+
+  /* ---- menu: room for the seventh item ------------------------------------ */
+  /* Just above the hamburger breakpoint (900px) the seven items no longer fit
+     next to the logo and the button below about 970px, and the header scrolled
+     sideways. Tighter gaps give back about 110px; the rule runs to 1000px so a
+     window with a scrollbar is covered too. The doubled selector wins over
+     `.studio-nav*` in globals.css, which loads later in the layer. */
+  @media (min-width: 901px) and (max-width: 1000px) {
+    .studio-header .studio-nav {
+      gap: var(--ds-space-md);
+    }
+    .studio-header .studio-nav__menu {
+      gap: var(--ds-space-sm);
+    }
+  }
+}

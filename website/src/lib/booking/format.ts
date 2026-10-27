@@ -55,7 +55,24 @@ export function formatPrice(priceCents: number | null | undefined): string {
   );
 }
 
-/** `90` → `'1 u 30 min'`, `60` → `'1 uur'`, `45` → `'45 min'`. */
+/**
+ * `27500` → `'€ 275'`, `7550` → `'€ 75,50'` (nl-BE): an amount as it reads in a
+ * sentence, and what the copy tokens print (`{{prijs:<slug>:<audience>}}`,
+ * `{{extra:…}}`; `src/lib/studio/copy-tokens.ts`). Whole euros drop the
+ * decimals, any other amount keeps both. {@link formatPrice} stays as it is for
+ * the structured labels (cards, the widget, the e-mails' tables).
+ */
+export function formatPriceInProse(priceCents: number | null | undefined): string {
+  if (priceCents == null) return '';
+  const digits = priceCents % 100 === 0 ? 0 : 2;
+  return new Intl.NumberFormat('nl-BE', {
+    style: 'currency',
+    currency: 'EUR',
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  }).format(priceCents / 100);
+}
+
 /**
  * An admin price field → cents: "149,50" / "149.50" / "€ 150" / "150"; `null`
  * when empty, `undefined` when it is not an amount (at most two decimals).
@@ -68,12 +85,29 @@ export function euroInputToCents(raw: string): number | null | undefined {
   return Math.round(Number(normalized) * 100);
 }
 
+/** `90` → `'1 u 30 min'`, `60` → `'1 uur'`, `45` → `'45 min'`. */
 export function formatDuration(minutes: number): string {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   if (h === 0) return `${m} min`;
   if (m === 0) return h === 1 ? '1 uur' : `${h} uur`;
   return `${h} u ${m} min`;
+}
+
+/**
+ * A duration written out for a sentence: `15` → `'15 minuten'`, `60` → `'1 uur'`,
+ * `90` → `'1 uur 30 minuten'`, `120` → `'2 uur'`. What the copy token
+ * `{{extra:…}}` prints ("€ 75 en 30 minuten extra"); `{{duur:…}}` and the widget
+ * keep the short {@link formatDuration}.
+ */
+export function formatDurationInProse(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  const parts = [
+    h > 0 ? `${h} uur` : '',
+    m > 0 ? (m === 1 ? '1 minuut' : `${m} minuten`) : '',
+  ].filter(Boolean);
+  return parts.length > 0 ? parts.join(' ') : '0 minuten';
 }
 
 /**

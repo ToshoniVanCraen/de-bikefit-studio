@@ -136,6 +136,8 @@ function contentFor(stored: StoredOffering, slug: string) {
     extras: change.to.extras,
     extrasNote: row.extrasNote,
     duration: change.to.duration,
+    // Not part of this patch (migration 0017, 27 Oct 2026): kept as stored.
+    priceText: row.priceText,
     ctaLabel: row.ctaLabel,
     image: row.image ?? undefined,
     metaDescription: change.to.metaDescription,

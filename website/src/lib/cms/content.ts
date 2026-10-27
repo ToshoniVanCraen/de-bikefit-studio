@@ -264,7 +264,9 @@ export async function getSiteSettings(locale: string = DEFAULT_LOCALE): Promise<
     ['cms-site-settings', locale],
     { tags: [CMS_TAGS.all, CMS_TAGS.settings], revalidate: REVALIDATE_SECONDS },
   );
-  return load();
+  // The data cache outlives a deploy: for up to the revalidate window a copy cached before a
+  // group existed (`business`, `rules`: 27 Oct 2026) still lacks it. The defaults fill the gap.
+  return { ...defaultSiteSettings(), ...(await load()) };
 }
 
 // ---------------------------------------------------------------------------

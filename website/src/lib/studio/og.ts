@@ -7,5 +7,5 @@
  * from being pulled into every page's server bundle.
  */
 export const OG_IMAGE_PATH = '/og';
-export const OG_IMAGE_ALT = 'De Bikefit Studio — Fiets met comfort';
+export const OG_IMAGE_ALT = 'De Bikefit Studio: fiets met comfort';
 export const OG_IMAGE_SIZE = { width: 1200, height: 630 } as const;

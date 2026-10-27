@@ -8,6 +8,7 @@ import {
   sectionVariantSchema,
 } from './block-primitives';
 import { aanbodBlockRegistry } from './blocks-aanbod';
+import { locationBlockRegistry } from './blocks-location';
 
 /**
  * Content-block registry.
@@ -182,11 +183,12 @@ export const imageTextSchema = z.object({
 });
 
 /**
- * `pricing` — NOTE: the prototype and copy decks contain **no amounts**; the
- * copy deck records "prijzen tonen?" as an open question. Only durations are
- * known (90 min / ~60 min / tot twee uur). `defaultData` therefore ships the
- * four real services with empty prices and `isPlaceholder: true` so the admin
- * can flag it and Worker C can hide the block until amounts are filled in.
+ * `pricing` — the prototype and copy decks contain **no amounts**; the copy
+ * deck records "prijzen tonen?" as an open question. Since 27 Oct 2026 the
+ * amounts and durations of the bookable fits are typed once, in their masters
+ * (the offering's variants, the booking services): `defaultData` ships those
+ * plans with `{{prijs:…}}` and `{{duur:…}}` tokens and `isPlaceholder: true`,
+ * so the block stays hidden until someone clears the flag.
  */
 export const pricingSchema = z.object({
   variant: sectionVariantSchema,
@@ -216,9 +218,9 @@ export const pricingSchema = z.object({
 });
 
 /**
- * `contact` — the studio's contact details. Known facts only: phone, city,
- * website, "Op afspraak". No street address, e-mail or hours grid exists
- * anywhere in the source material, so those fields default to empty.
+ * `contact` — the studio's contact details. The defaults hold known facts only
+ * (phone, city, "Op afspraak"). The street address is a setting (Instellingen →
+ * Contact), shown by the `location` block, so it is not a default of this one.
  */
 export const contactSchema = z.object({
   variant: sectionVariantSchema,
@@ -308,7 +310,7 @@ export const blockRegistry = {
       title: 'Fiets met',
       titleEmphasis: 'comfort.',
       subtitle:
-        'Het leven is te kort voor pijn op de fiets. We lijnen de fiets uit op jou — niet omgekeerd — zodat elke rit beter voelt en je langer gezond blijft op de fiets.',
+        'Het leven is te kort voor pijn op de fiets. We lijnen de fiets uit op jou, niet omgekeerd, zodat elke rit beter voelt en je langer gezond blijft op de fiets.',
       primaryCta: { label: 'Boek je bikefit →', href: '/afspraak', external: false },
       secondaryCta: { label: 'Hoe verloopt een bikefit?', href: '/bikefit', external: false },
       image: emptyImage,
@@ -348,17 +350,17 @@ export const blockRegistry = {
         },
         {
           label: '',
-          title: 'Jeugdfit',
-          body: 'Korter, ongeveer 60 minuten, en afgestemd op een lichaam in groei. Betaalbaar, duidelijk, op hun tempo.',
-          duration: '60 minuten',
+          title: 'Jeugdfit – eenmalig',
+          body: 'Voor fietsers onder 16: één fit, afgestemd op een lichaam in groei, zonder opvolging.',
+          duration: '{{duur:jeugdfit}}',
           image: emptyImage,
           cta: null,
         },
         {
           label: '',
-          title: 'Gezinspakket',
-          body: 'Mama, papa, kinderen — één sessie in de studio, alle fietsen gepast. Iedereen rijdt beter naar huis.',
-          duration: '',
+          title: 'Jeugdfit – volledig pakket',
+          body: 'Voor fietsers onder 16: dezelfde fit met {{opvolging:jeugd-pakket}} gratis opvolging. Aangeraden, want jonge renners groeien snel.',
+          duration: '{{duur:jeugdfit-pakket}}',
           image: emptyImage,
           cta: null,
         },
@@ -392,7 +394,7 @@ export const blockRegistry = {
         {
           number: '02',
           title: 'Kijken',
-          body: 'Daarna kijken we naar jou op de fiets — houding, trapbeweging, zadelpositie, bewegingspatronen.',
+          body: 'Daarna kijken we naar jou op de fiets: houding, trapbeweging, zadelpositie, bewegingspatronen.',
         },
         {
           number: '03',
@@ -402,7 +404,7 @@ export const blockRegistry = {
         {
           number: '04',
           title: 'Naar huis',
-          body: 'Je vertrekt met je analyse en advies op papier. Koop je een nieuwe fiets, dan weet je precies welke maten en afstelling bij jou passen. Heb je de fiets al, dan rij je naar huis op een fiets die bij jouw lichaam past — en begrijp je waarom ze staat zoals ze staat.',
+          body: 'Je vertrekt met je analyse en advies op papier. Koop je een nieuwe fiets, dan weet je precies welke maten en afstelling bij jou passen. Heb je de fiets al, dan rij je naar huis op een fiets die bij jouw lichaam past, en begrijp je waarom ze staat zoals ze staat.',
         },
       ],
     },
@@ -416,18 +418,18 @@ export const blockRegistry = {
       variant: 'gray',
       eyebrow: 'Voor wie',
       title: 'Voor wie is dit?',
-      lede: 'Of je nu zeven of zeventig bent, koerst of pendelt, een weekendrijder of een doordeweekse toerist — iedereen verdient het om te genieten van alles wat een fiets te bieden heeft.',
+      lede: 'Of je nu zeven of zeventig bent, koerst of pendelt, een weekendrijder of een doordeweekse toerist: iedereen verdient het om te genieten van alles wat een fiets te bieden heeft.',
       items: [
         {
           number: '01',
           title: 'Jonge fietsers',
-          body: 'Kinderen groeien snel — een fiets die vandaag past, klopt volgend seizoen al niet meer. We volgen de pasvorm op terwijl ze groeien. Betaalbaar, duidelijk, op hun tempo.',
+          body: 'Kinderen groeien snel: een fiets die vandaag past, klopt volgend seizoen al niet meer. We volgen de pasvorm op terwijl ze groeien. Betaalbaar, duidelijk, op hun tempo.',
           featured: true,
         },
         {
           number: '02',
           title: 'Wielertoeristen',
-          body: 'Lange dagen, zware tassen, verre horizonten — een pasvorm waar je op kilometer 200 nog op kan rekenen, maakt van de tocht wat ze hoort te zijn.',
+          body: 'Lange dagen, zware tassen, verre horizonten: een pasvorm waar je op kilometer 200 nog op kan rekenen, maakt van de tocht wat ze hoort te zijn.',
           featured: false,
         },
         {
@@ -444,8 +446,8 @@ export const blockRegistry = {
         },
         {
           number: '05',
-          title: 'Gezinspakket',
-          body: 'Mama, papa, kinderen — één sessie in de studio, alle fietsen gepast. Iedereen rijdt beter naar huis.',
+          title: 'Beginners en ervaren fietsers',
+          body: 'Je eerste kilometers of al jaren onderweg: we bekijken wat jij nodig hebt.',
           featured: false,
         },
       ],
@@ -467,42 +469,42 @@ export const blockRegistry = {
         {
           question: 'Waarom is een bikefit belangrijk?',
           answer:
-            'Een fiets die niet bij jouw lichaam past, kost je op drie manieren: pijn, verloren kracht, en kortere ritten. Een bikefit lijnt de fiets uit op jou — niet omgekeerd — zodat elke rit beter voelt en je langer gezond blijft op de fiets.',
+            'Een fiets die niet bij jouw lichaam past, kost je op drie manieren: pijn, verloren kracht, en kortere ritten. Een bikefit lijnt de fiets uit op jou, niet omgekeerd, zodat elke rit beter voelt en je langer gezond blijft op de fiets.',
         },
         {
           question: 'Hoe vaak moet ik een bikefit laten doen?',
           answer:
-            'Voor de meeste volwassenen om de 18 tot 24 maanden — of telkens als er iets verandert. Een nieuwe fiets, een blessure, een grote verandering in gewicht of soepelheid, of een nieuw doel zijn allemaal goede redenen om terug te komen. Voor kinderen vaker: zij groeien, de pasvorm groeit niet mee.',
+            'Voor de meeste volwassenen om de 18 tot 24 maanden, of telkens als er iets verandert. Een nieuwe fiets, een blessure, een grote verandering in gewicht of soepelheid, of een nieuw doel zijn allemaal goede redenen om terug te komen. Voor kinderen vaker: zij groeien, de pasvorm groeit niet mee.',
         },
         {
           question: 'Hoe verloopt een bikefit?',
           answer:
-            'We beginnen met een gesprek over jouw lichaam, je doelen en je klachten. Daarna kijken we naar jou op de fiets — houding, trapbeweging, zadelpositie, bewegingspatronen. We passen stap voor stap aan, met feedback na elke aanpassing, tot alles klopt. Je vertrekt met begrip waarom jouw fiets staat zoals ze staat.',
+            'We beginnen met een gesprek over jouw lichaam, je doelen en je klachten. Daarna kijken we naar jou op de fiets: houding, trapbeweging, zadelpositie, bewegingspatronen. We passen stap voor stap aan, met feedback na elke aanpassing, tot alles klopt. Je vertrekt met begrip waarom jouw fiets staat zoals ze staat.',
         },
         {
           question: 'Kan een bikefit ook bij mij thuis?',
           answer:
-            'Ja — voor groepen, clubs en gezinnen komen we op locatie. Voor de meeste individuele fits werken we liever in de studio, omdat we daar meer controle hebben, maar als je niet naar ons kan komen, komen wij naar jou. Neem contact op en we bekijken het samen.',
+            'Ja, voor groepen, clubs en gezinnen komen we op locatie. Voor de meeste individuele fits werken we liever in de studio, omdat we daar meer controle hebben, maar als je niet naar ons kan komen, komen wij naar jou. Neem contact op en we bekijken het samen.',
         },
         {
           question: 'Wat breng ik mee voor een bikefit?',
           answer:
-            'Je fiets (proper en in werkende staat), de schoenen en fietskleding waarin je écht rijdt, en eventuele notities over wat je dwars zit. Meer hebben we niet nodig. De rest doen wij.',
+            'Je fiets (proper en in werkende staat), de schoenen en fietskleding waarin je écht rijdt, en eventuele notities over wat je dwars zit. Neem ook je eigen pedalen mee, zeker bij Time-pedalen of de nieuwste Shimano-pedalen: niet elk systeem hebben we in de studio. Meer hebben we niet nodig. De rest doen wij.',
         },
         {
           question: 'Hoe lang duurt een bikefit?',
           answer:
-            'Reken op {{duur:volwassenenfit}} voor een bikefit voor volwassenen en {{duur:jeugdfit}} voor een jeugdfit. We haasten ons niet — als het klaar is, is het klaar.',
+            'Dat hangt af van de fit die je kiest. De duur staat bij elke fit op haar eigen pagina onder Aanbod: Bikefit – huidige fiets en Bikefit – aankoop nieuwe fiets.',
         },
         {
           question: 'Moet ik nieuwe onderdelen kopen?',
           answer:
-            'Soms. Vaak niet. We werken altijd eerst met wat je al hebt; als een zadel, stuurpen of paar cleats echt niet bij jouw lichaam past, zeggen we het — met uitleg waarom, zonder druk.',
+            'Soms. Vaak niet. We werken altijd eerst met wat je al hebt; als een zadel, stuurpen of paar cleats echt niet bij jouw lichaam past, zeggen we het, met uitleg waarom, zonder druk.',
         },
         {
           question: 'Doen jullie ook e-bikes?',
           answer:
-            'Ja. De principes blijven dezelfde — het lichaam van de fietser moet bij de fiets passen. We fitten koers-, gravel-, mountain-, stads-, toer- en e-bikes.',
+            'Ja. De principes blijven dezelfde: het lichaam van de fietser moet bij de fiets passen. We fitten koers-, gravel-, mountain-, stads-, toer- en e-bikes.',
         },
       ],
     },
@@ -530,9 +532,9 @@ export const blockRegistry = {
       eyebrow: 'Het verhaal',
       title: 'Ik ben Rutger.',
       paragraphs: [
-        'Ik zit op een fiets zolang ik me kan herinneren. Negentien jaar competitie, en een heel leven daarbuiten gewoon fietsen — naar school, naar het werk, het heuvelland in op zondag, over de grens tijdens de zomer.',
+        'Ik zit op een fiets zolang ik me kan herinneren. Negentien jaar competitie, en een heel leven daarbuiten gewoon fietsen: naar school, naar het werk, het heuvelland in op zondag, over de grens tijdens de zomer.',
         'Mijn eerste wedstrijd ging niet over uitslagen of tussentijden of watts. Ze ging over wat een fiets voor mij kón doen. Die ervaring is de reden dat ik er, dertig jaar later, nog steeds sta.',
-        'En dat is wat ik elke fietser gun. Geen pijn. Geen lichaam dat eerder opgeeft dan de weg. Geen fiets die tegen je vecht. Gewoon de rit — die ene waardoor je in de eerste plaats verliefd werd op de fiets.',
+        'En dat is wat ik elke fietser gun. Geen pijn. Geen lichaam dat eerder opgeeft dan de weg. Geen fiets die tegen je vecht. Gewoon de rit, die ene waardoor je in de eerste plaats verliefd werd op de fiets.',
       ],
       bullets: [],
       quote: '',
@@ -547,7 +549,7 @@ export const blockRegistry = {
   pricing: {
     label: 'Prijzen',
     description:
-      'Prijskaarten. Let op: er zijn nog geen bedragen vastgelegd — het blok blijft verborgen zolang “placeholder” aanstaat, en verschijnt enkel op /aanbod en de dienstpagina’s.',
+      'Prijskaarten. De bedragen komen uit Beheer → Aanbod, via de prijs-tokens in de standaardinhoud. Het blok blijft verborgen zolang “placeholder” aanstaat en verschijnt enkel op /aanbod en de dienstpagina’s.',
     schema: pricingSchema,
     defaultData: {
       variant: 'gray',
@@ -561,30 +563,32 @@ export const blockRegistry = {
         {
           title: 'Volwassenenfit',
           priceCents: null,
-          priceLabel: '',
-          duration: '90 minuten',
+          priceLabel: '{{prijs:bikefit-huidige-fiets:adult}}',
+          duration: '{{duur:volwassenenfit}}',
           description:
-            'De standaard bikefit. Complexe gevallen, eerste keren of fits na een blessure kunnen tot twee uur duren.',
+            'De volledige bikefit op je eigen fiets. Probleemopvolging tot {{opvolging:volwassene}} na je fit is inbegrepen.',
           features: [],
           highlighted: true,
           cta: null,
         },
         {
-          title: 'Jeugdfit',
+          title: 'Jeugdfit – eenmalig',
           priceCents: null,
-          priceLabel: '',
-          duration: '60 minuten',
-          description: 'Korter en afgestemd op een lichaam in groei.',
+          priceLabel: '{{prijs:bikefit-huidige-fiets:youth}}',
+          duration: '{{duur:jeugdfit}}',
+          description:
+            'Voor fietsers onder 16: één fit, afgestemd op een lichaam in groei, zonder opvolging.',
           features: [],
           highlighted: false,
           cta: null,
         },
         {
-          title: 'Gezinspakket',
+          title: 'Jeugdfit – volledig pakket',
           priceCents: null,
-          priceLabel: '',
-          duration: '',
-          description: 'Eén sessie in de studio, alle fietsen van het gezin gepast.',
+          priceLabel: '{{prijs:bikefit-huidige-fiets:youth-package}}',
+          duration: '{{duur:jeugdfit-pakket}}',
+          description:
+            'Voor fietsers onder 16: dezelfde fit met {{opvolging:jeugd-pakket}} gratis opvolging. Aangeraden, want jonge renners groeien snel.',
           features: [],
           highlighted: false,
           cta: null,
@@ -612,8 +616,8 @@ export const blockRegistry = {
       eyebrow: 'Contact',
       title: 'Boek je bikefit',
       lede: '',
-      phoneLabel: '+32 473 95 26 33',
-      phoneHref: 'tel:+32473952633',
+      phoneLabel: '{{telefoon}}',
+      phoneHref: '{{telefoon-href}}',
       email: '',
       addressLines: [],
       city: 'Ninove',
@@ -658,9 +662,9 @@ export const blockRegistry = {
         },
         {
           quote:
-            'We brachten alle vier de fietsen mee. De kinderen erbij. We vertrokken met fietsen die eindelijk de onze voelen — en zonder rollende ogen van de tiener.',
+            'We brachten alle vier de fietsen mee. De kinderen erbij. We vertrokken met fietsen die eindelijk de onze voelen, en zonder rollende ogen van de tiener.',
           author: 'Mieke & Jan',
-          meta: 'gezinsfit',
+          meta: 'gezin',
           image: emptyImage,
         },
       ],
@@ -684,8 +688,9 @@ export const blockRegistry = {
     },
   },
 
-  // `offerCatalogue`, `giftVoucher`, `team` — see `blocks-aanbod.ts`.
+  // `offerCatalogue`, `giftVoucher`, `team`: see `blocks-aanbod.ts`; `location`: see `blocks-location.ts`.
   ...aanbodBlockRegistry,
+  ...locationBlockRegistry,
 } as const satisfies Record<string, BlockDefinition>;
 
 export type BlockType = keyof typeof blockRegistry;
@@ -811,118 +816,19 @@ export function validateNavigationItems(
 }
 
 // ---------------------------------------------------------------------------
-// Site settings
+// Site settings: `./site-settings.ts` (split out on 27 Oct 2026, re-exported
+// here so this stays the import path; named, not `export *`, for the CLIs)
 // ---------------------------------------------------------------------------
 
-/**
- * `cms_site_settings` is a `(locale, key) -> jsonb` store. Each key's value is
- * validated by its own schema below. Worker B renders a form per key; Worker C
- * reads them through `getSiteSettings(locale)`.
- */
-export const siteSettingSchemas = {
-  site: z.object({
-    name: z.string().default('De Bikefit Studio'),
-    /** The one-liner under the name: the share image and the JSON-LD slogan. */
-    tagline: z.string().default('Pijnvrij fietsen begint hier'),
-    mission: z.string().default(''),
-    logoMediaId: z.string().nullable().default(null),
-  }),
-  contact: z.object({
-    phoneLabel: z.string().default(''),
-    phoneHref: z.string().default(''),
-    email: z.string().default(''),
-    addressLines: z.array(z.string()).default([]),
-    postalCode: z.string().default(''),
-    city: z.string().default(''),
-    /** ISO country code for the JSON-LD postal address. */
-    country: z.string().default('BE'),
-    hours: z.string().default(''),
-    website: z.string().default(''),
-  }),
-  seo: z.object({
-    defaultMetaTitle: z.string().default(''),
-    titleTemplate: z.string().default('%s · De Bikefit Studio'),
-    defaultMetaDescription: z.string().default(''),
-    defaultOgImageMediaId: z.string().nullable().default(null),
-    /** Staging must never be indexed; flipped on for production. */
-    allowIndexing: z.boolean().default(false),
-  }),
-  organization: z.object({
-    /** schema.org type for the site-wide JSON-LD. */
-    type: z.string().default('LocalBusiness'),
-    legalName: z.string().default(''),
-    vatNumber: z.string().default(''),
-    sameAs: z.array(z.string()).default([]),
-    priceRange: z.string().default(''),
-    areaServed: z.array(z.string()).default([]),
-    latitude: z.number().nullable().default(null),
-    longitude: z.number().nullable().default(null),
-  }),
-  analytics: z.object({
-    // The measurement id is NOT a setting: the tag reads the environment variable
-    // `NEXT_PUBLIC_GA4_MEASUREMENT_ID`, and nothing ships until `enabled` is on.
-    /** Numeric GA4 property id for the Data API (admin dashboard); env `GA4_PROPERTY_ID` wins. */
-    ga4PropertyId: z.string().default(''),
-    enabled: z.boolean().default(false),
-  }),
-  /**
-   * Booking rules (Worker A, `src/lib/booking/settings.ts`). Every field has a
-   * default so a missing row behaves exactly like the documented defaults.
-   */
-  booking: z.object({
-    slotStepMinutes: z.number().int().min(5).max(240).default(30),
-    minNoticeHours: z
-      .number()
-      .int()
-      .min(0)
-      .max(24 * 60)
-      .default(24),
-    horizonDays: z.number().int().min(1).max(730).default(56),
-    defaultBufferAfterMinutes: z.number().int().min(0).max(240).default(15),
-    cancelUntilHours: z
-      .number()
-      .int()
-      .min(0)
-      .max(24 * 60)
-      .default(48),
-    timezone: z.string().min(1).default('Europe/Brussels'),
-    introTitle: z.string().default('Maak een afspraak'),
-    introText: z.string().default(''),
-    confirmationText: z
-      .string()
-      .default(
-        'Je ontvangt een uitnodiging in je mailbox. Daarin vind je alle details en een link om te annuleren.',
-      ),
-    showProviderChoice: z.boolean().default(true),
-  }),
-} as const;
-
-export type SiteSettingKey = keyof typeof siteSettingSchemas;
-export const SITE_SETTING_KEYS = Object.keys(siteSettingSchemas) as SiteSettingKey[];
-
-export type SiteSettings = {
-  [K in SiteSettingKey]: z.infer<(typeof siteSettingSchemas)[K]>;
-};
-
-export function isSiteSettingKey(value: string): value is SiteSettingKey {
-  return Object.prototype.hasOwnProperty.call(siteSettingSchemas, value);
-}
-
-/** Parses a stored value, falling back to the schema defaults when invalid. */
-export function parseSiteSetting<K extends SiteSettingKey>(
-  key: K,
-  value: unknown,
-): SiteSettings[K] {
-  const parsed = siteSettingSchemas[key].safeParse(value ?? {});
-  return (parsed.success ? parsed.data : siteSettingSchemas[key].parse({})) as SiteSettings[K];
-}
-
-/** Every setting with its schema defaults applied — the shape of a fresh site. */
-export function defaultSiteSettings(): SiteSettings {
-  return Object.fromEntries(
-    SITE_SETTING_KEYS.map((key) => [key, siteSettingSchemas[key].parse({})]),
-  ) as SiteSettings;
-}
+export {
+  defaultSiteSettings,
+  isSiteSettingKey,
+  parseSiteSetting,
+  SITE_SETTING_KEYS,
+  siteSettingSchemas,
+  type SiteSettingKey,
+  type SiteSettings,
+} from './site-settings';
 
 // ---------------------------------------------------------------------------
 // Page SEO + published snapshot

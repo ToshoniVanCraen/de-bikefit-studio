@@ -1,6 +1,7 @@
 import { OFFER_CATEGORY_LABELS, OFFER_INDEX_PATH } from '@/lib/offers/catalogue';
 import { editorialImage } from '@/lib/studio/editorial-images';
 import { CADEAUBON_CARD } from './cadeaubon';
+import { CADEAUBON_HOME_BLOCK } from './cadeaubon-promo';
 import {
   HERO_SUBTITLE,
   AANBOD_INTRO,
@@ -9,13 +10,14 @@ import {
   STUDIO_EXTRAS_TEXT,
   TEAM_INTRO,
   TEAM_MEMBERS,
+  TEAM_SELECTION_SENTENCE,
 } from './copy';
 import {
   BOOKING_PATH,
   CONTACT_BLOCK,
   INSPECTION_CARDS,
-  PHONE_HREF,
-  PHONE_LABEL,
+  PHONE_HREF_TOKEN,
+  PHONE_TOKEN,
   PROCESS_STEPS,
   type SeedBlock,
   type SeedPage,
@@ -51,7 +53,9 @@ import {
  *     "jeugd" for the young riders. `cms:patch-page-cleanup` applies exactly
  *     that to an existing database (see `page-cleanup.ts`).
  *   Toshoni's gift voucher request of the same day: the "Overige" group on
- *     /aanbod with the voucher card. The voucher page itself is `cadeaubon.ts`.
+ *     /aanbod with the voucher card. The voucher page itself is `cadeaubon.ts`;
+ *     its year-end promotion of 27 Oct 2026 (menu item, the home section after
+ *     the catalogue) is `cadeaubon-promo.ts`.
  */
 
 const CALLOUT: SeedBlock = {
@@ -61,7 +65,7 @@ const CALLOUT: SeedBlock = {
     title: 'Comfort is een keuze. Maak ze.',
     body: '',
     primaryCta: { label: 'Afspraak maken →', href: BOOKING_PATH, external: false },
-    secondaryCta: { label: PHONE_LABEL, href: PHONE_HREF, external: false },
+    secondaryCta: { label: PHONE_TOKEN, href: PHONE_HREF_TOKEN, external: false },
   },
 };
 
@@ -95,9 +99,9 @@ const HOME: SeedPage = {
   title: 'Home',
   translationGroup: 'home',
   source: 'work block 2026-10-13 (hero, aanbod) + prototype/index.html + content/about.html',
-  metaTitle: 'De Bikefit Studio — Meer plezier. Op jouw fiets.',
+  metaTitle: 'De Bikefit Studio: meer plezier. Op jouw fiets.',
   metaDescription:
-    'Bikefit, voet- en zadelanalyse, schoenplaatjes, lactaattest en coaching in Ninove. Persoonlijke fietsbegeleiding, in de studio of bij jou thuis.',
+    'Bikefit, voet- en zadelanalyse, schoenplaatjes, inspanningstest en coaching in Ninove. Persoonlijke fietsbegeleiding, in de studio of bij jou thuis.',
   structuredDataType: 'WebPage',
   blocks: [
     {
@@ -127,6 +131,8 @@ const HOME: SeedPage = {
         cta: { label: 'Bekijk het volledige aanbod', href: OFFER_INDEX_PATH, external: false },
       },
     },
+    // The gift voucher for the year-end period (Toshoni, 27 Oct 2026), see `cadeaubon-promo.ts`.
+    CADEAUBON_HOME_BLOCK,
     {
       type: 'imageText',
       data: {
@@ -134,7 +140,7 @@ const HOME: SeedPage = {
         eyebrow: 'Voor wie',
         title: 'Voor elke fietser',
         paragraphs: [
-          'Of je nu zeven of zeventig bent, koerst of pendelt, een weekendrijder of een doordeweekse toerist — iedereen verdient het om te genieten van alles wat een fiets te bieden heeft.',
+          'Of je nu zeven of zeventig bent, koerst of pendelt, een weekendrijder of een doordeweekse toerist: iedereen verdient het om te genieten van alles wat een fiets te bieden heeft.',
         ],
         bullets: [
           'Jong en minder jong',
@@ -165,7 +171,7 @@ const HOME: SeedPage = {
       data: {
         variant: 'gray',
         title: 'Goede begeleiding begint bij de juiste mensen.',
-        body: 'We kiezen ons team op ervaring, vakkennis en de nodige diploma’s, maar ook op de manier waarop iemand luistert.',
+        body: TEAM_SELECTION_SENTENCE,
         primaryCta: { label: 'Maak kennis met ons team', href: '/ons-team', external: false },
         secondaryCta: null,
       },
@@ -180,9 +186,9 @@ const AANBOD: SeedPage = {
   title: 'Aanbod',
   translationGroup: 'offer',
   source: 'work block 2026-10-13 (aanbod intro); the offerings are rows in cms_offerings',
-  metaTitle: 'Ons aanbod — bikefit en begeleiding',
+  metaTitle: 'Ons aanbod: bikefit en begeleiding',
   metaDescription:
-    'Bikefit bij aankoop of op je huidige fiets, voetanalyse, zadelanalyse, schoenplaatjes afstellen, lactaattest en coaching in Ninove.',
+    'Bikefit bij aankoop of op je huidige fiets, voetanalyse, zadelanalyse, schoenplaatjes afstellen, inspanningstest en coaching in Ninove.',
   structuredDataType: 'WebPage',
   blocks: [
     {
@@ -220,7 +226,7 @@ const VOOR_WIE: SeedPage = {
   title: 'Voor wie',
   translationGroup: 'audience',
   source: 'work block 2026-10-13 (audiences, junior text) + content/index.html persona copy',
-  metaTitle: 'Voor wie — elke fietser, op elke leeftijd',
+  metaTitle: 'Voor wie: elke fietser, op elke leeftijd',
   metaDescription:
     'Voor jong en minder jong, beginners en ervaren fietsers, recreatief en competitief, koers, gravel en mountainbike, woon-werk en e-bike. Extra aandacht voor de jeugd.',
   structuredDataType: 'WebPage',
@@ -233,7 +239,7 @@ const VOOR_WIE: SeedPage = {
         title: 'Voor elke fietser',
         titleEmphasis: '',
         subtitle:
-          'Of je nu zeven of zeventig bent, koerst of pendelt, een weekendrijder of een doordeweekse toerist — iedereen verdient het om te genieten van alles wat een fiets te bieden heeft.',
+          'Of je nu zeven of zeventig bent, koerst of pendelt, een weekendrijder of een doordeweekse toerist: iedereen verdient het om te genieten van alles wat een fiets te bieden heeft.',
         primaryCta: null,
         secondaryCta: null,
       },
@@ -250,7 +256,7 @@ const VOOR_WIE: SeedPage = {
           {
             number: '01',
             title: 'Jonge fietsers',
-            body: 'Kinderen groeien snel — een fiets die vandaag past, klopt volgend seizoen al niet meer. We volgen de pasvorm op terwijl ze groeien.',
+            body: 'Kinderen groeien snel: een fiets die vandaag past, klopt volgend seizoen al niet meer. We volgen de pasvorm op terwijl ze groeien.',
             featured: true,
           },
           {
@@ -280,7 +286,7 @@ const VOOR_WIE: SeedPage = {
           {
             number: '06',
             title: 'Wielertoeristen',
-            body: 'Lange dagen, zware tassen, verre horizonten — een pasvorm waar je op kilometer 200 nog op kan rekenen, maakt van de tocht wat ze hoort te zijn.',
+            body: 'Lange dagen, zware tassen, verre horizonten: een pasvorm waar je op kilometer 200 nog op kan rekenen, maakt van de tocht wat ze hoort te zijn.',
             featured: false,
           },
         ],
@@ -317,8 +323,8 @@ const BIKEFIT: SeedPage = {
   title: 'De bikefit',
   translationGroup: 'bikefit',
   source:
-    'prototype/bikefit.html + work block 2026-10-13 (3D text, offer structure); review 19 Oct 2026 (no page head, what you take home, insoles and saddles)',
-  metaTitle: 'De bikefit — hoe het werkt',
+    'prototype/bikefit.html + work block 2026-10-13 (3D text, offer structure); review 19 Oct 2026 (no page head, what you take home, insoles and saddles); 27 Oct 2026 (insoles removed again)',
+  metaTitle: 'De bikefit: hoe het werkt',
   metaDescription:
     'Wat een bikefit is, hoe hij verloopt en hoe we 3D-bewegingsanalyse gebruiken. Bikefit bij aankoop of op je huidige fiets, voet- en zadelanalyse en schoenplaatjes, in Ninove.',
   structuredDataType: 'WebPage',
@@ -332,8 +338,8 @@ const BIKEFIT: SeedPage = {
         eyebrow: 'Waarom een bikefit',
         title: 'Waarom is een bikefit belangrijk?',
         paragraphs: [
-          'Een fiets die niet bij jouw lichaam past, kost je op drie manieren: pijn, verloren kracht, en kortere ritten. Een bikefit lijnt de fiets uit op jou — niet omgekeerd — zodat elke rit beter voelt en je langer gezond blijft op de fiets.',
-          'Voor de meeste volwassenen is dat om de 18 tot 24 maanden zinvol, of telkens als er iets verandert: een nieuwe fiets, een blessure, een grote verandering in gewicht of soepelheid, of een nieuw doel. Voor kinderen vaker — zij groeien, de pasvorm groeit niet mee.',
+          'Een fiets die niet bij jouw lichaam past, kost je op drie manieren: pijn, verloren kracht, en kortere ritten. Een bikefit lijnt de fiets uit op jou, niet omgekeerd, zodat elke rit beter voelt en je langer gezond blijft op de fiets.',
+          'Voor de meeste volwassenen is dat om de 18 tot 24 maanden zinvol, of telkens als er iets verandert: een nieuwe fiets, een blessure, een grote verandering in gewicht of soepelheid, of een nieuw doel. Voor kinderen vaker: zij groeien, de pasvorm groeit niet mee.',
         ],
         quote:
           'Geen pijn. Geen lichaam dat eerder opgeeft dan de weg. Geen fiets die tegen je vecht. Gewoon de rit.',
@@ -369,7 +375,7 @@ const BIKEFIT: SeedPage = {
         variant: 'default',
         eyebrow: 'Werkwijze',
         title: 'Hoe verloopt een bikefit?',
-        lede: 'Een gesprek, een blik op jou en je fiets, en stap voor stap aanpassen tot alles klopt. We haasten ons niet — als het klaar is, is het klaar.',
+        lede: 'Een gesprek, een blik op jou en je fiets, en stap voor stap aanpassen tot alles klopt. We haasten ons niet: als het klaar is, is het klaar.',
         steps: PROCESS_STEPS,
       },
     },
@@ -380,7 +386,7 @@ const BIKEFIT: SeedPage = {
         eyebrow: 'Op locatie',
         title: 'Kan een bikefit ook bij mij thuis?',
         paragraphs: [
-          'Ja — voor groepen, clubs en gezinnen komen we op locatie. Voor de meeste individuele fits werken we liever in de studio, omdat we daar meer controle hebben.',
+          'Ja, voor groepen, clubs en gezinnen komen we op locatie. Voor de meeste individuele fits werken we liever in de studio, omdat we daar meer controle hebben.',
           'Maar als je niet naar ons kan komen, komen wij naar jou. Neem contact op en we bekijken het samen.',
         ],
         imagePosition: 'left',

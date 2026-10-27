@@ -8,6 +8,7 @@ import {
   type OfferCategory,
 } from '@/lib/offers/catalogue';
 import { OFFERING_STATUS_LABELS, type OfferingStatus } from '@/lib/offers/offering';
+import { resolveCopy } from '@/lib/studio/copy-token-lookup';
 import { StudioButtonLink, splitArrow } from '../link';
 import { StudioSection } from './section';
 import type { BlockProps } from './types';
@@ -64,7 +65,8 @@ export async function OfferCatalogueBlock({
 }: BlockProps<'offerCatalogue'>) {
   let offers: CatalogueOffer[] = [];
   try {
-    offers = await listPublishedOffers(locale);
+    // Copy tokens in the cards (a summary, an offering's free-text price) resolve like the page's own.
+    offers = await resolveCopy(await listPublishedOffers(locale), locale);
   } catch {
     // A fixed code, never the error: a failed query's message holds the SQL and its bound values.
     console.error('[aanbod] catalogue_unavailable');

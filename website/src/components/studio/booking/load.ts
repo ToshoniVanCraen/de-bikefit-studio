@@ -9,13 +9,17 @@ import {
 } from '@/lib/booking/content';
 import type { BookingRules } from '@/lib/booking/settings';
 import { todayYmd } from '@/lib/booking/time';
+import { resolveCopy } from '@/lib/studio/copy-token-lookup';
 import type { BookingLocationOption, BookingProviderOption, BookingServiceOption } from './types';
 
 /**
  * Server-side loader for the booking widget and the confirmation page: reads
  * through the public booking content API (`@/lib/booking/content`, the only
  * route to the booking tables from the public site) and maps its results onto
- * the widget's plain, serialisable props.
+ * the widget's plain, serialisable props. Copy tokens in the services' texts and
+ * in the booking settings' texts are resolved here (`resolveCopy`), so the client
+ * widget never sees a `{{…}}`; `src/lib/booking/content.ts` is a lower layer and
+ * cannot import the token lookup, which reads from it.
  */
 
 export type BookingOptions = {
@@ -61,7 +65,6 @@ function toProvider(
   return {
     id: provider.id,
     name: provider.displayName,
-    bio: provider.bio,
     services: provider.services
       .filter((entry) => serviceIds.has(entry.serviceId))
       .map((entry) => ({ serviceId: entry.serviceId, location: toLocation(entry.location) })),
@@ -118,11 +121,20 @@ export async function loadBookingOptions(
     for (const location of provider.locations) locations.set(location.id, location);
   }
 
+  // Copy tokens in what the widget prints (a service's description, the intro and the
+  // confirmation text of Instellingen → Afspraken) are resolved here, on the server: the
+  // client widget only ever receives finished text. A service whose description says
+  // "tot {{opvolging:volwassene}} na je fit" follows Instellingen → Regels.
+  const [readyServices, readyRules] = await Promise.all([
+    resolveCopy(bookable, locale),
+    resolveCopy(rules, locale),
+  ]);
+
   return {
-    services: bookable,
+    services: readyServices,
     locations: [...locations.values()],
     providers,
-    rules,
+    rules: readyRules,
     todayYmd: todayYmd(new Date(), rules.timezone),
   };
 }

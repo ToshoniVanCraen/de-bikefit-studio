@@ -1,20 +1,14 @@
 'use client';
 
-import { useActionState } from 'react';
-
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  CheckboxField,
-  Field,
-  SectionCard,
-  StatusMessage,
-  SubmitButton,
-} from '@/components/admin/form';
+import { CheckboxField, Field } from '@/components/admin/form';
+import { BusinessSettingsForm } from '@/components/admin/business-settings-form';
+import { CopyTokenHelp } from '@/components/admin/copy-token-help';
 import { MediaPicker, type MediaOption } from '@/components/admin/media-picker';
-import { updateSettingAction } from '@/lib/cms/actions/settings';
-import { IDLE_STATE } from '@/lib/cms/actions/state';
-import type { SiteSettingKey, SiteSettings } from '@/lib/cms/blocks';
+import { RulesSettingsForm } from '@/components/admin/rules-settings-form';
+import { SettingForm } from '@/components/admin/setting-form';
+import type { SiteSettings } from '@/lib/cms/blocks';
 
 /** Site settings, one form (and one `cms_site_settings` row) per key. */
 export function SettingsForms({
@@ -131,6 +125,8 @@ export function SettingsForms({
         </Field>
       </SettingForm>
 
+      <BusinessSettingsForm business={settings.business} locale={locale} canEdit={canEdit} />
+
       <SettingForm
         settingKey="seo"
         locale={locale}
@@ -193,25 +189,11 @@ export function SettingsForms({
         locale={locale}
         canEdit={canEdit}
         title="Organisatie (JSON-LD)"
-        description="Bron voor de Organization / LocalBusiness structured data."
+        description="Bron voor de Organization / LocalBusiness structured data. De juridische naam en het btw-nummer komen uit Bedrijfsgegevens, het adres en de contactgegevens uit Contact."
       >
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="schema.org type" htmlFor="org-type">
             <Input id="org-type" name="type" defaultValue={settings.organization.type} />
-          </Field>
-          <Field label="Juridische naam" htmlFor="org-legalName">
-            <Input
-              id="org-legalName"
-              name="legalName"
-              defaultValue={settings.organization.legalName}
-            />
-          </Field>
-          <Field label="Btw-nummer" htmlFor="org-vatNumber">
-            <Input
-              id="org-vatNumber"
-              name="vatNumber"
-              defaultValue={settings.organization.vatNumber}
-            />
           </Field>
           <Field label="Prijsklasse" htmlFor="org-priceRange" hint="Bv. €€">
             <Input
@@ -369,7 +351,7 @@ export function SettingsForms({
         <Field
           label="Bevestigingstekst"
           htmlFor="booking-confirmationText"
-          hint="Getoond na een geslaagde boeking. Leeg laten zet de standaardtekst terug."
+          hint="Getoond na een geslaagde boeking en in de bevestigingsmail. Leeg laten zet de standaardtekst terug."
           className="mt-3"
         >
           <Textarea
@@ -379,6 +361,7 @@ export function SettingsForms({
             defaultValue={settings.booking.confirmationText}
           />
         </Field>
+        <CopyTokenHelp className="mt-2" />
         <div className="mt-3">
           <CheckboxField
             name="showProviderChoice"
@@ -388,6 +371,8 @@ export function SettingsForms({
           />
         </div>
       </SettingForm>
+
+      <RulesSettingsForm rules={settings.rules} locale={locale} canEdit={canEdit} />
 
       <SettingForm
         settingKey="analytics"
@@ -421,39 +406,5 @@ export function SettingsForms({
         </div>
       </SettingForm>
     </div>
-  );
-}
-
-function SettingForm({
-  settingKey,
-  locale,
-  title,
-  description,
-  canEdit,
-  children,
-}: {
-  settingKey: SiteSettingKey;
-  locale: string;
-  title: string;
-  description: string;
-  canEdit: boolean;
-  children: React.ReactNode;
-}) {
-  const [state, formAction] = useActionState(updateSettingAction, IDLE_STATE);
-
-  return (
-    <SectionCard title={title} description={description}>
-      <form action={formAction} className="flex flex-col gap-2">
-        <input type="hidden" name="key" value={settingKey} />
-        <input type="hidden" name="locale" value={locale} />
-        {children}
-        <StatusMessage state={state} />
-        {canEdit ? (
-          <div className="mt-1 flex justify-end">
-            <SubmitButton>Opslaan</SubmitButton>
-          </div>
-        ) : null}
-      </form>
-    </SectionCard>
   );
 }

@@ -49,7 +49,7 @@ export type BookingEmailData = {
   /** Last moment the link works (ISO), `cancelUntilHours` before the start. */
   cancelDeadline?: string | null;
   cancelledBy?: 'customer' | 'provider' | 'admin' | null;
-  /** Phone fallback, e.g. "0473 95 26 33". */
+  /** Phone fallback, e.g. "+32 473 95 26 33". */
   contactPhoneLabel?: string | null;
   /** The studio's address on one line (Instellingen → Contact), for the footer; empty = name only. */
   studioAddress?: string | null;
@@ -152,8 +152,12 @@ export function layout(
   ].join('');
 }
 
+/**
+ * What to bring: the same list as "Wat breng ik mee" in the FAQ and under "Voor
+ * je komt" on /afspraak, own pedals included since 27 Oct 2026 (Toshoni).
+ */
 export const BRING_ALONG =
-  'Breng je fiets mee (proper en in werkende staat), de schoenen en fietskleding waarin je écht rijdt, en eventuele notities over wat je dwars zit.';
+  'Breng je fiets mee (proper en in werkende staat), de schoenen en fietskleding waarin je écht rijdt, en eventuele notities over wat je dwars zit. Breng ook je eigen pedalen mee, zeker bij Time-pedalen of de nieuwste Shimano-pedalen: niet elk systeem hebben we in de studio.';
 
 // ---------------------------------------------------------------------------
 // Transactional footer (customer-facing mails)
@@ -274,7 +278,7 @@ export function bookingConfirmationEmail(data: BookingEmailData): RenderedEmail 
 // ---------------------------------------------------------------------------
 
 export function providerNotificationEmail(data: BookingEmailData): RenderedEmail {
-  const subject = `Nieuwe afspraak: ${data.serviceName} — ${data.customerName}, ${formatDateShort(data.startsAt, data.timezone)} ${formatTime(data.startsAt, data.timezone)}`;
+  const subject = `Nieuwe afspraak: ${data.serviceName} voor ${data.customerName}, ${formatDateShort(data.startsAt, data.timezone)} ${formatTime(data.startsAt, data.timezone)}`;
   const heading = 'Nieuwe afspraak';
   const rows: Row[] = [
     ['Dienst', `${data.serviceName} (${formatDuration(data.durationMinutes)})`],
@@ -370,7 +374,7 @@ export function bookingCancellationEmail(
       : data.cancelledBy === 'admin'
         ? 'een beheerder'
         : 'jou';
-  const subject = `Afspraak geannuleerd: ${data.serviceName} — ${data.customerName}, ${shortWhen}`;
+  const subject = `Afspraak geannuleerd: ${data.serviceName} voor ${data.customerName}, ${shortWhen}`;
   const intro = `Hallo ${data.providerName}, deze afspraak is geannuleerd door ${who}. Het tijdslot is weer vrij.`;
   const text = [intro, '', rowsText(rows), '', data.adminUrl ? `Admin: ${data.adminUrl}` : '']
     .filter(Boolean)

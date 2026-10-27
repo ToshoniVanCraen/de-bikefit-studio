@@ -18,6 +18,7 @@ import {
 import { getSiteSettings } from '@/lib/cms/content';
 import { siteUrl } from '@/lib/env';
 import { buildIcs, icsUidFor } from '@/lib/email/ics';
+import { resolveCopyText } from '@/lib/email/resolve-copy';
 import { sendEmail, type SendEmailResult } from '@/lib/email/send';
 import { loadEmailSettings } from '@/lib/email/settings';
 import {
@@ -168,16 +169,23 @@ function providerRecipient(ctx: BookingContext): string {
   return ctx.provider.email || ctx.providerLoginEmail;
 }
 
-function icsFor(ctx: BookingContext, data: BookingEmailData, method: 'PUBLISH' | 'CANCEL'): string {
+/**
+ * The calendar file of a booking. Its text is resolved for copy tokens BEFORE
+ * `buildIcs()` escapes and folds it (a token printing an address with a comma
+ * after the fact would break the escaping); the mail itself is resolved by
+ * `sendEmail()`.
+ */
+async function icsFor(
+  ctx: BookingContext,
+  data: BookingEmailData,
+  method: 'PUBLISH' | 'CANCEL',
+): Promise<string> {
   const where =
     data.locationKind === 'customer'
       ? (data.customerAddress ?? '')
       : formatLocation(ctx.location).singleLine;
-  return buildIcs({
-    uid: icsUidFor(ctx.booking.id, new URL(siteUrl()).hostname || 'debikefitstudio.be'),
-    startsAt: data.startsAt,
-    endsAt: data.endsAt,
-    summary: `${data.serviceName} — ${data.siteName}`,
+  const text = await resolveCopyText({
+    summary: `${data.serviceName} bij ${data.siteName}`,
     description: [
       data.providerName ? `${data.serviceName} bij ${data.providerName}.` : `${data.serviceName}.`,
       data.addons?.length ? `Extra’s: ${addonLines(data.addons).join(', ')}` : '',
@@ -185,7 +193,15 @@ function icsFor(ctx: BookingContext, data: BookingEmailData, method: 'PUBLISH' |
     ]
       .filter(Boolean)
       .join('\n'),
-    location: where || undefined,
+    location: where,
+  });
+  return buildIcs({
+    uid: icsUidFor(ctx.booking.id, new URL(siteUrl()).hostname || 'debikefitstudio.be'),
+    startsAt: data.startsAt,
+    endsAt: data.endsAt,
+    summary: text.summary,
+    description: text.description,
+    location: text.location || undefined,
     url: `${data.siteUrl}/afspraak`,
     method,
     sequence: method === 'CANCEL' ? 1 : 0,
@@ -209,7 +225,7 @@ export async function sendBookingCreatedEmails(
     attachments: [
       {
         filename: 'afspraak.ics',
-        content: icsFor(ctx, data, 'PUBLISH'),
+        content: await icsFor(ctx, data, 'PUBLISH'),
         contentType: 'text/calendar; charset=utf-8; method=PUBLISH',
       },
     ],
@@ -310,7 +326,7 @@ export async function sendBookingCancelledEmails(
     attachments: [
       {
         filename: 'afspraak.ics',
-        content: icsFor(ctx, data, 'CANCEL'),
+        content: await icsFor(ctx, data, 'CANCEL'),
         contentType: 'text/calendar; charset=utf-8; method=CANCEL',
       },
     ],

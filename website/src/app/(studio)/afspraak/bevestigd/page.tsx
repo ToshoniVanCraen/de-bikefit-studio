@@ -4,6 +4,7 @@ import { CancelNote } from '@/components/studio/booking/confirmation';
 import { readConfirmationRef } from '@/components/studio/booking/confirmation-ref';
 import { StudioButtonLink } from '@/components/studio/link';
 import { getSiteSettings } from '@/lib/cms/content';
+import { resolveCopy } from '@/lib/studio/copy-token-lookup';
 import { defaultLocale } from '@/lib/studio/locale';
 import { applyTitleTemplate } from '@/lib/studio/seo';
 
@@ -43,6 +44,8 @@ export default async function BookingConfirmedPage({
   const settings = await getSiteSettings(defaultLocale);
   const rules = settings.booking;
   const { phoneLabel, phoneHref } = settings.contact;
+  // Instellingen → Afspraken → Bevestigingstekst may use copy tokens.
+  const confirmationText = await resolveCopy(rules.confirmationText, defaultLocale);
 
   return (
     <section className="studio-booking-page">
@@ -51,7 +54,7 @@ export default async function BookingConfirmedPage({
         <h1 className="studio-booking-page__title">
           {ref ? 'Je afspraak staat vast' : 'Bedankt voor je afspraak'}
         </h1>
-        <p className="studio-booking-page__lede">{rules.confirmationText}</p>
+        <p className="studio-booking-page__lede">{confirmationText}</p>
 
         {ref ? (
           <BookingSummaryList

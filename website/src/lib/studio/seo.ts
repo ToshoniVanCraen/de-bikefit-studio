@@ -2,6 +2,7 @@ import 'server-only';
 import type { Metadata } from 'next';
 import type { SiteSettings } from '@/lib/cms/blocks';
 import type { OfferingContent } from '@/lib/offers/offering-content';
+import { resolveCopy } from './copy-token-lookup';
 import { localeTag, ogLocale, type StudioLocale } from './locale';
 import { OG_IMAGE_ALT, OG_IMAGE_PATH, OG_IMAGE_SIZE } from './og';
 import { absoluteUrl, resolveMedia, type StudioPage } from './site';
@@ -46,11 +47,19 @@ function languageAlternates(locale: StudioLocale, url: string): Record<string, s
 }
 
 export async function buildPageMetadata(studio: StudioPage): Promise<Metadata> {
-  const { locale, page, settings, canonical } = studio;
-  const { seo } = page.snapshot;
+  const { locale, page, canonical } = studio;
+  // Copy tokens in the page's own SEO texts (title, description, share texts) and in the
+  // site-wide defaults they fall back to: the meta tags say what the page says. One lookup,
+  // and none at all while there is no token.
+  const [seo, siteSeo, pageTitle] = await Promise.all([
+    resolveCopy(page.snapshot.seo, locale),
+    resolveCopy(studio.settings.seo, locale),
+    resolveCopy(page.title, locale),
+  ]);
+  const settings = { ...studio.settings, seo: siteSeo };
 
   const isHome = page.slug === '';
-  const rawTitle = seo.metaTitle?.trim() || page.title;
+  const rawTitle = seo.metaTitle?.trim() || pageTitle;
   const title = isHome
     ? seo.metaTitle?.trim() || siteTitle(settings)
     : applyTitleTemplate(settings.seo.titleTemplate, rawTitle);
@@ -135,7 +144,14 @@ export async function buildOfferMetadata(input: {
   settings: SiteSettings;
   locale: StudioLocale;
 }): Promise<Metadata> {
-  const { content, settings, locale } = input;
+  const { locale } = input;
+  // Copy tokens in the offering's texts and in the site-wide defaults (idempotent: a caller that
+  // resolved the entry already passes text without tokens).
+  const [content, siteSeo] = await Promise.all([
+    resolveCopy(input.content, locale),
+    resolveCopy(input.settings.seo, locale),
+  ]);
+  const settings = { ...input.settings, seo: siteSeo };
   const canonical = absoluteUrl(input.path);
   const title = applyTitleTemplate(settings.seo.titleTemplate, content.title);
   const description =

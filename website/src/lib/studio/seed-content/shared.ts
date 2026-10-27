@@ -28,11 +28,27 @@ export type SeedNavigationItem = {
   children: { label: string; href: string; external: boolean }[];
 };
 
-/** International form on every surface (Toshoni, 19 Oct 2026); the link was always +32. */
+/**
+ * The contact details as the bootstrap and the settings seed write them
+ * (Instellingen → Contact is the master): international form on every surface
+ * (Toshoni, 19 Oct 2026), the link was always +32; the public e-mail address
+ * was confirmed by Toshoni on 13 Oct 2026 (register G-01). Page copy never types
+ * them: it carries the tokens below.
+ */
 export const PHONE_LABEL = '+32 473 95 26 33';
 export const PHONE_HREF = 'tel:+32473952633';
-/** Public e-mail address, confirmed by Toshoni on 13 Oct 2026 (register G-01). */
 export const CONTACT_EMAIL = 'info@debikefitstudio.be';
+
+/**
+ * Copy tokens for those details (27 Oct 2026, `src/lib/studio/copy-tokens*.ts`):
+ * the public site resolves them from the settings at render time, so a seed, an
+ * e-mail or a page text says "{{telefoon}}" instead of the number. `{{adres}}` is
+ * the street address on one line (Instellingen → Contact).
+ */
+export const PHONE_TOKEN = '{{telefoon}}';
+export const PHONE_HREF_TOKEN = '{{telefoon-href}}';
+export const EMAIL_TOKEN = '{{e-mail}}';
+export const ADDRESS_TOKEN = '{{adres}}';
 export const BOOKING_PATH = '/afspraak';
 
 /** "Vier dingen, één positie" — prototype/index.html + bikefit.html. */
@@ -45,7 +61,7 @@ export const INSPECTION_CARDS = [
   {
     label: '02 / Trapbeweging',
     title: 'Je trapbeweging',
-    body: 'Hoe je rondtrapt: heupen, knieën, voeten — en waar er iets vastloopt in die beweging.',
+    body: 'Hoe je rondtrapt: heupen, knieën, voeten, en waar er iets vastloopt in die beweging.',
   },
   {
     label: '03 / Zadel',
@@ -74,7 +90,7 @@ export const PROCESS_STEPS = [
   {
     number: '02',
     title: 'Kijken',
-    body: 'Daarna kijken we naar jou op de fiets — houding, trapbeweging, zadelpositie, bewegingspatronen.',
+    body: 'Daarna kijken we naar jou op de fiets: houding, trapbeweging, zadelpositie, bewegingspatronen.',
   },
   {
     number: '03',
@@ -84,7 +100,7 @@ export const PROCESS_STEPS = [
   {
     number: '04',
     title: 'Naar huis',
-    body: 'Je vertrekt met je analyse en advies op papier. Koop je een nieuwe fiets, dan weet je precies welke maten en afstelling bij jou passen. Heb je de fiets al, dan rij je naar huis op een fiets die bij jouw lichaam past — en begrijp je waarom ze staat zoals ze staat.',
+    body: 'Je vertrekt met je analyse en advies op papier. Koop je een nieuwe fiets, dan weet je precies welke maten en afstelling bij jou passen. Heb je de fiets al, dan rij je naar huis op een fiets die bij jouw lichaam past, en begrijp je waarom ze staat zoals ze staat.',
   },
 ];
 
@@ -95,11 +111,13 @@ export const CONTACT_BLOCK: SeedBlock = {
     eyebrow: 'Contact',
     title: 'Boek je bikefit',
     lede: '',
-    phoneLabel: PHONE_LABEL,
-    phoneHref: PHONE_HREF,
+    phoneLabel: PHONE_TOKEN,
+    phoneHref: PHONE_HREF_TOKEN,
     email: '',
-    addressLines: [],
-    city: 'Ninove',
+    // The street address of Instellingen → Contact, on one line (27 Oct 2026): the home page
+    // showed only "Ninove". `city` stays empty so the line is not followed by a second one.
+    addressLines: [ADDRESS_TOKEN],
+    city: '',
     hours: 'Op afspraak',
     mapEmbedUrl: '',
     cta: null,

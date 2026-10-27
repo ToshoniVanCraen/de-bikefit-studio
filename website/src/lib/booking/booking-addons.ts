@@ -50,7 +50,10 @@ export async function insertBookingAddons(
   );
 }
 
-/** "Voetanalyse (30 min)" per extra, for mails, the calendar event and the admin. */
+/**
+ * "Bikefit – tweede fiets – Zelfde type fiets (30 min)" per extra, for mails, the calendar event
+ * and the admin.
+ */
 export function addonLines(
   addons: ReadonlyArray<Pick<CmsBookingAddon, 'title' | 'minutes'>>,
 ): string[] {

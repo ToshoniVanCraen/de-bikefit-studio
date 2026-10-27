@@ -49,6 +49,7 @@ const ANCHOR_BY_TYPE: Partial<Record<BlockType, string>> = {
   offerCatalogue: 'aanbod',
   giftVoucher: 'bestellen',
   team: 'team',
+  location: 'locatie',
 };
 
 export function sectionAnchors(blocks: readonly BlockInstance[]): Map<string, string> {

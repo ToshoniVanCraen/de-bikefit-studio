@@ -11,7 +11,8 @@
  *   2. the provider profile (`cms_providers`) at the default location;
  *   3. business hours Mon–Fri 09:00–18:00 and Sat 09:00–13:00 (only when the
  *      provider has no hours yet);
- *   4. subscriptions to the five bootstrap services (existing ones are kept).
+ *   4. subscriptions to every bootstrap service (`DEFAULT_SERVICES`: Volwassenenfit,
+ *      Jeugdfit – eenmalig, Jeugdfit – volledig pakket; existing ones are kept).
  *
  * Never touches Google: the provider connects their own calendar from
  * /admin/agenda. Run `npm run cms:bootstrap` first (it creates the services).

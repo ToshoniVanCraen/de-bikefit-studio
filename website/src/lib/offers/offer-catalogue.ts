@@ -34,7 +34,7 @@ export type CatalogueOfferEntry = {
 };
 
 export type VariantDisplay = {
-  /** "Volwassene" / "Jeugd"; '' = keep the service's own label. */
+  /** "Volwassene" / "Jeugd – eenmalig" / "Jeugd – volledig pakket"; '' = keep the service's own label. */
   label: string;
   /** "€ 150,00", or '' for "Prijs op aanvraag". */
   priceLabel: string;

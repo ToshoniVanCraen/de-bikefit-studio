@@ -31,20 +31,21 @@ import {
   locationsForService,
   normalizeLocationSelection,
 } from './location-choice';
-import { ProviderPicker, type ProviderChoice } from './provider-picker';
+import { providerById, providerSummary, servicesOf, type ProviderChoice } from './provider-choice';
+import { ProviderPicker } from './provider-picker';
 import { narrowChoices, serviceSummary } from './service-choice';
 import { ServicePicker } from './service-picker';
 import { groupDaySlots, slotLocationIds } from './slot-grouping';
 import { StepItem, type BookingStep as Step, type StepState } from './step-item';
 import { useBookingAddons } from './use-booking-addons';
 import { useMonthAvailability } from './use-month-availability';
+import { useProviderChoice } from './use-provider-choice';
 import { useServiceChoice } from './use-service-choice';
 import { WhenPanel } from './when-panel';
 import {
   PENDING_PROVIDER_TEXT,
   type BookActionResult,
   type BookingLocationOption,
-  type BookingProviderOption,
   type BookingServiceOption,
   type BookingSlot,
   type BookingWidgetProps,
@@ -64,7 +65,9 @@ import {
  * Bij wie (17 Oct 2026): a specific provider narrows the services to what
  * they offer and the calendar to their agenda. "Iedereen" shows every free
  * moment, one per time and location, without names: the beheerder assigns
- * the booking afterwards and the customer hears by e-mail.
+ * the booking afterwards and the customer hears by e-mail. With only one
+ * provider for the chosen service (27 Oct 2026, `provider-choice.ts`) the
+ * step is left out and that provider is selected.
  *
  * Extra's (20 Oct 2026, `use-booking-addons.ts`): when the chosen service has
  * extras (Beheer → Aanbod, "Extra's bij dit aanbod") a step lets the visitor
@@ -104,10 +107,6 @@ type Confirmed = {
 const GENERIC_ERROR = 'Er ging iets mis bij het boeken. Probeer het opnieuw.';
 const SLOT_TAKEN = 'Dit moment is net geboekt. Kies een ander moment.';
 
-function offersService(provider: BookingProviderOption, serviceId: string): boolean {
-  return provider.services.some((entry) => entry.serviceId === serviceId);
-}
-
 export function BookingWidget({
   services,
   locations,
@@ -137,7 +136,7 @@ export function BookingWidget({
     },
   });
   const { serviceId } = choice;
-  const [providerChoice, setProviderChoice] = useState<ProviderChoice | undefined>(undefined);
+  const who = useProviderChoice({ providers, showChoice: rules.showProviderChoice, serviceId });
   const [locationSelection, setLocationSelection] = useState<string[] | null>(null);
   const [month, setMonth] = useState<Ym>(monthOf(todayYmd));
   const [day, setDay] = useState<Ymd | null>(null);
@@ -155,11 +154,8 @@ export function BookingWidget({
   const lastMonth = monthOf(lastYmd);
 
   // --- who --------------------------------------------------------------------
-  const providerStep = rules.showProviderChoice && providers.length > 1;
-  const providerId: string | null = providerStep ? (providerChoice ?? null) : null;
-  const chosenProvider = providerId
-    ? (providers.find((provider) => provider.id === providerId) ?? null)
-    : null;
+  // `providerId`: the pick, else the only provider for the service; `null` = "Iedereen".
+  const { providerId, picked: chosenProvider } = who;
   const providerNames = Object.fromEntries(
     providers.map((provider) => [provider.id, provider.name]),
   );
@@ -167,21 +163,12 @@ export function BookingWidget({
   const providerRank = new Map(providers.map((provider, index) => [provider.id, index]));
 
   // --- what -------------------------------------------------------------------
-  const visibleServices = chosenProvider
-    ? services.filter((service) => offersService(chosenProvider, service.id))
-    : services;
+  const visibleServices = servicesOf(services, chosenProvider);
   const visibleIds = new Set(visibleServices.map((service) => service.id));
   const visibleChoices = narrowChoices(choice.choices, visibleIds);
   const service = services.find((item) => item.id === serviceId && visibleIds.has(item.id)) ?? null;
-  // Back on "Bij wie?" with a service already chosen: only who offers it.
-  const providersForPicker = service
-    ? providers.filter((provider) => offersService(provider, service.id))
-    : providers;
-  const providersForService = service
-    ? providers.filter((provider) => offersService(provider, service.id))
-    : [];
   // "Iedereen" with several providers: one button per time and location.
-  const onePerStart = providerId === null && providersForService.length > 1;
+  const onePerStart = providerId === null && service !== null && who.candidates.length > 1;
 
   // --- extras -------------------------------------------------------------------
   const addons = useBookingAddons({
@@ -192,7 +179,7 @@ export function BookingWidget({
 
   const step: Step = confirmed
     ? 'done'
-    : providerStep && providerChoice === undefined
+    : who.open
       ? 'provider'
       : !service
         ? 'service'
@@ -279,11 +266,8 @@ export function BookingWidget({
 
   function chooseProvider(next: ProviderChoice) {
     interacted.current = true;
-    setProviderChoice(next);
-    const provider = next ? providers.find((item) => item.id === next) : null;
-    const offered = provider
-      ? services.filter((item) => offersService(provider, item.id))
-      : services;
+    who.select(next);
+    const offered = servicesOf(services, providerById(providers, next));
     if (serviceId && !offered.some((item) => item.id === serviceId)) {
       choice.clear();
     } else if (!serviceId && offered.length === 1) {
@@ -321,7 +305,7 @@ export function BookingWidget({
 
   function editProvider() {
     interacted.current = true;
-    setProviderChoice(undefined);
+    who.edit();
     resetWhen();
   }
 
@@ -344,7 +328,7 @@ export function BookingWidget({
     setConfirmed(null);
     availability.clear();
     choice.reset();
-    setProviderChoice(undefined);
+    who.reset();
     addons.reset();
     resetWhen();
     setValues((previous) => ({ ...previous, notes: '', bikeType: '', bikeModel: '' }));
@@ -369,8 +353,9 @@ export function BookingWidget({
       result = await bookAction({
         serviceId: service.id,
         addonIds: addons.chosenIds,
-        // "Iedereen" sends no provider: the server picks who holds the slot
-        // and the beheerder assigns. A chosen provider is sent as such.
+        // "Iedereen" (several providers can take it) sends no provider: the
+        // server picks who holds the slot and the beheerder assigns. A chosen
+        // provider, or the only one who offers the service, is sent as such.
         providerId,
         locationId: slot.locationId,
         startsAt: slot.startsAt,
@@ -454,7 +439,7 @@ export function BookingWidget({
   }
 
   const order: Step[] = [
-    ...(providerStep ? (['provider'] as Step[]) : []),
+    ...(who.hasStep ? (['provider'] as Step[]) : []),
     'service',
     ...(addons.hasStep ? (['addons'] as Step[]) : []),
     'when',
@@ -498,24 +483,18 @@ export function BookingWidget({
         </p>
       ) : null}
       <ol className="studio-booking__steps">
-        {providerStep ? (
+        {who.hasStep ? (
           <StepItem
             id="provider"
             number={numberOf('provider')}
             title="Bij wie?"
             state={stateOf('provider')}
-            summary={
-              providerChoice === null
-                ? 'Iedereen'
-                : providerChoice
-                  ? (providerNames[providerChoice] ?? '')
-                  : ''
-            }
+            summary={providerSummary(who.choice, providers)}
             onEdit={editProvider}
           >
             <ProviderPicker
-              providers={providersForPicker}
-              selected={providerChoice}
+              providers={who.candidates}
+              selected={who.choice}
               onSelect={chooseProvider}
             />
           </StepItem>

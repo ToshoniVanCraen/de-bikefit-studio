@@ -26,6 +26,7 @@ describe('bookingReminderEmail', () => {
     expect(mail.subject).toMatch(/^Herinnering: Volwassenenfit op .* om 09:00$/);
     expect(mail.text).toContain('Hallo Anna <b>, een korte herinnering');
     expect(mail.text).toContain('Volwassenenfit (2 uur)');
+    expect(mail.text).toContain('Breng ook je eigen pedalen mee, zeker bij Time-pedalen');
     expect(mail.text).toContain('Bel ons even op +32 473 95 26 33');
     expect(mail.text).toContain('Privacyverklaring: https://studio.invalid/privacy');
     expect(mail.html).toContain('Anna &lt;b&gt;');

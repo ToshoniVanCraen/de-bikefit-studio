@@ -9,7 +9,7 @@ import {
   type RenderedEmail,
   type Row,
 } from '@/lib/email/templates';
-import { AUDIENCE_LABELS } from '@/lib/offers/offering';
+import { AUDIENCE_LABELS } from '@/lib/offers/offering-audience';
 import type { OfferEnquiry } from './input';
 
 /**

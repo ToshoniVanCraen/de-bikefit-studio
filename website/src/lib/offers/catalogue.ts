@@ -2,13 +2,12 @@ import { z } from 'zod';
 import type { CmsImageRef } from '@/lib/cms/block-primitives';
 import {
   offeringBookingSlugs,
-  offeringDurationLabel,
-  offeringPriceLabel,
   type OfferingStatus,
   type ResolvedOffering,
   type ResolvedVariant,
 } from './offering';
 import type { OfferingContent } from './offering-content';
+import { offeringDurationLabel, offeringPriceLabel } from './offering-labels';
 
 /**
  * The public offer ("Aanbod") and how it meets the booking catalogue.
@@ -58,6 +57,8 @@ export const OFFER_CTA_LABEL = 'Boek een afspraak voor deze dienst';
 export const OFFER_PRICE_FALLBACK = 'Prijs op aanvraag';
 /** Shown while no confirmed duration exists for the offer. */
 export const OFFER_DURATION_FALLBACK = 'Duur in overleg';
+/** Longest free-text Kostprijs of an offering that is asked for ("Gratis binnen 6 maanden na je fit, daarna € 75" is 46). */
+export const OFFER_PRICE_TEXT_MAX = 120;
 export const OFFER_EXTRAS_NOTE =
   'Wat er precies bij komt en wat het kost, spreken we altijd vooraf samen met je af.';
 
@@ -92,13 +93,26 @@ export function showsOfferPrices(pageSlug: string): boolean {
   return normalized.startsWith(prefix) && SLUG_PATTERN.test(normalized.slice(prefix.length));
 }
 
+/** The booking block's section anchor on `/afspraak`: the widget itself, past the hero. */
+const BOOKING_SECTION_ANCHOR = 'boeken';
+
+/**
+ * `/afspraak#boeken` — the booking page at its widget, nothing preselected.
+ * The button of an extra that is not sold alone (27 Oct 2026, Toshoni): the
+ * visitor picks the fit it goes with, the note on the extra's page names them.
+ */
+export function offerBookingPath(): string {
+  return `${BOOKING_PAGE_PATH}#${BOOKING_SECTION_ANCHOR}`;
+}
+
 /**
  * `/afspraak?dienst=<slug>#boeken` — the booking block's section anchor;
  * with `extraSlug`, `&extra=<slug>` ticks that extra in the widget.
  */
 export function offerBookingHref(offerSlug: string, extraSlug?: string): string {
+  const service = `${SERVICE_PARAM}=${encodeURIComponent(offerSlug)}`;
   const extra = extraSlug ? `&${EXTRA_PARAM}=${encodeURIComponent(extraSlug)}` : '';
-  return `${BOOKING_PAGE_PATH}?${SERVICE_PARAM}=${encodeURIComponent(offerSlug)}${extra}#boeken`;
+  return `${BOOKING_PAGE_PATH}?${service}${extra}#${BOOKING_SECTION_ANCHOR}`;
 }
 
 export function offerDurationLabel(duration: string): string {
@@ -163,7 +177,7 @@ export function offerFromOffering(
     sortOrder: content.sortOrder,
     title: content.title,
     summary: content.summary.trim() || content.intro.trim(),
-    priceLabel: offeringPriceLabel(offering),
+    priceLabel: offeringPriceLabel(offering, content.priceText),
     durationLabel: offeringDurationLabel(offering, content.duration),
     bookingServiceSlugs: offeringBookingSlugs(offering),
     status: offering.status,

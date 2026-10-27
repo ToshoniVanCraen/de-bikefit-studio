@@ -89,3 +89,55 @@ describe('validateOfferingContent (Beheer → Aanbod, the text of an offering)',
     expect(EMPTY_OFFERING_CONTENT.contents).toEqual([]);
   });
 });
+
+describe('the free-text Kostprijs of an offering (27 Oct 2026)', () => {
+  const base = { slug: 'bikefit-tweede-bezoek', title: 'Bikefit – tweede bezoek' };
+
+  it('is empty by default, trimmed, and kept as typed otherwise', () => {
+    expect(validateOfferingContent(base)).toMatchObject({ ok: true, data: { priceText: '' } });
+    expect(EMPTY_OFFERING_CONTENT.priceText).toBe('');
+    expect(
+      validateOfferingContent({
+        ...base,
+        priceText: '  Gratis binnen 6 maanden na je fit, daarna € 75 ',
+      }),
+    ).toMatchObject({
+      ok: true,
+      data: { priceText: 'Gratis binnen 6 maanden na je fit, daarna € 75' },
+    });
+  });
+
+  it('is at most 120 characters, with a Dutch message that names the field', () => {
+    expect(validateOfferingContent({ ...base, priceText: 'x'.repeat(120) }).ok).toBe(true);
+    expect(validateOfferingContent({ ...base, priceText: 'x'.repeat(121) })).toEqual({
+      ok: false,
+      message: 'De prijstekst is te lang (max. 120 tekens).',
+    });
+    // Whitespace around the text does not count against the limit.
+    expect(validateOfferingContent({ ...base, priceText: ` ${'x'.repeat(120)} ` }).ok).toBe(true);
+  });
+
+  it('reads from a stored row, and as empty from a row that has no such column yet', () => {
+    const row = {
+      slug: 'bikefit-tweede-bezoek',
+      category: 'bikefit',
+      sortOrder: 25,
+      title: 'Bikefit – tweede bezoek',
+      summary: '',
+      intro: '',
+      goal: '',
+      contents: [],
+      extras: [],
+      extrasNote: '',
+      duration: '1 uur',
+      ctaLabel: '',
+      image: null,
+      metaDescription: '',
+    };
+    expect(
+      contentFromRow({ ...row, priceText: 'Gratis binnen 6 maanden na je fit' }).priceText,
+    ).toBe('Gratis binnen 6 maanden na je fit');
+    expect(contentFromRow(row).priceText).toBe('');
+    expect(contentFromRow({ ...row, priceText: null }).priceText).toBe('');
+  });
+});

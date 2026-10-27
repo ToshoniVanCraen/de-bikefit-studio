@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { redactSecrets, type ResolvedEmailSettings } from './config';
+import { resolveMailCopy } from './resolve-copy';
 import { loadEmailSettings } from './settings';
 
 /**
@@ -16,6 +17,9 @@ import { loadEmailSettings } from './settings';
  *    and the self-test run this way.
  *  - No sender → `missing_from`. The sender must be an address on a domain
  *    verified in Resend.
+ *  - Copy tokens (`{{telefoon}}`, `{{prijs:…}}`, …) in the subject, text or html
+ *    are resolved just before the send (`./resolve-copy.ts`): a mail never shows
+ *    a raw `{{…}}`, and a mail without a token reads nothing extra.
  *  - Never throws: a failed send returns `{ sent: false, reason }` so a booking
  *    is never lost because a mail bounced. `sent: true` means Resend ACCEPTED
  *    the message, not that it was delivered.
@@ -121,6 +125,8 @@ export async function sendEmail(
   }
 
   const replyTo = input.replyTo ?? (config.replyTo || null);
+  // Never throws: the lookup that resolves the tokens degrades to their fallbacks.
+  const mail = await resolveMailCopy(input);
 
   try {
     const response = await fetch(RESEND_ENDPOINT, {
@@ -129,9 +135,9 @@ export async function sendEmail(
       body: JSON.stringify({
         from,
         to: recipients,
-        subject: input.subject,
-        html: input.html,
-        text: input.text,
+        subject: mail.subject,
+        html: mail.html,
+        text: mail.text,
         ...(replyTo ? { reply_to: replyTo } : {}),
         ...(input.attachments?.length
           ? {

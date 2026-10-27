@@ -33,8 +33,15 @@ const adult = service({
 });
 const youth = service({
   id: 'jeugdfit',
-  name: 'Jeugdfit',
-  choiceLabel: 'Jeugd',
+  name: 'Jeugdfit – eenmalig',
+  choiceLabel: 'Jeugd – eenmalig',
+  durationMinutes: 60,
+  requiresGuardian: true,
+});
+const youthPackage = service({
+  id: 'jeugdfit-pakket',
+  name: 'Jeugdfit – volledig pakket',
+  choiceLabel: 'Jeugd – volledig pakket',
   durationMinutes: 60,
   requiresGuardian: true,
 });
@@ -47,7 +54,7 @@ const bikefit: BookingChoice = {
     title: 'Bikefit – huidige fiets',
     path: '/aanbod/bikefit-huidige-fiets',
   },
-  serviceIds: ['volwassenenfit', 'jeugdfit'],
+  serviceIds: ['volwassenenfit', 'jeugdfit', 'jeugdfit-pakket'],
 };
 const choices: BookingChoice[] = [bikefit, { kind: 'service', serviceId: 'gezinspakket' }];
 
@@ -91,7 +98,13 @@ describe('the service step as data', () => {
 
   it('summarises the choice with the offer and the label of the booked service', () => {
     expect(serviceSummary(youth, offerOfService(choices, 'jeugdfit'))).toBe(
-      'Bikefit – huidige fiets · Jeugd · 60 minuten · met ouder of voogd · Prijs op aanvraag',
+      'Bikefit – huidige fiets · Jeugd – eenmalig · 60 minuten · met ouder of voogd · Prijs op aanvraag',
+    );
+    // Jeugd – volledig pakket is its own choice with its own price (27 Oct 2026).
+    const priced = { ...youthPackage, priceLabel: '€ 275,00' };
+    expect(offerOfService(choices, 'jeugdfit-pakket')).toBe(bikefit);
+    expect(serviceSummary(priced, offerOfService(choices, 'jeugdfit-pakket'))).toBe(
+      'Bikefit – huidige fiets · Jeugd – volledig pakket · 60 minuten · met ouder of voogd · € 275,00',
     );
     expect(serviceSummary(adult, offerOfService(choices, 'volwassenenfit'))).toBe(
       'Bikefit – huidige fiets · Volwassene · 90 minuten · Prijs op aanvraag',
@@ -110,8 +123,11 @@ describe('the service step as data', () => {
     ]);
     expect(narrowChoices(choices, new Set())).toEqual([]);
     // Every id: unchanged.
-    expect(narrowChoices(choices, new Set(['volwassenenfit', 'jeugdfit', 'gezinspakket']))).toEqual(
-      choices,
-    );
+    expect(
+      narrowChoices(
+        choices,
+        new Set(['volwassenenfit', 'jeugdfit', 'jeugdfit-pakket', 'gezinspakket']),
+      ),
+    ).toEqual(choices);
   });
 });

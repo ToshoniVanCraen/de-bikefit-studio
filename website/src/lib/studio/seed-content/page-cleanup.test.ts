@@ -12,6 +12,8 @@ import {
 } from './aanbod';
 import { AFSPRAAK_PAGE, OTHER_QUESTION_HTML } from './appointment';
 import { CADEAUBON_CARD } from './cadeaubon';
+import { CORRECTION_PAGE_SPECS, phoneSpec } from './corrections-2026-10-27';
+import { LOCATION_BLOCK } from './location-section';
 import before from './page-cleanup.fixture.json';
 import {
   cleanupBlocks,
@@ -36,10 +38,12 @@ const TARGETS = [...AANBOD_PAGES, AFSPRAAK_PAGE];
 /**
  * The review of 19 Oct 2026 changed only the phone label on the pages this
  * patch touches (`0473 95 26 33` → `+32 473 95 26 33`); the patch itself is
- * the 13 Oct state, so the comparison reads the fixture with today's number.
+ * the 13 Oct state, so the comparison reads the fixture with the number of
+ * that review. (On 27 Oct 2026 the number became a token everywhere, which is
+ * the last step of the comparison: `withTodaysContactEdits`.)
  */
 const OLD_PHONE_LABEL = '0473 95 26 33';
-function withTodaysPhone<T>(value: T): T {
+function withPhoneOf19Oct<T>(value: T): T {
   return JSON.parse(JSON.stringify(value).split(OLD_PHONE_LABEL).join(PHONE_LABEL)) as T;
 }
 
@@ -80,7 +84,8 @@ function withTodaysTeam<T extends { type: string; data: Record<string, unknown> 
 /**
  * Since 20 Oct 2026 "Reken op de tijd" on /afspraak reads its durations from
  * the offer through `{{duur:…}}` tokens; the patch itself is the 13 Oct
- * state, so the comparison reads the fixture with today's sentence.
+ * state, so the comparison reads the fixture with the sentence of that day
+ * (its dash is taken out on 27 Oct 2026, by the corrections).
  */
 const OLD_DURATION_SENTENCE =
   'Reken op 90 minuten voor een standaard bikefit voor volwassenen. Een jeugdfit is korter — ongeveer 60 minuten. We haasten ons niet — als het klaar is, is het klaar.';
@@ -90,6 +95,49 @@ function withTodaysDurations<T>(value: T): T {
   return JSON.parse(
     JSON.stringify(value).split(OLD_DURATION_SENTENCE).join(DURATION_SENTENCE),
   ) as T;
+}
+
+/**
+ * Since 27 Oct 2026 /afspraak ends with the "Waar vind je ons?" section (the
+ * `location` block, added to an existing database by `cms:patch-aanbod-correcties`);
+ * the cleanup patch itself is the 13 Oct state, so the comparison appends that
+ * block to the page.
+ */
+function withTodaysLocation(blocks: CleanupBlock[], slug: string): CleanupBlock[] {
+  return slug === AFSPRAAK_PAGE.slug ? [...blocks, ...stored([LOCATION_BLOCK])] : blocks;
+}
+
+/**
+ * Since 27 Oct 2026 the seeds carry Toshoni's copy corrections (pedals under
+ * "Voor je komt", the team claim, "inspanningstest" in the meta descriptions);
+ * the cleanup patch itself is the 13 Oct state, so the comparison applies those
+ * corrections (`corrections-2026-10-27.ts`) to its result. That also proves they
+ * turn the text as the fixture holds it into today's.
+ */
+function withTodaysCorrections(blocks: CleanupBlock[], slug: string): CleanupBlock[] {
+  const spec = CORRECTION_PAGE_SPECS.find((entry) => entry.slug === slug);
+  if (!spec) return blocks;
+  const result = cleanupBlocks(spec, blocks);
+  expect(result.conflicts).toEqual([]);
+  return result.next;
+}
+
+/**
+ * The last step of the day, on every page: the old number to the international
+ * form and then the number, the e-mail address and the company identity to their
+ * tokens (`phoneSpec`), after the page's own corrections.
+ */
+function withTodaysContactEdits(blocks: CleanupBlock[], slug: string): CleanupBlock[] {
+  const result = cleanupBlocks(phoneSpec(slug), blocks);
+  expect(result.conflicts).toEqual([]);
+  return result.next;
+}
+
+function withTodaysMeta(description: string, slug: string): string {
+  const meta = CORRECTION_PAGE_SPECS.find((entry) => entry.slug === slug)?.metaDescription;
+  if (!meta) return description;
+  expect(description).toBe(meta.from);
+  return meta.to;
 }
 
 function oldPage(slug: string) {
@@ -149,15 +197,23 @@ describe('page cleanup patch (review 13 Oct 2026)', () => {
                 : block,
             )
           : result.next;
+      // The content of the live databases on the morning of 27 Oct 2026 (the 13 Oct patch plus the
+      // changes of 19 and 20 Oct), then the corrections of the day, the contact tokens, the location.
+      const live20Oct = withTodaysVoorWieImage(
+        withTodaysTeam(withTodaysDurations(withPhoneOf19Oct(next))),
+      );
       expect(
-        withTodaysVoorWieImage(withTodaysTeam(withTodaysDurations(withTodaysPhone(next)))),
+        withTodaysLocation(
+          withTodaysContactEdits(withTodaysCorrections(live20Oct, spec.slug), spec.slug),
+          spec.slug,
+        ),
       ).toEqual(stored(targetPage(spec.slug).blocks));
       expect(pageCleanupProblems(spec.slug, stored(old.blocks)).length).toBeGreaterThan(0);
       expect(pageCleanupProblems(spec.slug, result.next)).toEqual([]);
 
       const meta = spec.metaDescription;
       expect(meta?.from ?? old.metaDescription).toBe(old.metaDescription);
-      expect(withTodaysPhone(meta?.to ?? old.metaDescription)).toBe(
+      expect(withTodaysMeta(meta?.to ?? old.metaDescription, spec.slug)).toBe(
         targetPage(spec.slug).metaDescription,
       );
 
@@ -183,8 +239,11 @@ describe('page cleanup patch (review 13 Oct 2026)', () => {
     expect(booking.showProviderChoice).toBe(true);
     const html = String(result.next[1].data.html);
     expect(html).toContain('<h3>Andere vraag?</h3>');
-    expect(html).toContain(`<a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a>`);
-    expect(html.match(/href="tel:\+32473952633"/g)).toHaveLength(2);
+    // What the patch appends is the seed's: the address and the number are tokens (27 Oct 2026).
+    expect(html).toContain('<a href="mailto:{{e-mail}}">{{e-mail}}</a>');
+    // The paragraph "Liever bellen" is the fixture's (a literal link), "Andere vraag?" the seed's (a token).
+    expect(html.match(/href="(?:tel:\+32473952633|\{\{telefoon-href\}\})"/g)).toHaveLength(2);
+    expect(CONTACT_EMAIL).toBe('info@debikefitstudio.be');
   });
 
   it('refuses a field an editor changed since the rollout, and leaves it alone', () => {

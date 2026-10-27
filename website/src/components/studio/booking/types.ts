@@ -51,10 +51,10 @@ export type BookingLocationOption = {
   addressLines: string[];
 };
 
+/** A provider as the booking widget needs them: no bio, the team page carries that text. */
 export type BookingProviderOption = {
   id: string;
   name: string;
-  bio: string;
   /** Services this provider offers, with the location that applies for each. */
   services: { serviceId: string; location: BookingLocationOption | null }[];
   /** Where this provider works (their hours' locations), for the "Bij wie?" step. */

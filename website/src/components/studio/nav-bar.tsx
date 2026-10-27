@@ -48,7 +48,7 @@ export function StudioNavBar({
 
   return (
     <nav className="studio-nav" aria-label="Hoofdnavigatie">
-      <Link href="/" className="studio-nav__logo" aria-label={`${siteName} — naar de homepagina`}>
+      <Link href="/" className="studio-nav__logo" aria-label={`${siteName}: naar de homepagina`}>
         <StudioLogo siteName={siteName} tone="light" priority />
       </Link>
 

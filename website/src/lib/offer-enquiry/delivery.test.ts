@@ -13,15 +13,15 @@ import { OFFER_ENQUIRY_MESSAGES } from './input';
  * the configured order inbox and `sendEmail()`; it is never called here.
  */
 
-const LACTAAT: EnquiryOffer = {
-  title: 'Lactaattest',
+const INSPANNINGSTEST: EnquiryOffer = {
+  title: 'Inspanningstest',
   url: 'https://studio.test/aanbod/lactaattest',
   audiences: [],
 };
 const BIKEFIT_ENQUIRY: EnquiryOffer = {
   title: 'Bikefit – nieuwe fiets',
   url: 'https://studio.test/aanbod/bikefit-nieuwe-fiets',
-  audiences: ['adult', 'youth'],
+  audiences: ['adult', 'youth', 'youth-package'],
 };
 
 const INPUT = {
@@ -47,7 +47,11 @@ function setup({ store: storeOverrides, ...overrides }: SetupOverrides = {}) {
   const send = vi.fn<OfferEnquiryDeps['send']>(async () => ({ sent: true, id: 'msg-1' }));
   const log = vi.fn();
   const findOffer = vi.fn(async (slug: string) =>
-    slug === 'lactaattest' ? LACTAAT : slug === 'bikefit-nieuwe-fiets' ? BIKEFIT_ENQUIRY : null,
+    slug === 'lactaattest'
+      ? INSPANNINGSTEST
+      : slug === 'bikefit-nieuwe-fiets'
+        ? BIKEFIT_ENQUIRY
+        : null,
   );
   const deps: OfferEnquiryDeps = {
     findOffer,
@@ -72,7 +76,7 @@ describe('deliverOfferEnquiry', () => {
     const mail = send.mock.calls[0][0] as unknown as Record<string, string>;
     expect(mail.to).toBe('orders@studio.test');
     expect(mail.replyTo).toBe('an@example.com');
-    expect(mail.subject).toMatch(/^Aanvraag: Lactaattest \(AV-[0-9A-F]{8}\)$/);
+    expect(mail.subject).toMatch(/^Aanvraag: Inspanningstest \(AV-[0-9A-F]{8}\)$/);
     expect(mail.subject).not.toContain('Peeters');
     expect(mail.html).not.toContain('<script>');
     expect(mail.html).toContain('&lt;script&gt;');
@@ -80,7 +84,7 @@ describe('deliverOfferEnquiry', () => {
     expect(store.markSent).toHaveBeenCalledWith(INPUT.requestId);
   });
 
-  it('names Volwassene or Jeugd when the offering has both, and requires the choice', async () => {
+  it('names who it is for — Volwassene, Jeugd – eenmalig or Jeugd – volledig pakket — and requires the choice', async () => {
     const { deps, send } = setup();
     const missing = await deliverOfferEnquiry(
       { ...INPUT, offerSlug: 'bikefit-nieuwe-fiets' },
@@ -91,12 +95,33 @@ describe('deliverOfferEnquiry', () => {
       code: 'invalid',
       fieldErrors: { audience: 'Kies voor wie de aanvraag is.' },
     });
-    const ok = await deliverOfferEnquiry(
-      { ...INPUT, offerSlug: 'bikefit-nieuwe-fiets', audience: 'youth' },
+    const sentText = async (audience: string) => {
+      send.mockClear();
+      const ok = await deliverOfferEnquiry(
+        { ...INPUT, offerSlug: 'bikefit-nieuwe-fiets', audience },
+        deps,
+      );
+      expect(ok).toEqual({ ok: true, duplicate: false });
+      return (send.mock.calls[0][0] as unknown as { text: string }).text;
+    };
+    expect(await sentText('adult')).toContain('Voor: Volwassene');
+    expect(await sentText('youth')).toContain('Voor: Jeugd – eenmalig');
+    expect(await sentText('youth-package')).toContain('Voor: Jeugd – volledig pakket');
+  });
+
+  it('an offering without the package refuses it: the server uses the offering’s own audiences', async () => {
+    const older: EnquiryOffer = { ...BIKEFIT_ENQUIRY, audiences: ['adult', 'youth'] };
+    const { deps, send } = setup({ findOffer: async () => older });
+    const result = await deliverOfferEnquiry(
+      { ...INPUT, offerSlug: 'bikefit-nieuwe-fiets', audience: 'youth-package' },
       deps,
     );
-    expect(ok).toEqual({ ok: true, duplicate: false });
-    expect((send.mock.calls[0][0] as unknown as { text: string }).text).toContain('Voor: Jeugd');
+    expect(result).toMatchObject({
+      ok: false,
+      code: 'invalid',
+      fieldErrors: { audience: 'Kies voor wie de aanvraag is.' },
+    });
+    expect(send).not.toHaveBeenCalled();
   });
 
   it('refuses an offer that is unknown, hidden or booked online (the server decides)', async () => {

@@ -1,7 +1,6 @@
-import { listPublicServices } from '@/lib/booking/content';
 import type { BlockInstance } from '@/lib/cms/blocks';
 import { sectionAnchors, visibleBlocks } from '@/lib/studio/blocks';
-import { hasCopyTokens, resolveCopyTokens } from '@/lib/studio/copy-tokens';
+import { resolveCopy } from '@/lib/studio/copy-token-lookup';
 import type { StudioLocale } from '@/lib/studio/locale';
 import { AudienceBlock } from './audience';
 import { BookingBlock } from './booking';
@@ -11,6 +10,7 @@ import { FaqBlock } from './faq';
 import { GiftVoucherBlock } from './gift-voucher';
 import { HeroBlock } from './hero';
 import { ImageTextBlock } from './image-text';
+import { LocationBlock } from './location';
 import { OfferCatalogueBlock } from './offer-catalogue';
 import { PricingBlock } from './pricing';
 import { ProcessBlock } from './process';
@@ -34,10 +34,14 @@ import type { BlockPageContext } from './types';
  *     `pricing` and `testimonial` blocks while `isPlaceholder` is set.
  *  3. **Stable anchors.** `sectionAnchors()` gives each section a readable
  *     `id` (`#werkwijze`, `#vragen`) that navigation can deep link to.
- *  4. **Copy tokens are resolved.** `{{duur:<service-slug>}}` anywhere in a
- *     block becomes that service's planning duration (`copy-tokens.ts`),
- *     read once per page from the cached public services; a page without a
- *     token never touches the booking data.
+ *  4. **Copy tokens are resolved.** Every string of every block (titles, rich
+ *     text under `html`, link labels and `href`s, FAQ answers) is passed
+ *     through the copy tokens (`{{duur:…}}`, `{{prijs:…}}`, `{{extra:…}}`,
+ *     `{{telefoon}}`, `{{adres}}`, `{{bedrijf}}`, `{{opvolging:…}}`, …;
+ *     `copy-tokens.ts`) against the request's lookup, built once from the
+ *     cached readers (`copy-token-lookup.ts`). A block that renders its own
+ *     data from another source (booking, catalogue) resolves that source too.
+ *     A page without a token never reads the lookup's sources.
  *
  * The switch is exhaustive over the registry: adding a block type there makes
  * this file fail to typecheck until a renderer exists for it.
@@ -52,10 +56,7 @@ export async function BlockRenderer({
   page: BlockPageContext;
 }) {
   const anchors = sectionAnchors(blocks);
-  const shown = visibleBlocks(blocks);
-  const visible = hasCopyTokens(shown)
-    ? resolveCopyTokens(shown, await durationLookup(locale))
-    : shown;
+  const visible = await resolveCopy(visibleBlocks(blocks), locale);
   const headingOwner = visible.find((block) => block.type === 'hero')?.id ?? visible[0]?.id;
 
   return (
@@ -72,14 +73,6 @@ export async function BlockRenderer({
       ))}
     </>
   );
-}
-
-/** Service slug → duration label, for `{{duur:…}}`; only the services the site offers. */
-async function durationLookup(locale: StudioLocale) {
-  const services = await listPublicServices(locale);
-  return {
-    durationBySlug: new Map(services.map((service) => [service.slug, service.durationLabel])),
-  };
 }
 
 function StudioBlock({
@@ -128,6 +121,8 @@ function StudioBlock({
       return <GiftVoucherBlock data={block.data} {...common} />;
     case 'team':
       return <TeamBlock data={block.data} {...common} />;
+    case 'location':
+      return <LocationBlock data={block.data} {...common} />;
     default: {
       // Exhaustiveness guard: a new registry type lands here as a type error.
       const exhaustive: never = block;

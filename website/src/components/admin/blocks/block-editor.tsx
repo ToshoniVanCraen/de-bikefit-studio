@@ -3,6 +3,7 @@
 import { useActionState, useState } from 'react';
 
 import { Select } from '@/components/ui/select';
+import { CopyTokenHelp } from '@/components/admin/copy-token-help';
 import { ActionForm, StatusMessage, SubmitButton } from '@/components/admin/form';
 import type { MediaOption } from '@/components/admin/media-picker';
 import {
@@ -199,6 +200,8 @@ function BlockCard({
               {spec.hint}
             </p>
           ) : null}
+
+          {spec ? <CopyTokenHelp /> : null}
 
           {spec ? (
             spec.fields.map((field) => (

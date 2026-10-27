@@ -16,7 +16,9 @@ verification §14 (migration 0005 and a new secret) and admin session limits, st
 admin CSP §15 (migration 0006); 0007 (race-free second-step rate limits) has no section of its
 own. Rolling 0004–0007 out together, as the security release does: the combined order in §16.
 Two-step verification for providers (16 Oct 2026, no migration, no new secret): §17.
-Beheer → Aanbod (16 Oct 2026, migrations 0009 and 0010 before the build): §18.
+Beheer → Aanbod (16 Oct 2026, migrations 0009 and 0010 before the build): §18. The prices (20 Oct)
+§22, the extra's §23 and Toshoni's corrections of 27 Oct 2026 (settings, pages, copy, youth package,
+Toshoni; migration 0017 before the build) §24.
 
 Environments, the Hobby-plan staging setup and the full env var contract:
 [`../DEPLOYMENT.md`](../DEPLOYMENT.md). Google, GA4 and Resend setup, GDPR and retention:
@@ -111,10 +113,18 @@ DATABASE_URL='<staging pooled url>' npm run db:migrate
 | `0008_cms_rate_limits.sql` | `cms_rate_limits`, the race-free public booking limit (`booking-architecture.md` §9). Needed **before** a build that contains it serves `/afspraak`: without the table every booking attempt answers "Er ging iets mis bij het boeken" (`[booking] create_failed`). |
 | `0009_cms_service_choice_label.sql` | `cms_services.choice_label` (text, default `''`), the label of a service under an offer ("Volwassene", "Jeugd"; `booking-architecture.md` §14). One guarded `ADD COLUMN`, no data change. Needed **before** a build that contains it: without the column `/afspraak` shows "Online boeken lukt op dit moment niet" and Admin → Diensten fails. Then run §3.2 once to fill the two labels. |
 | `0010_cms_offerings.sql` | `cms_offerings` and `cms_offering_variants`, the settings of Beheer → Aanbod (`cms-architecture.md` §15). Two guarded `CREATE TABLE`s, their FKs and indexes; no data change. Needed **before** a build that contains it: until then every offer page derives its settings from its block (as before), Beheer → Aanbod cannot save, and the booking actions refuse every service (fail closed, like 0008). Then, optionally, §18. |
+| `0011_cms_offerings_content.sql` | The offering IS the offer (17 Oct 2026, §19): guarded `ADD COLUMN IF NOT EXISTS` for its copy (slug, category, order, title, summary, intro, Doel, Inhoud, extra's, Duur, button label, image, meta description), `page_id` nullable, a unique index on (locale, slug). No data change; `cms:migrate-aanbod` fills the rows from the former offer pages. Apply before the build, then §19. |
+| `0012_cms_provider_locations_assignment.sql` | Several locations per provider and "Iedereen" bookings assigned by the beheerder (17 Oct 2026, `booking-architecture.md` §16): `cms_business_hours.location_id`, `cms_bookings.assignment` (default `assigned`) and `assigned_at`, all guarded; every existing booking stays `assigned`. Needed **before** the build: it selects the columns on every availability request. |
+| `0013_cms_staging_gate.sql` | The first-party staging access gate (§20): `cms_staging_gate_accounts` and `cms_staging_gate_sessions` with an FK (cascade) and two indexes. Guarded, no data change. Needed **before** the build on the staging host: without the tables the gate answers 503 `gate_unavailable`. Other hosts never read them. |
+| `0014_cms_booking_followups.sql` | Reminder and review mails (20 Oct 2026, `booking-architecture.md` §17): `cms_bookings.reminder_sent_at` and `review_requested_at`, and the table `cms_reviews` (token hash, snapshot of the customer and the appointment, score, decision). Guarded, no data change. Needed **before** the build: every booking list selects the two columns. |
+| `0015_cms_offering_addons.sql` | Extra's (20 Oct 2026, §23): `cms_offerings.is_addon`, `sold_alone` and `addon_minutes`, the table `cms_offering_addons` (which extras an offering allows) and `cms_booking_addons` (a snapshot of the extras of a booking). Guarded, no data change; `cms:patch-aanbod-extras` fills in the set. Needed **before** the build: every offering read selects the columns. |
+| `0016_cms_offering_addon_options.sql` | Choices within an extra (§23): `cms_offerings.addon_options` (jsonb, default `[]`). Guarded. Needed **before** the build. |
+| `0017_cms_offering_price_text.sql` | The free-text Kostprijs of an offering that is asked for (27 Oct 2026, §24): `cms_offerings.price_text` (default `''`). Guarded, no data change (the text of *Bikefit – tweede bezoek* comes with `cms:patch-aanbod-correcties`). Needed **before** the build: every offering read selects the column. |
 
 All additive and guarded (no `DROP`, `TRUNCATE` or webshop `ALTER`); already-applied files
 are skipped. Expect `→ driver: neon-http (<host>)` and `✓ migrations applied to Neon`. The
-current build needs 0005, 0006 and 0007 before anyone signs in to `/admin` (§16).
+current build needs 0005, 0006 and 0007 before anyone signs in to `/admin` (§16), and 0015, 0016
+and 0017 before it serves an offer (the offerings are read with their columns on every page).
 
 ### 3.2 Bootstrap
 
@@ -127,12 +137,14 @@ npm run cms:bootstrap
 Creates only what is missing: the admin `contact@toshoni.be` (`must_change_password =
 true`), the six `nl` site settings (including `seo.allowIndexing = false` and the `booking`
 rules), empty `main` and `footer` menus, the locations "De Bikefit Studio, Ninove" and "Bij
-jou thuis", the two services (Volwassenenfit, Jeugdfit) and the seven offerings of Beheer →
-Aanbod (the offers of the brief, shown, Bikefit – huidige fiets booked as Volwassenenfit/
-Jeugdfit; Gezinspakket, Fit aan huis and Inspanningstest are retired since 17 Oct 2026: not
+jou thuis", the three services (Volwassenenfit, Jeugdfit – eenmalig, Jeugdfit – volledig pakket;
+the last since 27 Oct 2026, so a database that lacks it gets it here, unsubscribed until
+`cms:seed-booking` runs again) and the nine offerings of Beheer →
+Aanbod (the offers of the brief, shown, Bikefit – huidige fiets booked as Volwassenenfit and the two
+Jeugdfit services; Gezinspakket, Fit aan huis and Inspanningstest are retired since 17 Oct 2026: not
 created, deactivated by `cms:migrate-aanbod` where they exist; §19). Never overwrites anything. On a database
 that already has the services, the only change it makes is to fill an **empty** `choice_label`
-of `volwassenenfit` ("Volwassene") and `jeugdfit` ("Jeugd") after migration 0009 (printed as
+of `volwassenenfit` ("Volwassene") and `jeugdfit` ("Jeugd – eenmalig") after migration 0009 (printed as
 `~ service nl/… : empty choice label set to …`); a label an admin typed is left alone. An
 existing offering (by slug) is left alone too.
 
@@ -163,7 +175,7 @@ run: a full run overwrites the draft blocks of every seeded page.
 change and, at the same first sign-in, two-step verification (§17); the temporary password is
 **printed once** — hand it over directly, never through a log or chat transcript: whoever holds
 it can enrol the authenticator), its profile, hours Mon–Fri 09–18 and Sat 09–13, and
-subscriptions to the five services. The public booking widget lists no services until a
+subscriptions to the three services (the fits). The public booking widget lists no services until a
 provider exists.
 
 ---
@@ -230,7 +242,7 @@ Production (`main`) deploys the same way, only after an explicit go.
    there a session. Every later sign-in asks for the password and a code.
 3. On the dashboard, check:
    - **Pagina's** — the seventeen pages from §3.3, all "Gepubliceerd".
-   - **Diensten**, **Locaties**, **Aanbieders** — five services, two locations, one provider.
+   - **Locaties**, **Aanbieders**, **Aanbod** — three fit services (under Aanbod), two locations, one provider.
    - **Instellingen → SEO** — `allowIndexing` is **off**; `<alias>/robots.txt` says
      `Disallow: /` and pages carry `<meta name="robots" content="noindex, nofollow">`.
    - `/afspraak` shows the booking widget; `/privacy` and `/algemene-voorwaarden` load and
@@ -321,7 +333,8 @@ production step (database, env vars, DNS, deploy) needs an explicit go; Arend ex
 
 - [ ] **Public contact e-mail** set in *Instellingen → Contact*, then the two legal pages
       refreshed so the texts carry it (`booking-runbook.md` §11.2). Also street address and
-      postal code, so the `LocalBusiness` JSON-LD is complete.
+      postal code, so the `LocalBusiness` JSON-LD is complete (set by `cms:patch-aanbod-correcties`
+      since 27 Oct 2026, §24).
 - [ ] **Lawyer review** of the privacy statement and the terms, and the processor agreements
       and verwerkingsregister done (`booking-runbook.md` §11.5).
 - [ ] **VAT number** and legal name under *Instellingen → Organisatie*.
@@ -1314,7 +1327,9 @@ one from `npm run cms:patch-aanbod-prijzen` (self-test section 17b):
 | Services `volwassenenfit`, `jeugdfit` | 90 / 60 min, no price | 120 / 120 min, € 275 / € 150 shown in the widget |
 
 Every field edit names the value it expects (the defaults of 17–19 Oct 2026); a field an admin
-changed since makes the patch refuse (`!`) — no override. Nothing else is touched: no page, menu,
+changed since makes the patch refuse (`!`) — no override. Since 27 Oct 2026 the targets of the two
+fits are written out in `aanbod-prices.ts` (the defaults moved on: Jeugd in two variants), so a
+re-run on a database at the 20 Oct values still ends in "nothing to do". Nothing else is touched: no page, menu,
 setting, provider, subscription or booking; no row is added to or removed from the booking tables.
 Saving the fit through the repo renames its two services the way Beheer → Aanbod does
 ("Bikefit – huidige fiets – Volwassene" / "– Jeugd"; slugs unchanged) and rewrites their
@@ -1358,7 +1373,7 @@ keep-alive socket Neon had closed meanwhile. The apply now loads its modules bef
 query and the plan's reads are sent a second time after one transport failure. Nothing is written
 before the plan and the backup, so a failed run is safe to repeat.
 
-## 23. Extra's and the location choice (20 Oct 2026, migration 0015)
+## 23. Extra's and the location choice (20 Oct 2026, migration 0015; corrected 27 Oct 2026)
 
 Migrations 0015 and 0016 are additive (0015: three columns on `cms_offerings`, `cms_offering_addons`,
 `cms_booking_addons`; 0016: `cms_offerings.addon_options`, the choices within an extra; both guarded,
@@ -1367,33 +1382,89 @@ it (the build selects the columns on every offering read). The extras of the nin
 come from `npm run cms:patch-aanbod-extras` (self-test section 17c), which needs the offerings
 of §22. Architecture: `docs/booking-architecture.md` §18.
 
-| What | Before | After |
+**Which offerings are extras (Toshoni, 27 Oct 2026).** Only *Bikefit – tweede fiets*. Voetanalyse,
+Zadelanalyse and Afstellen schoenplaatjes are included in every bikefit (their pages say "zit in elke
+bikefit"), so they are never a paid extra of one. The first version of this patch (20 Oct 2026) made
+them extras (+30 / +60 / +15 min), and the booking widget then offered, and charged, what the fit
+already includes. They keep their pages, prices and content and are sold on their own (asked for). An
+admin may still mark any offering as an extra later (Beheer → Aanbod → Extra's).
+
+| What | The run of 20 Oct 2026 | Now |
 | --- | --- | --- |
-| Voetanalyse, Zadelanalyse, Afstellen schoenplaatjes | sold alone | also an extra to tick when booking a bikefit: +30 / +60 / +15 min at their price, still sold alone |
-| Bikefit – tweede fiets | asked for | an extra only, never booked alone, with two choices the visitor picks from: zelfde type (+30 min, € 75) or ander type (+1 u, € 150); its page links to the bikefit |
-| Bikefit – aankoop nieuwe fiets, Bikefit – huidige fiets | — | allow those four extras, in that order |
+| Voetanalyse, Zadelanalyse, Afstellen schoenplaatjes | also an extra to tick when booking a bikefit: +30 / +60 / +15 min at their price, still sold alone | no extra: sold alone, asked for |
+| Bikefit – tweede fiets | an extra only, never booked alone, with two choices the visitor picks from: zelfde type (+30 min, € 75) or ander type (+1 u, € 150); its page links to the bikefit | unchanged |
+| Bikefit – aankoop nieuwe fiets, Bikefit – huidige fiets | allow four extras (tweede fiets and the three analyses), in that order: 8 link rows | allow tweede fiets only: 2 link rows |
 
-1. Snapshot, `npm run db:migrate` (journal → 0016), deploy (release gate, READY). On a database
-   that already had the 20 Oct run (0015 and the first apply), the second run shows exactly one
-   change: `~ offering bikefit-tweede-fiets — keuzes: …`.
-2. **Dry run:** `DATABASE_URL='<staging pooled url>' npm run cms:patch-aanbod-extras` — expected
-   six `~ offering <slug> — …` lines, the guard counts, `dry run: run again with --apply to
-   write`. **Stop and report on any `!` line** (an offering missing → §22 first; changed in
-   Beheer → leave it).
-3. **Apply:** `… -- --apply --expect-host '<host>' --backup-dir <dir>` — `✓ backup written`, six
-   `~` lines, `✓ offerings and the public catalogue verified`, `✓ apply complete`; audit
-   `patch.aanbod-extras.apply`.
-4. Dry run again: `dry run: nothing to do`.
-5. **Verify** after the 5-minute cache window: `/aanbod` lists *Bikefit – tweede fiets* as "Enkel
-   als extra bij een afspraak" and its page says "Boek samen met Bikefit – huidige fiets";
-   `/afspraak?dienst=bikefit-huidige-fiets` shows, after Volwassene, the step "Iets extra erbij?"
-   with four extras and a running total, and "Kies een dag en uur" names the studio with its
-   address (fill in the street under Beheer → Locaties; until then only the name shows). Logged
-   in: `/admin/aanbod/<id>` shows the "Extra's" card; a booking with an extra lists it under
-   Afspraken.
+**Where each environment is.** Staging ran the first version on 20 Oct 2026 (the choices of tweede
+fiets with its second run, migration 0016) and production on 21 Oct 2026 (the release of `main`), so
+**both hold the state of 20 Oct** and the next run on each is the transition described below; the dry
+run prints the same lines on both. The patch knows three states per offering and per group (the extra
+columns, the choices, the links): *fresh* (migration 0015 only: a database that never had the first
+run, a restored older snapshot, the self-test), *the state of 20 Oct 2026* and *the target*. Fresh and
+20 Oct move to the target (`~`), the target is left alone (`=`), anything else was changed in Beheer
+since and blocks the patch (`!`): it is never overwritten (the rules are
+`scripts/lib/aanbod-extras-targets.mts`, pinned by its unit test). A fresh database needs
+migrations 0015 and 0016 first (`npm run db:migrate`, before the build that reads the columns); its
+dry run prints three `~` lines (tweede fiets: columns and keuzes; the links of both bikefits) and three
+`=` lines (the analyses).
 
-**Rollback:** `npm run cms:patch-aanbod-extras -- --restore <backup.json> --expect-host '<host>'`;
-migration 0015 is additive and may stay.
+1. Deploy the code first (release gate, READY). For the extras the deploy changes nothing on the
+   live site (the widget reads them from the database); the correction comes with the patch. No
+   migration. An optional Neon snapshot before the apply; the tool writes its own backup before the
+   first write.
+2. **Dry run** on staging, then on production (read-only like §9):
+
+   ```bash
+   DATABASE_URL='<staging pooled url>' npm run cms:patch-aanbod-extras
+   ```
+
+   On a database in the state of 20 Oct 2026 (staging and production) it prints exactly:
+
+   ```text
+   ~ offering bikefit-nieuwe-fiets — extra's: bikefit-tweede-fiets (3 verwijderd)
+   ~ offering bikefit-huidige-fiets — extra's: bikefit-tweede-fiets (3 verwijderd)
+   = offering bikefit-tweede-fiets — as intended
+   ~ offering voetanalyse — geen extra meer (was extra, 30 min)
+   ~ offering zadelanalyse — geen extra meer (was extra, 60 min)
+   ~ offering afstellen-schoenplaatjes — geen extra meer (was extra, 15 min)
+   = guards: offerings 9, services <n>, bookings <n>, links 8
+   → dry run: run again with --apply to write
+   ```
+
+   `links 8` are the eight link rows of 20 Oct (two bikefits, four extras each); `= … as intended`
+   for tweede fiets is its columns and its two choices, which the correction leaves alone. **Stop
+   and report on any `!` line** (an offering missing → §22 first; extra settings, choices or links
+   changed in Beheer since 20 Oct → leave it and tell Toshoni), and on any other difference between
+   the two environments.
+3. **Apply on staging:** `… -- --apply --expect-host '<host>' --backup-dir <dir>` — `✓ backup
+   written` (`aanbod-extras-patch-<timestamp>.json`: the five rows that change, as they are now,
+   so `--restore` returns the state of 20 Oct), five `~` lines, `✓ offerings and the public
+   catalogue verified` (a bikefit offers the two choices of tweede fiets and nothing else, the
+   three analyses are no extra), `✓ offerings, services and bookings: no row added or removed`,
+   `✓ apply complete`; audit: five `offering.update` rows and `patch.aanbod-extras.apply`.
+4. Dry run again: six `=` lines, `links 2`, `dry run: nothing to do`.
+5. **Verify** after the 5-minute cache window: `/aanbod/voetanalyse`, `/aanbod/zadelanalyse` and
+   `/aanbod/afstellen-schoenplaatjes` no longer say "Ook te boeken als extra bij …" (they are still
+   asked for through the enquiry form); `/aanbod` still lists *Bikefit – tweede fiets* as "Enkel als
+   extra bij een afspraak" and its page says "Deze extra boek je samen met …";
+   `/afspraak?dienst=bikefit-huidige-fiets` shows, after the choice of the fit, the step "Iets extra
+   erbij?" with exactly two choices, *Zelfde type fiets* (+ 30 min · + € 75,00) and *Ander type
+   fiets* (1 uur, € 150,00), and a running total; "Kies een dag en uur" names the studio with its
+   address (the street comes with `cms:patch-aanbod-correcties`, §24; until then only the name
+   shows). Logged in:
+   `/admin/aanbod/<id>` of a bikefit lists only *Bikefit – tweede fiets* under "Extra's bij dit
+   aanbod" and the "Extra's" card of an analysis is switched off; a booking with the second bike
+   lists it under Afspraken.
+6. **Production** — steps 2 to 5 again with the production `DATABASE_URL` and host, after
+   Toshoni's explicit go (a change to the production database is his call, CLAUDE.md §7). The dry
+   run must print the same lines as on staging. Until it runs, the double charge is live there: a
+   visitor who ticks an analysis pays for what the fit already includes.
+
+**Rollback:** `npm run cms:patch-aanbod-extras -- --restore <backup.json> --expect-host '<host>'`
+puts the backed-up columns, choices and links back. The backup of the run above returns the state
+of 20 Oct (the analyses as extras again, four links per bikefit, in their order, which brings the
+double charge back: only to undo a wrong apply); a backup of the 20 Oct run returns the bare state
+of migration 0015. Migrations 0015 and 0016 are additive and may stay.
 
 **If the apply ends with `verification failed: … is not in the public catalogue` right after the
 six `~` lines** (staging, 20 Oct 2026): the writes had landed; the script's own catalogue read
@@ -1404,3 +1475,218 @@ graph before its first query, reads the catalogue a second time, and the store l
 class chain (`Error>NeonDbError>TypeError`) and no longer caches an empty answer. The
 `patch.aanbod-extras.apply` audit row is missing from such a run; the six `offering.update` rows
 are there.
+
+## 24. Correcties van 27 oktober (settings, pages, copy, youth package, Toshoni; migration 0017, 27 Oct 2026)
+
+Toshoni's corrections of 27 Oct 2026 live in the code, where a new database picks them up
+(`cms:bootstrap`, `cms:seed`), and reach an existing database (staging, production) through **one
+guarded command**, `npm run cms:patch-aanbod-correcties` (self-test section 17d). It is the handover
+script: on production it makes the changes Toshoni made by hand in Beheer, and nothing else. The data
+of the corrections sits next to the seeds (`src/lib/studio/seed-content/corrections-2026-10-27.ts` and
+`-copy.ts`, `cadeaubon-promo.ts`, `location-section.ts`; `src/lib/offers/corrections-2026-10-27.ts`),
+the rules (what a field must hold before, what it becomes, what blocks) in
+`scripts/lib/aanbod-correcties-*.mts`; both are pinned by unit tests.
+
+| What | Before | After | By hand in Beheer |
+| --- | --- | --- | --- |
+| Contact | no street, city "Ninove"; phone label `0473 95 26 33`, link `tel:0473952633` | Halsesteenweg 406 a, 9403 Neigem; label `+32 473 95 26 33`, link `tel:+32473952633` | Instellingen → Contact |
+| SEO defaults | title and description with a dash between two sentences | the colon and comma texts | Instellingen → SEO |
+| Settings the code gained | no row `business`, no row `rules` | one row each with the schema defaults: the legal identity behind `{{bedrijf}}`, `{{zetel}}`, `{{kbo}}` and the lengths behind `{{opvolging:…}}`, `{{tweede-bezoek-gratis}}`, `{{cadeaubon-geldigheid}}` | Instellingen → Bedrijfsgegevens, Regels in de teksten |
+| Studio location | "De Bikefit Studio, Ninove" without a street | same name, Halsesteenweg 406 a, 9403 Neigem | Locaties |
+| Page texts | sentences joined by a dash; the phone number and e-mail typed on the pages; the terms (art. 3), FAQ, privacy, team and studio texts, "lactaattest" as before | the corrections of `CORRECTION_PAGE_SPECS` on every page that has the text; the contact facts as tokens (`{{telefoon}}`, `{{telefoon-href}}`, `{{e-mail}}`, `{{bedrijf}}`, `{{zetel}}`, `{{kbo}}`, `{{adres}}`); meta titles and descriptions | Pagina's |
+| `/afspraak` | ends with "Voor je komt" | + the `location` block "Waar vind je ons?" (address, route link, two-click map) as the last block | Pagina's → afspraak |
+| Cadeaubon | not promoted | the section "Geef fietsplezier cadeau" on the home page after the offer catalogue; suggested amounts (€ 75 / € 150 / € 275) and the validity line on `/cadeaubon`; the card text on `/aanbod`; "Cadeaubon" in the main menu before "Contact" | Pagina's, Menu's |
+| Offerings | the copy of 20 Oct | the corrected copy of the nine (contents, extra's, durations, meta descriptions; *Lactaattest* is now *Inspanningstest*; the Kostprijs of *Bikefit – tweede bezoek* is stored as "Gratis binnen {{tweede-bezoek-gratis}} na je fit, daarna {{prijs:bikefit-tweede-bezoek:all}}" and shown as "Gratis binnen zes maanden na je fit, daarna € 75") | Aanbod |
+| Youth package | two variants on the bikefits | + "Jeugd – volledig pakket" (€ 275) on both; on *Bikefit – huidige fiets* with its booking service `jeugdfit-pakket` ("Jeugdfit – volledig pakket", 2 hours, guardian required) offered by every active provider of *Jeugdfit – eenmalig* except Toshoni | Aanbod |
+| Booking services | `volwassenenfit`, `jeugdfit` with the texts of 20 Oct | the texts of `DEFAULT_SERVICES` ("Jeugdfit – eenmalig", label "Jeugd – eenmalig"); durations: the new-bike variants 2 hours, voetanalyse 30, zadelanalyse 60, schoenplaatjes 15 minutes, for an offering that has a booking service | Aanbod (variants) |
+| Toshoni | offers the booking services | offers none; his provider row, hours, calendar link and bookings stay | Aanbieders |
+
+Every correction names the value it expects. A field that holds the old value is changed (`~`), one
+that already holds the target is left (`=`), one that holds neither was edited in Beheer since and
+blocks the whole run (`!`): nothing is overwritten, there is no override flag. A page with unpublished
+draft edits blocks too (the tool never publishes an editor's draft). Never touched: the extra's
+(§23, which runs first), prices, bookings, the provider rows, users, media, redirects and every
+page the specs do not name.
+
+**Where each environment is.** Both hold the state of §22 (prices) and of §23 (the extra's of 20 Oct;
+the correction of §23 still has to run), and neither has migration 0017. By the infrastructure log
+of 20 Oct 2026 staging has one provider (Toshoni) and production two. The patch will not take
+Toshoni off a service that no other active provider offers (`!`), so on staging it stops at the dry
+run until a second provider offers `volwassenenfit` and `jeugdfit` (Beheer → Aanbieders): a decision
+for Toshoni, not for the tool. That provider then also gets the new package service.
+
+**Order, per environment** (staging first; production only after Toshoni's explicit go, CLAUDE.md §7):
+
+1. Optional Neon snapshot before the first write. The tool writes its own backup as well.
+2. `DATABASE_URL='<url>' npm run db:migrate`: migration 0017 (additive, guarded; §3.1) **before the
+   build**, which selects `cms_offerings.price_text` on every offering read.
+3. `cms:patch-aanbod-extras`: dry run, apply, dry run (§23 steps 2 to 4). It needs no new build (the
+   running widget reads the extra's from the database), so it goes first and ends the double charge
+   on the analyses at once.
+4. **Deploy this build** (release gate green, READY). It has to be live before step 5: the patch
+   publishes a `location` block, and a build that does not know a block type counts a snapshot with
+   it as unpublished (`cms-architecture.md` §5, "The `location` block"), so the page would go dark.
+5. `cms:patch-aanbod-correcties`: dry run, apply, dry run (below).
+6. Verify after the 5-minute cache window (below).
+
+**Do not save a bikefit between steps 4 and 5.** *Bikefit – huidige fiets* and *Bikefit – aankoop
+nieuwe fiets* must not be saved in Beheer → Aanbod in that window. The form of the new build shows the
+third variant, and a save of the directly booked fit creates its booking service under the name the
+repo derives from the offering (`bikefit-huidige-fiets-jeugd-pakket`, "Bikefit – huidige fiets –
+Jeugd – volledig pakket") instead of `jeugdfit-pakket`; it also rewrites the name, label and
+description of the other two services from the offering. The patch adopts a service that exists
+(it never renames or deletes one), so the wrong name would stay until someone renames it. The same
+rewrite happens on every later save of a bikefit (§22), so the service texts this patch writes hold
+until the next save of that offering.
+
+1. **Dry run** (read-only like §9; no session, no write call, no audit entry):
+
+   ```bash
+   DATABASE_URL='<staging pooled url>' npm run cms:patch-aanbod-correcties
+   ```
+
+   On a database in the state described above it prints, in this order (`<n>` is a count of this
+   database; each page line is followed by an indented line per change):
+
+   ```text
+   → driver: neon-http (<host>)
+   → mode: dry run (nothing is written)
+   = would act as <e-mail of the admin the tool uses> (no session is created in a dry run)
+   ~ setting contact — address: Ninove → Halsesteenweg 406 a, 9403 Neigem; phone label: 0473 95 26 33 → +32 473 95 26 33; phone link: tel:0473952633 → tel:+32473952633
+   ~ setting seo — defaultMetaTitle: "De Bikefit Studio — professionele bikefit in Ninove" → "De Bikefit Studio: professionele bikefit in Ninove"; defaultMetaDescription: "…" → "…"
+   ~ setting business — new row with the schema defaults
+   ~ setting rules — new row with the schema defaults
+   ~ location De Bikefit Studio, Ninove — address: Ninove → Halsesteenweg 406 a, 9403 Neigem
+   ~ variant bikefit-nieuwe-fiets — Jeugd – volledig pakket: add variant at € 275
+   ~ variant bikefit-huidige-fiets — Jeugd – volledig pakket: add variant at € 275; new service jeugdfit-pakket ("Jeugdfit – volledig pakket", 120 min, € 275); offered by <n> provider(s)
+   ~ service volwassenenfit — description: "…" → "…"
+   ~ service jeugdfit — name: "…" → "Jeugdfit – eenmalig"; choiceLabel: "…" → "Jeugd – eenmalig"; description: "…" → "…"
+   = duration bikefit-nieuwe-fiets — no booking service (asked for): nothing to set
+   = duration voetanalyse — no booking service (asked for): nothing to set
+   = duration zadelanalyse — no booking service (asked for): nothing to set
+   = duration afstellen-schoenplaatjes — no booking service (asked for): nothing to set
+   ~ offering bikefit-nieuwe-fiets — contents: 5 → 7 item(s), 3 changed; extras: 3 → 2 item(s), 3 changed; metaDescription: "…" → "…"; duration: "2 uur" → "{{duur:volwassenenfit}}"
+   ~ offering bikefit-huidige-fiets — contents: 6 → 7 item(s), 2 changed; extras: 3 → 3 item(s), 2 changed; metaDescription: "…" → "…"
+   ~ offering bikefit-tweede-bezoek — summary: "…" → "…"; goal: "…" → "…"; contents: 4 → 4 item(s), 2 changed; priceText: "" → "Gratis binnen {{tweede-bezoek-gratis}} na je fit, daarna {{…"; metaDescription: "…" → "…"
+   ~ offering bikefit-tweede-fiets — contents: 3 → 3 item(s), 2 changed; duration: "30 minuten tot 1 uur extra, aansluitend op je bikefit" → "Extra tijd bovenop je bikefit, aansluitend op je afspraak"; metaDescription: "…" → "…"
+   ~ offering voetanalyse — metaDescription: "…" → "…"
+   ~ offering zadelanalyse — metaDescription: "…" → "…"
+   ~ offering afstellen-schoenplaatjes — metaDescription: "…" → "…"
+   ~ offering lactaattest — title: "Lactaattest" → "Inspanningstest"; metaDescription: "…" → "…"
+   ~ offering coaching — extras: 3 → 3 item(s), 1 changed; metaDescription: "…" → "…"
+   ~ provider Toshoni — <n> offering(s) removed: jeugdfit, volwassenenfit
+   → provider list: cached for up to 5 minutes, so Toshoni leaves the options within that time
+   ~ menu main — insert "Cadeaubon" (/cadeaubon) before "Contact"
+   ~ page / — <n> change(s), then publish
+   ~ page /aanbod — <n> change(s), then publish
+   ~ page /afspraak — <n> change(s), then publish
+   ~ page /algemene-voorwaarden — <n> change(s), then publish
+   ~ page /bikefit — <n> change(s), then publish
+   ~ page /cadeaubon — 3 change(s), then publish
+   ~ page /contact — 4 change(s), draft only
+   ~ page /ons-team — <n> change(s), then publish
+   ~ page /privacy — <n> change(s), then publish
+   ~ page /veelgestelde-vragen — <n> change(s), then publish
+   ~ page /voor-wie — <n> change(s), then publish
+   = guards: pages <n>, blocks <n>, offerings 9, variants <n>, services <n>, bookings <n>, providers <n>, subscriptions <n>
+   → after the apply: blocks <n> (+2), variants <n> (+2), services <n> (+1), subscriptions <n> (-<m>)
+   → dry run: run again with --apply to write
+   ```
+
+   What varies by database, and is no reason to stop: the old values inside the `service` lines (the
+   texts of `cms:bootstrap`, or what the save of the bikefit wrote on 20 Oct, "Bikefit – huidige
+   fiets – Jeugd" and the offering's summary; both are accepted as the starting state); a
+   `~ duration <offering> — 60 → <n> min` in place of the `=` line for an offering whose online
+   booking was switched on in Beheer (60 is what the form pre-fills); the line `~ page /contact`,
+   which is there only where the retired draft of `/contact` exists (it stays unpublished);
+   `offered by <n> provider(s)` and the provider line, which follow who offers what. The change
+   counts of the pages follow the build. An unpublished page that the repo would refuse to save
+   (an old block type) prints `= page <path> — not published, left alone (…)`; a page the specs
+   name that is missing or unpublished is a blocker.
+
+   **Stop and report on any `!` line.** The usual ones: `! provider Toshoni: service <slug> would be
+   left without a provider — add the other provider to it in Beheer → Aanbieders first` (staging
+   until a second provider exists; production if the other provider does not offer every service);
+   `! setting contact: …`, `! offering <slug>: …` or `! page <path>: … (edited since the rollout?)`
+   (a field was changed in Beheer: tell Toshoni, leave it, never force it); `! page <path>: has
+   unpublished draft edits; publish or discard them in /admin first`; `! offering <slug>: missing —
+   run cms:patch-aanbod-prijzen first`. The verdict is then `dry run: blocked — fix the items marked
+   ! first`, and `--apply` refuses with the same list before it writes anything. Compare staging
+   with production: the lines must be the same apart from the counts, the old texts and the
+   provider lines.
+2. **Apply on staging** (the tool writes its own backup before the first write):
+
+   ```bash
+   DATABASE_URL='<staging pooled url>' npm run cms:patch-aanbod-correcties -- --apply \
+     --expect-host '<host part of the staging DATABASE_URL>' --backup-dir <dir>
+   ```
+
+   It prints `✓ backup written: <dir>/aanbod-correcties-patch-<timestamp>.json` (every row it is
+   about to change, as it is now, plus what it will create and remove), the same `~` lines, then
+   `✓ settings, menu, offerings, services and published pages verified on the public readers`,
+   `✓ row counts as planned (blocks <n> (+2), variants <n> (+2), services <n> (+1), subscriptions <n>
+   (-<m>)); bookings and providers unchanged`, `✓ apply complete` and `→ deployed sites pick this up
+   within 5 minutes (cache fallback); the provider list too`.
+
+   The writes go in this order, settings first so that the contact tokens on the pages resolve to
+   the new values from the moment a page publishes: the settings, the location, the youth package
+   (service, variant, providers), the copy and durations of the services, the offerings, Toshoni's
+   offerings, the menu, the pages (each published like `cms:patch-page-cleanup`; a page that is a
+   draft stays a draft). The verify is a second plan that must find nothing left, the row counts of
+   every table, and the public readers: the catalogue (three labelled variants on both bikefits,
+   the Kostprijs text, the durations), the settings, the menu order, the location and voucher
+   blocks in the draft and in the published snapshot, the provider list without Toshoni, and
+   `correctionProblems` on each published page. Audit: the repos' own entries (`settings.update`,
+   `location.update`, `service.create`, `service.update`, `provider.services`,
+   `navigation.update`, `block.add`/`block.update`/`block.delete`, `page.update`, `page.publish`),
+   `offering.update` for each offering and variant row it writes, and
+   `patch.aanbod-correcties.apply` with the backup's file name. The admin session of the run is
+   always revoked.
+3. Dry run again: every line `=`, the closing line `= dry run: nothing to do`; the guards line shows
+   the counts after the apply.
+4. **Verify** after the 5-minute window (the provider list is cached for as long), on the site:
+   - `/afspraak`: the last section is "Waar vind je ons?" with Halsesteenweg 406 a, 9403 Neigem, the
+     route link and the button "Kaart tonen" (no request to Google before the click); the fit
+     choice offers Volwassene (€ 275), Jeugd – eenmalig (€ 150) and Jeugd – volledig pakket (€ 275);
+     the provider choice no longer lists Toshoni; the phone number is `+32 473 95 26 33`.
+   - Home: "Geef fietsplezier cadeau" after the offer catalogue; the main menu has *Cadeaubon* before
+     *Contact*; the footer and the contact block show the new address and phone number.
+   - `/cadeaubon`: the three amounts and the validity line; `/aanbod`: the card text of the
+     voucher; *Lactaattest* reads *Inspanningstest* everywhere; `/aanbod/bikefit-tweede-bezoek`
+     reads "Gratis binnen zes maanden na je fit, daarna € 75" as its Kostprijs;
+     `/aanbod/bikefit-huidige-fiets` and `/aanbod/bikefit-nieuwe-fiets` show the youth package.
+   - `/privacy`: "Laatst bijgewerkt: 27 oktober 2026" and the paragraph on the map of Google Maps;
+     `/algemene-voorwaarden`: "Versie van 27 oktober 2026", article 3 without the old list of
+     services.
+   - Logged in: Instellingen → Contact, Bedrijfsgegevens and Regels in de teksten hold their values;
+     Aanbieders → Toshoni offers nothing, the other provider offers the fits and the package;
+     Auditlog lists the entries above.
+5. **Production**: the order above again with the production `DATABASE_URL` and host, after
+   Toshoni's explicit go. The dry run must print the same lines as on staging, apart from the
+   counts and the provider lines.
+
+**Rollback:** `npm run cms:patch-aanbod-correcties -- --restore <backup.json> --expect-host '<host>'`
+puts the rows of the backup back and removes what the apply created: the pages (draft blocks and
+published snapshot as they were) and the menu, Toshoni's offerings, the variant rows (the two
+created ones are deleted) and the package service (deleted; switched off instead when a booking
+already uses it), the changed columns of the services and the offerings, the location and the
+settings (the two rows the apply created are deleted). Audit: `patch.aanbod-correcties.restore`.
+Use the backup of the **first** run: an apply repeated after a partial failure writes a new backup
+of the half-done state. Afterwards the dry run lists everything as `~` again. Migration 0017 is
+additive and may stay.
+
+**Notes.**
+
+- **No transactions on Neon's HTTP driver.** The apply writes section by section and every section
+  skips what already holds the target, so after a failure (a refused write, a transport error) the
+  same command is simply run again; the backup was written before the first write. The tool loads
+  its write side and the readers of the verify before its first query (the keep-alive lesson of
+  §22).
+- **`cms:seed-booking` re-subscribes the first provider** to every bootstrap service (idempotent
+  inserts). Do not run it for Toshoni after this patch, or he is offered again; the next dry run
+  would plan his removal a second time.
+- **A later save of a bikefit in Beheer → Aanbod** rewrites the name, label and description of its
+  booking services from the offering ("<title> – <label>"); the service texts of this patch hold
+  until then (§22).
+- **The 5-minute cache** applies to the pages, the catalogue and the provider list; an admin sees
+  the draft at once.

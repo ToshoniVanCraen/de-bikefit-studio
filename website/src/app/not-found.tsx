@@ -26,7 +26,7 @@ export default function RootNotFound() {
           <p>Deze pagina bestaat niet (meer).</p>
           <ul>
             <li>
-              <Link href="/">De Bikefit Studio — homepagina</Link>
+              <Link href="/">De Bikefit Studio: homepagina</Link>
             </li>
             <li>
               <Link href="/shop">Qarakter webshop</Link>

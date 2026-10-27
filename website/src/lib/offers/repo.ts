@@ -8,11 +8,8 @@ import {
   cmsServices,
   cmsUsers,
   DEFAULT_LOCALE,
-  type CmsUserPublic,
 } from '@/db/cms-schema';
 import { BOOKING_TAG } from '@/lib/booking/content';
-import { slugify } from '@/lib/booking/format';
-import { locationExists } from '@/lib/booking/repo-shared';
 import { recordAudit, requirePermission } from '@/lib/cms/auth';
 import { revalidateContent, type RepoResult } from '@/lib/cms/repo';
 import { BOOKING_PAGE_PATH, OFFER_CATEGORIES, OFFER_INDEX_PATH, offerPagePath } from './catalogue';
@@ -20,19 +17,14 @@ import {
   AUDIENCE_LABELS,
   resolveOffering,
   validateOfferingInput,
-  type OfferingAudience,
   type OfferingServiceInfo,
   type OfferingSettings,
   type ResolvedOffering,
-  type VariantServiceInput,
 } from './offering';
-import {
-  validateOfferingContent,
-  type OfferingContent,
-  type OfferingRecord,
-} from './offering-content';
+import { validateOfferingContent, type OfferingRecord } from './offering-content';
 import { OFFERING_TAG, readStoredOfferings } from './offering-store';
 import { syncOfferingAddons } from './repo-addons';
+import { syncVariantService, type ServiceSyncContext } from './repo-variant-services';
 
 /**
  * Beheer → Aanbod: the admin read and write API for offerings (17 Oct 2026:
@@ -176,107 +168,7 @@ export async function getOfferingForAdmin(
 // Writes
 // ---------------------------------------------------------------------------
 
-const AUDIENCE_SLUGS: Record<OfferingAudience, string> = {
-  all: '',
-  adult: 'volwassene',
-  youth: 'jeugd',
-};
-
-/** A service slug no other service in the locale uses: the base, else `-2`, `-3`, … */
-async function freeServiceSlug(db: CmsDatabase, locale: string, base: string): Promise<string> {
-  const taken = new Set(
-    (
-      await db
-        .select({ slug: cmsServices.slug })
-        .from(cmsServices)
-        .where(eq(cmsServices.locale, locale))
-    ).map((row) => row.slug),
-  );
-  if (!taken.has(base)) return base;
-  for (let suffix = 2; suffix < 100; suffix += 1) {
-    const candidate = `${base}-${suffix}`;
-    if (!taken.has(candidate)) return candidate;
-  }
-  throw new Error('no free service slug');
-}
-
-type ServiceSyncContext = {
-  db: CmsDatabase;
-  actor: CmsUserPublic;
-  locale: string;
-  content: OfferingContent;
-  direct: boolean;
-};
-
-/**
- * The `cms_services` row of one variant: created on the first save with
- * service facts, updated afterwards (by id, so bookings and subscriptions
- * keep pointing at it). Returns the service id, or the existing one unchanged
- * when no facts were given (an enquiry keeps whatever it had).
- */
-async function syncVariantService(
-  context: ServiceSyncContext,
-  audience: OfferingAudience,
-  existingServiceId: string | null,
-  service: VariantServiceInput | null,
-): Promise<RepoResult<string | null>> {
-  const { db, actor, locale, content, direct } = context;
-  if (!service) return { ok: true, data: existingServiceId };
-  if (!(await locationExists(service.locationId))) return err('Deze locatie bestaat niet.');
-
-  const label = AUDIENCE_LABELS[audience];
-  const audienceIndex = audience === 'youth' ? 1 : 0;
-  const shared = {
-    name: label ? `${content.title} – ${label}` : content.title,
-    choiceLabel: label,
-    description: content.summary,
-    durationMinutes: service.durationMinutes,
-    bufferAfterMinutes: service.bufferAfterMinutes,
-    locationId: service.locationId,
-    requiresGuardian: service.requiresGuardian,
-    sortOrder:
-      OFFER_CATEGORIES.indexOf(content.category) * 1000 + content.sortOrder * 2 + audienceIndex,
-    updatedAt: new Date(),
-  };
-
-  if (existingServiceId) {
-    const [existing] = await db
-      .select({ id: cmsServices.id, isActive: cmsServices.isActive })
-      .from(cmsServices)
-      .where(and(eq(cmsServices.id, existingServiceId), eq(cmsServices.locale, locale)))
-      .limit(1);
-    if (!existing) return err('Een gekozen dienst bestaat niet (meer).');
-    await db
-      .update(cmsServices)
-      .set({ ...shared, isActive: direct ? true : existing.isActive })
-      .where(eq(cmsServices.id, existing.id));
-    return { ok: true, data: existing.id };
-  }
-
-  const base = slugify(
-    AUDIENCE_SLUGS[audience] ? `${content.slug}-${AUDIENCE_SLUGS[audience]}` : content.slug,
-  );
-  const slug = await freeServiceSlug(db, locale, base || 'dienst');
-  const [created] = await db
-    .insert(cmsServices)
-    .values({
-      ...shared,
-      locale,
-      slug,
-      priceCents: null,
-      showPrice: false,
-      isActive: true,
-      createdBy: actor.id,
-    })
-    .returning({ id: cmsServices.id });
-  await recordAudit(db, actor, {
-    action: 'service.create',
-    entityType: 'cms_service',
-    entityId: created.id,
-    summary: `${shared.name} (via Aanbod)`,
-  });
-  return { ok: true, data: created.id };
-}
+// The booking service behind a variant (`syncVariantService`): `./repo-variant-services.ts`.
 
 async function slugTaken(
   db: CmsDatabase,
@@ -388,6 +280,7 @@ async function writeOffering(
     extras: content.data.extras,
     extrasNote: content.data.extrasNote,
     duration: content.data.duration,
+    priceText: content.data.priceText,
     ctaLabel: content.data.ctaLabel,
     image: content.data.image,
     metaDescription: content.data.metaDescription,
