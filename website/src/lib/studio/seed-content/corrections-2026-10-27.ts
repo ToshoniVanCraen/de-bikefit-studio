@@ -62,7 +62,8 @@ import { PHONE_HREF, PHONE_LABEL } from './shared';
  *   pages      `CORRECTION_PAGE_SPECS` (both halves, one spec per page):
  *              `cleanupBlocks(spec, blocks)` from `page-cleanup.ts` on the draft
  *              blocks and the live snapshot, the page's meta description and meta
- *              title guarded by `spec.metaDescription` / `spec.metaTitle`.
+ *              title guarded by `spec.metaDescription` / `spec.metaTitle` (the
+ *              rollout text, or an earlier seed text named in `alsoFrom`).
  *   phone      `phoneSpec(slug)` for EVERY page, after its own spec: the old number
  *              to the international form, then the number, the e-mail address and
  *              the company identity to their tokens; `replaceContactText(text)` for

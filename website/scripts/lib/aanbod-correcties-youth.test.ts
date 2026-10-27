@@ -4,7 +4,6 @@ import { formatPriceInProse } from '@/lib/booking/format';
 import {
   decideProviderRemoval,
   decideYouthPackage,
-  isFirstProvider,
   packageServiceName,
   type ProviderRow,
   type ServiceRow,
@@ -15,8 +14,9 @@ import {
 /**
  * The youth package and the provider Toshoni, the two sections of
  * `cms:patch-aanbod-correcties` that look at who offers what, on plain data:
- * a database in the state of 20 Oct 2026, one that is done, and an admin's own
- * edit.
+ * a database in the state of 20 Oct 2026 as production holds it (Toshoni and
+ * a second provider), one that is done, and an admin's own edit. Who Toshoni
+ * is, and staging's state (one provider), are `aanbod-correcties-youth-toshoni.test.ts`.
  */
 
 /** "€ 275": how the change lines write the price of the package. */
@@ -31,6 +31,7 @@ const provider = (
   displayName,
   isActive: true,
   userActive: true,
+  userEmail: `${id}@example.com`,
   ...over,
 });
 const sub = (
@@ -68,12 +69,6 @@ describe('Toshoni as Aanbieder', () => {
     service('s3', 'oud', { isActive: false }),
   ];
 
-  it('is found by name, in any case', () => {
-    expect(isFirstProvider(' toshoni ')).toBe(true);
-    expect(isFirstProvider('TOSHONI')).toBe(true);
-    expect(isFirstProvider('Toshoni Van Craen')).toBe(false);
-  });
-
   it('removes all his offerings and names them, while another active provider keeps each service', () => {
     const decision = decideProviderRemoval({
       providers: [toshoni, other],
@@ -87,7 +82,7 @@ describe('Toshoni as Aanbieder', () => {
       services,
       planned: [],
     });
-    expect(decision.provider).toBe(toshoni);
+    expect(decision.provider).toEqual({ id: 'p1', displayName: 'Toshoni' });
     expect(decision.rows.map((row) => row.serviceId)).toEqual(['s1', 's2', 's3']);
     expect(decision.changes).toEqual(['3 offering(s) removed: volwassenenfit, jeugdfit, oud']);
     expect(decision.blockers).toEqual([]);
@@ -101,7 +96,7 @@ describe('Toshoni as Aanbieder', () => {
       planned: [],
     });
     expect(decision.blockers).toEqual([
-      'provider Toshoni: service jeugdfit would be left without a provider — add the other provider to it in Beheer → Aanbieders first',
+      'provider Toshoni: service jeugdfit would be left without a provider — add a replacement provider for it in Beheer → Aanbieders first',
     ]);
     // What the same run adds counts as another provider.
     const covered = decideProviderRemoval({
@@ -113,9 +108,9 @@ describe('Toshoni as Aanbieder', () => {
     expect(covered.blockers).toEqual([]);
   });
 
-  it('does nothing without such a provider or without offerings, and refuses two of the same name', () => {
+  it('does nothing without providers or without offerings; refuses providers without him, and two of his name', () => {
     expect(
-      decideProviderRemoval({ providers: [other], subscriptions: [], services, planned: [] }),
+      decideProviderRemoval({ providers: [], subscriptions: [], services, planned: [] }),
     ).toEqual({
       provider: null,
       rows: [],
@@ -130,13 +125,21 @@ describe('Toshoni as Aanbieder', () => {
     });
     expect(none.rows).toEqual([]);
     expect(none.changes).toEqual([]);
+    expect(none.blockers).toEqual([]);
+    // Providers, but none of them him: fail closed (see aanbod-correcties-youth-toshoni.test.ts).
+    expect(
+      decideProviderRemoval({ providers: [other], subscriptions: [], services, planned: [] })
+        .blockers,
+    ).toEqual([expect.stringContaining('provider Toshoni: no provider profile matches')]);
     const twice = decideProviderRemoval({
       providers: [toshoni, provider('p9', 'toshoni')],
       subscriptions: [],
       services,
       planned: [],
     });
-    expect(twice.blockers).toEqual([expect.stringContaining('2 providers are named Toshoni')]);
+    expect(twice.blockers).toEqual([
+      'provider Toshoni: 2 provider profiles match — "Toshoni" (by display name), "toshoni" (by display name); rename the one that is not his in Beheer → Aanbieders (or change its login), then run again',
+    ]);
   });
 });
 

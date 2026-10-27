@@ -40,15 +40,34 @@ export type CleanupEdit =
   | { kind: 'replaceItem'; select: Selector; field: string; from: unknown; to: unknown }
   | { kind: 'replaceAll'; from: string; to: string };
 
+/**
+ * A guarded text of the page itself (its meta description or meta title): `to` is
+ * the target, `from` the text the page was rolled out with. `alsoFrom` lists other
+ * exact texts a seed is known to have left in the field, each named where it is
+ * defined with where it came from (27 Oct 2026: the first seed of `/afspraak`,
+ * which `cms:seed -- --refresh-slug` never overwrites); they move to `to` like
+ * `from`. Any other text is an editor's own: a conflict.
+ */
+export type PageTextGuard = {
+  from: string;
+  alsoFrom?: readonly string[];
+  to: string;
+};
+
+/** True when `text` is a state `guard` moves to its target: its `from`, or one of its `alsoFrom`. */
+export function isOldPageText(guard: PageTextGuard, text: string | null): boolean {
+  return text !== null && (text === guard.from || (guard.alsoFrom ?? []).includes(text));
+}
+
 export type PageCleanupSpec = {
   slug: string;
   edits: CleanupEdit[];
-  metaDescription?: { from: string; to: string };
+  metaDescription?: PageTextGuard;
   /**
    * The page's own title for the browser tab and search results, guarded like
    * `metaDescription` (27 Oct 2026: the dash clean-up changes four of them).
    */
-  metaTitle?: { from: string; to: string };
+  metaTitle?: PageTextGuard;
 };
 
 /** Before the review; the target values come from the seeds. */

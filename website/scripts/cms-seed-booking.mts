@@ -35,9 +35,11 @@ import {
 } from '@/db/cms-schema';
 import { generateTemporaryPassword, hashPassword } from '@/lib/cms/password';
 import { DEFAULT_PROVIDER_HOURS, DEFAULT_SERVICES } from '@/lib/booking/defaults';
+import { normalizeEmail } from '@/lib/email-address';
+import { FIRST_PROVIDER } from './lib/first-provider.mjs';
 
-const PROVIDER_EMAIL = (process.env.PROVIDER_EMAIL ?? 'toshoni@gmail.com').trim().toLowerCase();
-const PROVIDER_NAME = (process.env.PROVIDER_NAME ?? 'Toshoni').trim();
+const PROVIDER_EMAIL = normalizeEmail(process.env.PROVIDER_EMAIL ?? FIRST_PROVIDER.email);
+const PROVIDER_NAME = (process.env.PROVIDER_NAME ?? FIRST_PROVIDER.displayName).trim();
 
 async function main() {
   console.log(`→ driver: ${cmsDriver()}`);

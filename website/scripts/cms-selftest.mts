@@ -100,12 +100,12 @@
  * 17c. extra's (add-ons): the bootstrap offerings, availability and a booking
  *      with an extra, and `cms:patch-aanbod-extras` from a fresh database, an
  *      edit in Beheer and the state of 20 Oct 2026 (`scripts/selftest/aanbod-extras.mts`)
- * 17d. aanbod correcties (27 Oct 2026): from the state staging and production
- *      hold, the dry run writes nothing, apply changes settings, location, pages,
- *      menu, offerings, services, the youth package and Toshoni's offerings,
- *      verified on the public readers and the copy-token lookup, idempotent,
- *      restore returns every table, what must block does; every table is put
- *      back afterwards
+ * 17d. aanbod correcties (27 Oct 2026): from the state of staging and production,
+ *      the dry run writes nothing, apply changes settings, location, pages, menu,
+ *      offerings, services, the youth package and Toshoni's offerings, verified,
+ *      idempotent, restore returns every table, what must block does; staging's
+ *      own state (first-seed /afspraak text; Toshoni Van Craen alone blocks, the
+ *      apply refuses before any write; applies with a replacement); all put back
  *      (`scripts/selftest/aanbod-correcties.mts`)
  *  18. gift voucher: the order service on the database with `fetch` replaced (missing
  *      key/sender or a refusal is "not sent", only an accepted request is a

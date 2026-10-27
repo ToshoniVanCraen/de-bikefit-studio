@@ -24,10 +24,12 @@
  * The page's own texts (title, meta title, meta and share texts) follow the same
  * rule (`transformPageTexts`): the guarded meta title and description of the
  * spec, then the contact details swapped for their tokens
- * (`replaceContactText`). Every edit names the value it expects; a field
- * that holds neither the old nor the new value is a conflict and blocks the
- * patch (an editor's change is never overwritten). Idempotent: a second run on
- * the result finds nothing. Runbook: `docs/staging-runbook.md` §24.
+ * (`replaceContactText`). Every edit names the value it expects (a page text
+ * also the earlier seed texts its guard lists in `alsoFrom`, such as the first
+ * seed's `/afspraak` description); a field that holds neither an old nor the new
+ * value is a conflict and blocks the patch (an editor's change is never
+ * overwritten). Idempotent: a second run on the result finds nothing. Runbook:
+ * `docs/staging-runbook.md` §24.
  */
 import { sanitizeBlockData } from '@/lib/cms/actions/sanitize';
 import { validateBlock, validateBlocks } from '@/lib/cms/blocks';
@@ -39,7 +41,12 @@ import {
   replaceContactText,
 } from '@/lib/studio/seed-content/corrections-2026-10-27';
 import { LOCATION_BLOCK } from '@/lib/studio/seed-content/location-section';
-import { cleanupBlocks, type PageCleanupSpec } from '@/lib/studio/seed-content/page-cleanup';
+import {
+  cleanupBlocks,
+  isOldPageText,
+  type PageCleanupSpec,
+  type PageTextGuard,
+} from '@/lib/studio/seed-content/page-cleanup';
 import type { SeedBlock } from '@/lib/studio/seed-content/shared';
 import { sameValue, shortText } from './aanbod-correcties-targets.mjs';
 
@@ -223,15 +230,14 @@ export type TextsWork = {
 
 const TEXT_KEYS = ['title', 'metaTitle', 'metaDescription', 'ogTitle', 'ogDescription'] as const;
 
-type TextGuard = { from: string; to: string };
-
 /**
- * One guarded text of the page: `to` is done, `from` becomes `to`, anything
- * else is the editor's own (a conflict). Returns the text after the guards.
+ * One guarded text of the page: `to` is done, `from` (or a seed text of
+ * `alsoFrom`, `isOldPageText`) becomes `to`, anything else is the editor's own (a
+ * conflict). Returns the text after the guards.
  */
 function guardedText(
   current: string | null,
-  guards: readonly TextGuard[],
+  guards: readonly PageTextGuard[],
   field: string,
   noun: string,
   result: Pick<TextsWork, 'changes' | 'conflicts'>,
@@ -240,7 +246,7 @@ function guardedText(
   let guarded = false;
   for (const guard of guards) {
     if (text === guard.to) continue;
-    if (text === guard.from) {
+    if (isOldPageText(guard, text)) {
       result.changes.push(`${field}: ${shortText(text)} → ${shortText(guard.to)}`);
       text = guard.to;
       guarded = true;

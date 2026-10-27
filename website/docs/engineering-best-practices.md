@@ -53,7 +53,7 @@ prints nothing. *Example:* `src/components/admin/locations-manager.tsx:26`.
 
 | Layer | Modules | May import at runtime |
 | --- | --- | --- |
-| 0 Foundation | `src/lib/{env,secrets,html,request-ip,sealed-box,rate-limit,utils}.ts`, `src/db/*` | npm packages, each other |
+| 0 Foundation | `src/lib/{env,secrets,html,request-ip,email-address,sealed-box,rate-limit,utils}.ts`, `src/db/*` | npm packages, each other |
 | 1 Core | `src/lib/cms/**` except `actions/` and `offers-content.ts`; `src/lib/email/**` | layer 0; pure modules of layer 2 |
 | 2 Domains | `src/lib/{booking,offers,gift-voucher,offer-enquiry,staging-gate,analytics,security}/**` | layers 0–1; another domain's pure modules and entry points (`content.ts`, `repo.ts`, exported tags) |
 | 3 Composition | `src/lib/cms/actions/**`, `src/lib/cms/offers-content.ts`, `src/lib/studio/**`, `src/components/**`, `src/app/**` | anything below |

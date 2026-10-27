@@ -9,6 +9,7 @@ import {
   cleanupBlocks,
   CONTACT_REDIRECT,
   contactEmailAction,
+  isOldPageText,
   PAGE_CLEANUP_SPECS,
   RETIRED_CONTACT_SLUG,
   retargetContactLinks,
@@ -123,10 +124,9 @@ export async function planPageCleanup(deps: PlanDeps): Promise<PageCleanupPlan> 
       if (spec.metaDescription && row.metaDescription !== spec.metaDescription.to) {
         plan.meta = {
           to: spec.metaDescription.to,
-          conflict:
-            row.metaDescription === spec.metaDescription.from
-              ? ''
-              : `meta description is ${JSON.stringify(row.metaDescription)}, not the rollout text`,
+          conflict: isOldPageText(spec.metaDescription, row.metaDescription)
+            ? ''
+            : `meta description is ${JSON.stringify(row.metaDescription)}, not the rollout text`,
         };
       }
     }
