@@ -10,6 +10,8 @@
  *  - a page the patch needs must exist and be published;
  *  - a published page whose saved draft differs from what is live has unpublished
  *    editor work: the patch refuses to touch it (it would publish it);
+ *  - an editor's exact text that a correction keeps (production's /aanbod
+ *    subtitle) stays as it is in the draft, so also in what is published: `kept`;
  *  - anything the repo would refuse (an unsafe link, a block the schema rejects)
  *    is a blocker found here, not a failure halfway through the apply;
  *  - a page nobody sees (a retired or unfinished draft) that the repo would
@@ -49,6 +51,11 @@ export type PagePlan = Planned & {
   unpublishedDraft: boolean;
   /** Why a page that is not required is left alone. */
   note: string;
+  /**
+   * Draft fields left as they are because they hold a text a correction keeps (production's
+   * /aanbod subtitle): neither a change nor a blocker; the dry run prints them as `=`.
+   */
+  kept: string[];
 };
 
 /** The saved draft blocks as plain data. */
@@ -125,6 +132,7 @@ function planPage(
     liveChanges,
     unpublishedDraft,
     note: notes.join('; '),
+    kept: usable ? work.kept : [],
     changes,
     blockers,
     action: statusOf(blockers, changes),
@@ -154,6 +162,7 @@ export function planPages(world: World, sources: PageSources): PagePlan[] {
       liveChanges: 0,
       unpublishedDraft: false,
       note: '',
+      kept: [],
       changes: [],
       blockers: [`page ${pagePath(slug)}: missing`],
       action: 'blocked',

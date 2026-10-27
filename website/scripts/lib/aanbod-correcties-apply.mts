@@ -233,6 +233,8 @@ async function applyPage(deps: CorrectiesDeps, page: PagePlan) {
     '~',
     `${label} — ${page.changes.length} change(s)${page.publish ? ', published' : ', draft only'}`,
   );
+  // Never written: an editor's text a correction keeps (production's /aanbod subtitle).
+  for (const entry of page.kept) deps.log('=', `${label} — kept as it is: ${entry}`);
 }
 
 /** Runs every section of an unblocked plan. */

@@ -1502,6 +1502,18 @@ the rules (what a field must hold before, what it becomes, what blocks) in
 | Booking services | `volwassenenfit`, `jeugdfit` with the texts of 20 Oct | the texts of `DEFAULT_SERVICES` ("Jeugdfit – eenmalig", label "Jeugd – eenmalig"); durations: the new-bike variants 2 hours, voetanalyse 30, zadelanalyse 60, schoenplaatjes 15 minutes, for an offering that has a booking service | Aanbod (variants) |
 | Toshoni | offers the booking services | default (production, still undecided): offers none; his provider row, hours, calendar link and bookings stay. Staging, with `--staging-retain-toshoni`: stays a provider with every offering he has, plus `jeugdfit-pakket` | Aanbieders |
 
+**Production `/aanbod` copy (21 Oct 2026).** Toshoni's published hero subtitle is an exact
+258-character editorial exception, preserved in both the draft and published snapshot:
+"Elke fietser is anders. Daarom werkt De Bikefit Studio uitsluitend met ervaren, gediplomeerde
+professionals. Samen zoeken we wat bij jou past: van je eerste kilometers tot een nieuw sportief
+doel. Persoonlijke fietsbegeleiding, in de studio of bij jou thuis." The 27 Oct patch accepts only
+this exact value as `= page /aanbod — kept as it is: hero (page head).subtitle …`; it never writes
+that field. Staging's earlier rollout subtitle still changes to the corrected 27 Oct intro. Any
+third value (even extra whitespace) remains a `!` conflict. The published-page verifier permits
+"gediplomeerde" only in this exact retained subtitle on `/aanbod`, nowhere else. Compare the
+production dry-run line and draft/live values before proposing an apply; a clean dry run is not
+production authorization.
+
 Every correction names the value it expects. A field that holds the old value is changed (`~`), one
 that already holds the target is left (`=`), one that holds neither was edited in Beheer since and
 blocks the whole run (`!`): nothing is overwritten, there is no override flag. A page with unpublished
@@ -1776,6 +1788,8 @@ until the next save of that offering.
      voucher; *Lactaattest* reads *Inspanningstest* everywhere; `/aanbod/bikefit-tweede-bezoek`
      reads "Gratis binnen zes maanden na je fit, daarna € 75" as its Kostprijs;
      `/aanbod/bikefit-huidige-fiets` and `/aanbod/bikefit-nieuwe-fiets` show the youth package.
+     On production, `/aanbod` also retains Toshoni's exact hero subtitle above, in Beheer draft
+     and on the published page; on staging the older subtitle becomes the corrected intro.
    - `/privacy`: "Laatst bijgewerkt: 27 oktober 2026" and the paragraph on the map of Google Maps;
      `/algemene-voorwaarden`: "Versie van 27 oktober 2026", article 3 without the old list of
      services.

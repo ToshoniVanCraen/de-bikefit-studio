@@ -6,6 +6,7 @@ import { STUDIO_EXTRAS_TEXT, TEAM_INTRO, TEAM_SELECTION_SENTENCE } from './copy'
 import {
   CONTACT_TOKEN_EDITS,
   COPY_PAGE_SPECS,
+  KEPT_AANBOD_INTRO,
   termsText,
   tokeniseContactText,
 } from './corrections-2026-10-27-copy';
@@ -76,7 +77,8 @@ import { PHONE_HREF, PHONE_LABEL } from './shared';
  *              below is the first half's list, covered by the first.
  *   settings   `SETTING_TEXT_CORRECTIONS` (copy half): the default SEO title and
  *              description lose their dashes when they still hold the old text.
- *   verify     `correctionProblems(slug, blocks)` on each published snapshot.
+ *   verify     `correctionProblems(slug, blocks)` on each published snapshot (the one
+ *              "gediplomeerde" it allows: `KEPT_AANBOD_INTRO`, the /aanbod subtitle kept).
  *
  * Every edit names the value it expects. A field that already holds the new
  * value is done (idempotent); any other value is a conflict and the patch
@@ -402,6 +404,22 @@ function brief(fragment: string): string {
 }
 
 /**
+ * The blocks of `/aanbod` as the diploma check reads them: the subtitle of its one page head
+ * left out when it is exactly `KEPT_AANBOD_INTRO` (Toshoni's own text of 21 Oct 2026, which the
+ * corrections keep). The same words in another block or field, a subtitle that only contains
+ * them, a second page head, or any other diploma wording still count.
+ */
+function withoutKeptIntro(blocks: readonly CleanupBlock[]): readonly CleanupBlock[] {
+  const heads = blocks.filter(
+    (block) => block.type === pageHead.type && pageHead.where?.(block.data),
+  );
+  if (heads.length !== 1 || heads[0].data.subtitle !== KEPT_AANBOD_INTRO) return blocks;
+  return blocks.map((block) =>
+    block === heads[0] ? { ...block, data: { ...block.data, subtitle: '' } } : block,
+  );
+}
+
+/**
  * What must hold on a page after the corrections (checked on the published
  * snapshot after an apply, and in the tests); returns the violations.
  *
@@ -414,6 +432,8 @@ export function correctionProblems(slug: string, blocks: readonly CleanupBlock[]
   const problems: string[] = [];
   const text = JSON.stringify(blocks);
   const strings = stringsIn(blocks);
+  // Only on /aanbod, only that one subtitle: no exception on the home page or /ons-team.
+  const claims = slug === 'aanbod' ? JSON.stringify(withoutKeptIntro(blocks)) : text;
   if (text.includes(PHONE_LABEL_BEFORE) || text.includes(PHONE_HREF_BEFORE)) {
     problems.push(`still shows the old phone number ${PHONE_LABEL_BEFORE}`);
   }
@@ -440,7 +460,7 @@ export function correctionProblems(slug: string, blocks: readonly CleanupBlock[]
   if (slug === 'bikefit' && /schoenzolen|3D-geprint/i.test(text)) {
     problems.push('still mentions the 3D-printed insoles');
   }
-  if ((slug === '' || slug === 'ons-team' || slug === 'aanbod') && /diplom/i.test(text)) {
+  if ((slug === '' || slug === 'ons-team' || slug === 'aanbod') && /diplom/i.test(claims)) {
     problems.push('still says the team is chosen on diplomas');
   }
   const replaced = [

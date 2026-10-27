@@ -21,7 +21,9 @@ import { BOOKING_PATH, CONTACT_EMAIL, EMAIL_TOKEN, PHONE_HREF, PHONE_HREF_TOKEN 
  * conflict): `replace` swaps the exact old text inside a text field,
  * `replaceItem` swaps the one list entry equal to the old value, and
  * `replaceAll` swaps an exact string in every field of every block of a page
- * (nothing to guard: the old string is either there or it is not).
+ * (nothing to guard: the old string is either there or it is not). A `set`
+ * may also name exact texts an editor wrote that it leaves as they are
+ * (`keep`): no write, no conflict, reported in `kept`.
  */
 
 export type CleanupBlock = { type: string; data: Record<string, unknown> };
@@ -33,7 +35,20 @@ export type Selector = {
 };
 
 export type CleanupEdit =
-  | { kind: 'set'; select: Selector; field: string; from: unknown; to: unknown }
+  | {
+      kind: 'set';
+      select: Selector;
+      field: string;
+      from: unknown;
+      to: unknown;
+      /**
+       * Exact values an editor wrote that this edit leaves as they are (no write, no
+       * conflict; listed in `kept`), each named where it is defined with who wrote it and
+       * when (27 Oct 2026: Toshoni's own /aanbod subtitle on production). Never `from` or
+       * `to`; any value that is none of the three is still a conflict.
+       */
+      keep?: readonly unknown[];
+    }
   | { kind: 'remove'; select: Selector }
   | { kind: 'append'; select: Selector; field: string; marker: string; value: string }
   | { kind: 'replace'; select: Selector; field: string; from: string; to: string }
@@ -84,8 +99,15 @@ export function titled(type: string, title: string): Selector {
   return { label: `${type} "${title}"`, type, where: (data) => data.title === title };
 }
 
-export function set(select: Selector, field: string, from: unknown, to: unknown): CleanupEdit {
-  return { kind: 'set', select, field, from, to };
+/** `from` → `to` in one field; `keep`: exact values that stay as they are (see `CleanupEdit`). */
+export function set(
+  select: Selector,
+  field: string,
+  from: unknown,
+  to: unknown,
+  keep?: readonly unknown[],
+): CleanupEdit {
+  return { kind: 'set', select, field, from, to, ...(keep ? { keep } : {}) };
 }
 
 export const PAGE_CLEANUP_SPECS: PageCleanupSpec[] = [
@@ -242,6 +264,8 @@ export type CleanupResult<T extends CleanupBlock> = {
   next: CleanupBlock[];
   changes: string[];
   conflicts: string[];
+  /** Fields left as they are because they hold a value their `set` keeps: `label.field "value"`. */
+  kept: string[];
 };
 
 /** Applies one page's edits to its blocks (the caller's objects are not mutated). */
@@ -253,8 +277,13 @@ export function cleanupBlocks<T extends CleanupBlock>(
   const removed = new Set<number>();
   const changes: string[] = [];
   const conflicts: string[] = [];
+  const kept: string[] = [];
 
   for (const edit of spec.edits) {
+    // Keeping its own old or new value would never correct anything: a programmer error.
+    if (edit.kind === 'set' && edit.keep?.some((v) => same(v, edit.from) || same(v, edit.to))) {
+      throw new Error(`set ${edit.select.label}.${edit.field}: a kept value is "from" or "to"`);
+    }
     if (edit.kind === 'replaceAll') {
       const { from, to } = edit;
       if (from === '') throw new Error('replaceAll: "from" must not be empty');
@@ -340,7 +369,9 @@ export function cleanupBlocks<T extends CleanupBlock>(
       continue;
     }
     if (same(current, edit.to)) continue;
-    if (same(current, edit.from)) {
+    if (edit.keep?.some((value) => same(current, value))) {
+      kept.push(`${label}.${edit.field} ${show(current)}`);
+    } else if (same(current, edit.from)) {
       target[edit.field] = structuredClone(edit.to);
       changes.push(`${label}.${edit.field}: ${describe(edit.from, edit.to)}`);
     } else {
@@ -363,6 +394,7 @@ export function cleanupBlocks<T extends CleanupBlock>(
     next,
     changes,
     conflicts,
+    kept,
   };
 }
 

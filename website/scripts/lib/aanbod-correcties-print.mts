@@ -12,8 +12,13 @@
  *   ~ location De Bikefit Studio, Ninove — address: Ninove → Halsesteenweg 406 a, 9403 Neigem
  *   ~ variant bikefit-huidige-fiets — Jeugd – volledig pakket: add variant at € 275,00; …
  *   ~ page /afspraak — 3 change(s), then publish
+ *   = page /aanbod — kept as it is: hero (page head).subtitle "Elke fietser is anders. …"
  *   ~ provider Toshoni — 3 offering(s) removed: volwassenenfit, jeugdfit, …
  *   = guards: pages 12, blocks 80, offerings 9, variants 11, services 5, bookings 2, …
+ *
+ * The `kept` line follows its page's line, also when nothing else changes: a field
+ * that holds an editor's text a correction keeps (production's /aanbod subtitle,
+ * Toshoni's own of 21 Oct 2026), left as it is in the draft and on the live page.
  *
  * The provider line names Toshoni by the display name of the profile
  * `isToshoni` found ("Toshoni" on production, "Toshoni Van Craen" on staging),
@@ -50,6 +55,7 @@ function showPage(log: Log, page: PagePlan) {
   } else if (page.row) {
     log('=', `page ${page.path} — nothing to change`);
   }
+  for (const entry of page.kept) log('=', `page ${page.path} — kept as it is: ${entry}`);
 }
 
 const COUNT_LABELS: ReadonlyArray<keyof Counts> = [
