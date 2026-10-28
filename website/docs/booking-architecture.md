@@ -1048,8 +1048,12 @@ resolves it on the server with `resolveBookingSelection()`:
 | an unknown or hidden slug | the normal widget with "We vonden de gekozen dienst niet terug." |
 
 On the plain widget an offering appears **once** with its variants as a sub-selection
-("Voor wie?": Volwassene / Jeugd – eenmalig / Jeugd – volledig pakket, `groupBookingChoices()`),
-labelled by the variant and priced
+("Voor wie?": Volwassene / Jeugd – eenmalig / Jeugd – volledig pakket, `groupBookingChoices()`).
+The five named top-level choices on `/afspraak` appear in Toshoni's 28 Oct order:
+Bikefit – aankoop nieuwe fiets, Bikefit – huidige fiets, Afstellen schoenplaatjes,
+Zadelanalyse, Voetanalyse. This booking-only order leaves the `/aanbod` overview and the
+order of variants within each offer unchanged; other choices keep their service order.
+Each choice is labelled by the variant and priced
 by the variant's price in Beheer → Aanbod (`variantDisplay`; empty = "Prijs op aanvraag"); the
 service's own `price_cents` / `show_price` no longer show there. The chosen SERVICE is what is
 booked, with its own duration, availability and guardian rule. "Opnieuw" after a booking returns

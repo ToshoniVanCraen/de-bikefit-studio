@@ -132,7 +132,7 @@ describe('/aanbod and the offer pages on the production shape', () => {
 });
 
 describe('/afspraak on the production shape: the choices of the widget', () => {
-  it('each direct offering appears once with its services in audience order; nothing stands on its own', () => {
+  it('shows the five booking choices in Toshoni’s order, with each audience in order', () => {
     const catalogue = build();
     expect(catalogue.withheldServiceIds).toEqual([]);
     const choices = groupBookingChoices({
@@ -142,9 +142,9 @@ describe('/afspraak on the production shape: the choices of the widget', () => {
     expect(choices).toEqual([
       { kind: 'offer', offer: offerOf('bikefit-nieuwe-fiets'), serviceIds: NB_IDS },
       { kind: 'offer', offer: offerOf('bikefit-huidige-fiets'), serviceIds: FIT_IDS },
-      { kind: 'offer', offer: offerOf('voetanalyse'), serviceIds: [FOOT.id] },
-      { kind: 'offer', offer: offerOf('zadelanalyse'), serviceIds: [SADDLE.id] },
       { kind: 'offer', offer: offerOf('afstellen-schoenplaatjes'), serviceIds: [CLEATS.id] },
+      { kind: 'offer', offer: offerOf('zadelanalyse'), serviceIds: [SADDLE.id] },
+      { kind: 'offer', offer: offerOf('voetanalyse'), serviceIds: [FOOT.id] },
     ]);
   });
 
