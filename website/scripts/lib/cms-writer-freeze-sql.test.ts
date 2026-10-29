@@ -132,6 +132,137 @@ describe('CMS writer freeze PostgreSQL integration', () => {
       await db.close();
     }
   });
+  it('refuses CREATE-capable roles that a login can assume without inherited privileges', async () => {
+    const db = new PGlite();
+    try {
+      await db.exec(`
+        CREATE ROLE freeze_owner NOLOGIN;
+        CREATE ROLE freeze_app LOGIN NOINHERIT;
+        CREATE ROLE freeze_cli LOGIN;
+        CREATE ROLE freeze_creator NOLOGIN;
+        GRANT freeze_owner TO postgres;
+        GRANT freeze_app TO postgres;
+        GRANT CREATE ON SCHEMA public TO freeze_creator;
+        GRANT freeze_creator TO freeze_app;
+        CREATE TABLE cms_services (id integer PRIMARY KEY);
+        ALTER TABLE cms_services OWNER TO freeze_app;
+      `);
+      expect(
+        (
+          await db.query<{ inherited_create: boolean; can_assume: boolean }>(
+            "SELECT has_schema_privilege('freeze_app', 'public', 'CREATE') AS inherited_create, pg_has_role('freeze_app', 'freeze_creator', 'MEMBER') AS can_assume",
+          )
+        ).rows[0],
+      ).toEqual({ inherited_create: false, can_assume: true });
+      await expect(db.exec(makeFreezeSql('install', roles))).rejects.toThrow(/via SET ROLE/);
+      await db.exec('ROLLBACK');
+      expect(
+        (await db.query("SELECT to_regnamespace('cms_writer_freeze') IS NULL AS absent")).rows[0],
+      ).toEqual({ absent: true });
+    } finally {
+      await db.close();
+    }
+  });
+
+  it('refuses non-inherited delegated role administration before transfer', async () => {
+    const db = new PGlite();
+    try {
+      await db.exec(`
+        CREATE ROLE freeze_owner NOLOGIN;
+        CREATE ROLE freeze_app LOGIN NOINHERIT;
+        CREATE ROLE freeze_cli LOGIN;
+        CREATE ROLE freeze_admin NOLOGIN CREATEROLE;
+        GRANT freeze_owner TO postgres;
+        GRANT freeze_app TO postgres;
+        GRANT freeze_admin TO freeze_app;
+        CREATE TABLE cms_services (id integer PRIMARY KEY);
+        ALTER TABLE cms_services OWNER TO freeze_app;
+      `);
+      expect(
+        (
+          await db.query<{ inherited_admin: boolean; can_assume: boolean }>(
+            "SELECT rolcreaterole AS inherited_admin, pg_has_role('freeze_app', 'freeze_admin', 'MEMBER') AS can_assume FROM pg_roles WHERE rolname = 'freeze_app'",
+          )
+        ).rows[0],
+      ).toEqual({ inherited_admin: false, can_assume: true });
+      await expect(db.exec(makeFreezeSql('install', roles))).rejects.toThrow(/administer roles/);
+      await db.exec('ROLLBACK');
+      expect(
+        (await db.query("SELECT to_regnamespace('cms_writer_freeze') IS NULL AS absent")).rows[0],
+      ).toEqual({ absent: true });
+    } finally {
+      await db.close();
+    }
+  });
+
+  it('refuses a schema owner that can self-grant CREATE after revoking it', async () => {
+    const db = new PGlite();
+    try {
+      await db.exec(`
+        CREATE ROLE freeze_owner NOLOGIN;
+        CREATE ROLE freeze_app LOGIN;
+        CREATE ROLE freeze_cli LOGIN;
+        GRANT freeze_owner TO postgres;
+        GRANT freeze_app TO postgres;
+        ALTER SCHEMA public OWNER TO freeze_app;
+        REVOKE CREATE ON SCHEMA public FROM freeze_app;
+        CREATE TABLE cms_services (id integer PRIMARY KEY);
+        ALTER TABLE cms_services OWNER TO freeze_app;
+      `);
+      expect(
+        (
+          await db.query<{ create_grant: boolean; owns_schema: boolean }>(
+            "SELECT has_schema_privilege('freeze_app', 'public', 'CREATE') AS create_grant, nspowner = 'freeze_app'::regrole::oid AS owns_schema FROM pg_namespace WHERE nspname='public'",
+          )
+        ).rows[0],
+      ).toEqual({ create_grant: false, owns_schema: true });
+      await expect(db.exec(makeFreezeSql('install', roles))).rejects.toThrow(
+        /unguarded CMS relations/,
+      );
+      await db.exec('ROLLBACK');
+      expect(
+        (await db.query("SELECT to_regnamespace('cms_writer_freeze') IS NULL AS absent")).rows[0],
+      ).toEqual({ absent: true });
+    } finally {
+      await db.close();
+    }
+  });
+
+  it('refuses a database owner even when its CREATE grant was revoked', async () => {
+    const db = new PGlite();
+    try {
+      const database = (await db.query<{ name: string }>('SELECT current_database() AS name'))
+        .rows[0].name;
+      await db.exec(`
+        CREATE ROLE freeze_owner NOLOGIN;
+        CREATE ROLE freeze_app LOGIN;
+        CREATE ROLE freeze_cli LOGIN;
+        GRANT freeze_owner TO postgres;
+        GRANT freeze_app TO postgres;
+        CREATE TABLE cms_services (id integer PRIMARY KEY);
+        ALTER TABLE cms_services OWNER TO freeze_app;
+        ALTER DATABASE "${database}" OWNER TO freeze_app;
+        REVOKE CREATE ON DATABASE "${database}" FROM freeze_app;
+      `);
+      expect(
+        (
+          await db.query<{ create_grant: boolean; owns_database: boolean }>(
+            "SELECT has_database_privilege('freeze_app', current_database(), 'CREATE') AS create_grant, datdba = 'freeze_app'::regrole::oid AS owns_database FROM pg_database WHERE datname = current_database()",
+          )
+        ).rows[0],
+      ).toEqual({ create_grant: false, owns_database: true });
+      await expect(db.exec(makeFreezeSql('install', roles))).rejects.toThrow(
+        /unguarded CMS relations/,
+      );
+      await db.exec('ROLLBACK');
+      expect(
+        (await db.query("SELECT to_regnamespace('cms_writer_freeze') IS NULL AS absent")).rows[0],
+      ).toEqual({ absent: true });
+    } finally {
+      await db.close();
+    }
+  });
+
   it('rejects unsafe role identifiers and duplicate roles', () => {
     expect(() =>
       makeFreezeSql('install', { ...roles, app: 'app; DROP TABLE cms_services' }),

@@ -48,17 +48,27 @@ BEGIN
   IF (SELECT count(*) FROM pg_catalog.pg_roles WHERE rolname IN (${app}, ${cli}, ${owner}, ${installer})) <> 4 THEN
     RAISE EXCEPTION 'A required database role is missing';
   END IF;
-  IF EXISTS (SELECT 1 FROM pg_catalog.pg_roles rr
-             WHERE rr.rolcanlogin AND rr.rolname <> ${installer}
-               AND (rr.rolsuper OR rr.rolcreaterole OR pg_catalog.pg_has_role(rr.oid, ${owner}, 'MEMBER'))) THEN
-    RAISE EXCEPTION 'Another login role can bypass the guard owner or administer roles';
+  IF EXISTS (SELECT 1 FROM pg_catalog.pg_roles login_role
+    WHERE login_role.rolcanlogin AND login_role.rolname <> ${installer}
+      AND EXISTS (SELECT 1 FROM pg_catalog.pg_roles assumed_role
+        WHERE (assumed_role.oid = login_role.oid
+          OR pg_catalog.pg_has_role(login_role.oid, assumed_role.oid, 'MEMBER'))
+          AND (assumed_role.rolsuper OR assumed_role.rolcreaterole OR assumed_role.rolbypassrls
+            OR pg_catalog.pg_has_role(assumed_role.oid, ${owner}, 'MEMBER')))) THEN
+    RAISE EXCEPTION 'Another login role can bypass the guard owner or administer roles directly or via SET ROLE';
   END IF;
-  IF EXISTS (SELECT 1 FROM pg_catalog.pg_roles rr WHERE rr.rolcanlogin AND rr.rolname <> ${installer}
-    AND (pg_catalog.has_database_privilege(rr.oid, current_database(), 'CREATE')
-      OR EXISTS (SELECT 1 FROM pg_catalog.pg_namespace ns
-        WHERE ns.nspname NOT LIKE 'pg\\_%' ESCAPE '\\' AND ns.nspname <> 'information_schema'
-          AND pg_catalog.has_schema_privilege(rr.oid, ns.oid, 'CREATE')))) THEN
-    RAISE EXCEPTION 'A deployed login can create unguarded CMS relations';
+  IF EXISTS (SELECT 1 FROM pg_catalog.pg_roles login_role WHERE login_role.rolcanlogin AND login_role.rolname <> ${installer}
+    AND EXISTS (SELECT 1 FROM pg_catalog.pg_roles assumed_role
+      WHERE (assumed_role.oid = login_role.oid
+        OR pg_catalog.pg_has_role(login_role.oid, assumed_role.oid, 'MEMBER'))
+        AND (pg_catalog.has_database_privilege(assumed_role.oid, current_database(), 'CREATE')
+          OR EXISTS (SELECT 1 FROM pg_catalog.pg_database d
+            WHERE d.datname = current_database() AND d.datdba = assumed_role.oid)
+          OR EXISTS (SELECT 1 FROM pg_catalog.pg_namespace ns
+            WHERE ns.nspname NOT LIKE 'pg\\_%' ESCAPE '\\' AND ns.nspname <> 'information_schema'
+              AND (ns.nspowner = assumed_role.oid
+                OR pg_catalog.has_schema_privilege(assumed_role.oid, ns.oid, 'CREATE')))))) THEN
+    RAISE EXCEPTION 'A deployed login can create unguarded CMS relations directly or via SET ROLE';
   END IF;
   IF pg_catalog.pg_has_role(${app}, ${cli}, 'MEMBER') THEN
     RAISE EXCEPTION 'App role can assume CLI role';
