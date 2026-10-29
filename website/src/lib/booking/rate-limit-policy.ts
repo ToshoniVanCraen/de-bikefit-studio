@@ -15,10 +15,9 @@ import { normalizeIp } from '@/lib/request-ip';
  *   address (`normalizeIp()`). An unknown or malformed IP is never one shared
  *   key (it would lump every such visitor together): the e-mail rule then
  *   applies alone;
- * - every address the attempt would mail: the customer's and, when given and
- *   different, the guardian's. One namespace, `booking:email:<key>`, so an
- *   address gets at most five attempts whether it is typed as customer or as
- *   guardian.
+ * - the customer's e-mail address. The optional guardian key remains for
+ *   legacy callers of this pure helper, but public bookings no longer pass it
+ *   (Toshoni, 29 Oct 2026).
  *
  * An e-mail key is the SHA-256 hex of the trimmed, lower-cased address: the
  * counters only need equality, so the address itself is never stored. It is

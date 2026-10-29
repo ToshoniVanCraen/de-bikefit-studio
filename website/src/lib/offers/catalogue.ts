@@ -290,7 +290,7 @@ export function resolveBookingSelection(input: {
  *  - `offer`: an offer linked to bookable services ("Bikefit – huidige fiets"),
  *    shown ONCE, with its services as a sub-selection ("Volwassene", "Jeugd").
  *    The chosen service, never the offer, is what is booked: its id, duration,
- *    guardian rule, availability and price (`cms_services`) apply.
+ *    availability and price (`cms_services`) apply.
  */
 export type BookingChoice =
   | { kind: 'service'; serviceId: string }
@@ -301,13 +301,25 @@ export type BookingChoice =
       serviceIds: string[];
     };
 
+/** Toshoni's 28 Oct ordering for the five choices on the plain booking page. */
+const BOOKING_OFFER_ORDER = new Map(
+  [
+    'bikefit-nieuwe-fiets',
+    'bikefit-huidige-fiets',
+    'afstellen-schoenplaatjes',
+    'zadelanalyse',
+    'voetanalyse',
+  ].map((slug, index) => [slug, index]),
+);
+
 /**
- * Groups the bookable `services` (already in display order) under the offers
- * that link to them. An offer takes the place of its first service in the
- * list; a service claimed by an earlier offer (category, sort order, title) is
- * not repeated under a later one. Offers without a bookable service add
- * nothing. Pure: a missing or empty offer list gives one `service` entry per
- * service, the widget as it was before.
+ * Groups the bookable `services` under the offers that link to them. A service
+ * claimed by an earlier offer (category, sort order, title) is not repeated
+ * under a later one. The five named booking choices use the requested order;
+ * other choices retain their service order. Variant order within an offer is
+ * unchanged. This affects /afspraak only, not the /aanbod overview order.
+ * Offers without a bookable service add nothing. A missing or empty offer list
+ * gives one `service` entry per service, as before.
  */
 export function groupBookingChoices(input: {
   offers: ReadonlyArray<
@@ -353,7 +365,16 @@ export function groupBookingChoices(input: {
       serviceIds,
     });
   }
-  return choices;
+  return choices
+    .map((choice, index) => ({ choice, index }))
+    .sort((a, b) => {
+      const order = (choice: BookingChoice) =>
+        choice.kind === 'offer'
+          ? (BOOKING_OFFER_ORDER.get(choice.offer.slug) ?? Number.MAX_SAFE_INTEGER)
+          : Number.MAX_SAFE_INTEGER;
+      return order(a.choice) - order(b.choice) || a.index - b.index;
+    })
+    .map(({ choice }) => choice);
 }
 
 /** The label of a service under its offer: the catalogue's choice label, else its name. */

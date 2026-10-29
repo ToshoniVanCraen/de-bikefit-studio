@@ -27,8 +27,6 @@ export type BookingServiceOption = {
   choiceLabel: string;
   description: string;
   durationMinutes: number;
-  /** Jeugdfit: contact details move to a parent, child name + age become separate fields. */
-  requiresGuardian: boolean;
   /**
    * Where the fit happens when the service itself pins a location. `null`
    * means it depends on the provider (their default or per-service override).
@@ -138,15 +136,12 @@ export type BookActionInput = {
   startsAt: string;
   /** The extras ticked (offering ids); the server prices and times them from the catalogue. */
   addonIds: string[];
-  /** The person being fitted (the child for a jeugdfit). */
+  /** The person being fitted. */
   name: string;
-  /** Contact e-mail/phone: the customer's own, or the parent's for a jeugdfit. */
+  /** Contact e-mail and phone of that person (where the confirmation goes). */
   email: string;
   phone: string;
   age: number | null;
-  guardianName: string;
-  guardianEmail: string;
-  guardianPhone: string;
   address: string;
   bikeDetails: string;
   notes: string;

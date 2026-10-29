@@ -5,8 +5,8 @@ import { AUDIENCE_LABELS } from './offering-audience';
 
 /**
  * The copy and prices of the default offerings that must agree with each other
- * (the file itself is data, `defaults.ts`): the youth price of 27 Oct 2026 and
- * the corrections Toshoni made that day.
+ * (the file itself is data, `defaults.ts`): the youth price of 27 Oct 2026, the
+ * corrections Toshoni made that day, and Jeugd as the one-off fit only (29 Oct 2026).
  */
 
 const offer = (slug: string) => {
@@ -18,43 +18,45 @@ const offer = (slug: string) => {
 describe('the youth price is the same everywhere (Toshoni, 27 Oct 2026)', () => {
   const fits = ['bikefit-nieuwe-fiets', 'bikefit-huidige-fiets'].map(offer);
 
-  it('both fits: Volwassene € 275, Jeugd – eenmalig € 150, Jeugd – volledig pakket € 275', () => {
+  it('both fits: Volwassene € 275, Jeugd – eenmalig € 150, and no other variant (29 Oct 2026)', () => {
     expect(PRICES.bikefit).toBe(27500);
     expect(PRICES.bikefitUnder16).toBe(15000);
-    expect(PRICES.bikefitYouthPackage).toBe(27500);
     for (const fit of fits) {
       expect(fit.variantMode).toBe('audience');
       expect(fit.variants.map((v) => `${v.audience}:${v.priceCents}`)).toEqual([
         'adult:27500',
         'youth:15000',
-        'youth-package:27500',
       ]);
     }
   });
 
-  it('the Inhoud says it once, the same way on both fits, and recommends the package', () => {
+  it('the Inhoud says it once, the same way on both fits: under 16, one fit without follow-up', () => {
     for (const fit of fits) {
       const slug = fit.content.slug;
       const [adults, youth] = fit.content.contents.slice(-2);
-      // Two bullets: a line of 300 characters cannot hold the tokens of three prices.
       expect(adults).toBe(
         'Probleemopvolging tot {{opvolging:volwassene}} na je fit is inbegrepen.',
       );
       expect(youth).toBe(
-        `Jeugd (onder 16): {{prijs:${slug}:youth}} voor een eenmalige fit zonder opvolging, of {{prijs:${slug}:youth-package}} voor het volledige pakket met {{opvolging:jeugd-pakket}} gratis opvolging. Dat raden we aan, want jonge renners groeien snel.`,
+        `Jeugd (onder 16): {{prijs:${slug}:youth}} voor een eenmalige fit zonder opvolging.`,
       );
     }
   });
 
-  it('the meta descriptions end with the same sentence, every amount and window a token', () => {
+  it('the meta descriptions end with the same sentence, every amount a token', () => {
     for (const fit of fits) {
       const slug = fit.content.slug;
       expect(fit.content.metaDescription).toMatch(
         new RegExp(
-          ` \\{\\{prijs:${slug}:adult\\}\\}; onder 16 \\{\\{prijs:${slug}:youth\\}\\} eenmalig of \\{\\{prijs:${slug}:youth-package\\}\\} met \\{\\{opvolging:jeugd-pakket\\}\\} opvolging\\.$`,
+          ` \\{\\{prijs:${slug}:adult\\}\\}; onder 16 \\{\\{prijs:${slug}:youth\\}\\} eenmalig\\.$`,
         ),
       );
     }
+  });
+
+  it('no default offering or service names the withdrawn youth package (29 Oct 2026)', () => {
+    const text = JSON.stringify([DEFAULT_OFFERS, DEFAULT_SERVICES]);
+    expect(text).not.toMatch(/volledig pakket|volledige pakket|youth-package|jeugd-pakket/i);
   });
 
   it('only the bikefits that are booked online have a service per variant, with the variant price and label', () => {
@@ -69,29 +71,19 @@ describe('the youth price is the same everywhere (Toshoni, 27 Oct 2026)', () => 
     }
   });
 
-  it('the services: one-off Jeugd points at the package, the package is recommended, adults keep six months', () => {
+  it('the services: Jeugd is the one-off fit without a guardian rule, adults keep six months', () => {
     const bySlug = (slug: string) => DEFAULT_SERVICES.find((entry) => entry.slug === slug);
+    expect(DEFAULT_SERVICES.map((service) => service.slug)).toEqual(['volwassenenfit', 'jeugdfit']);
     expect(bySlug('jeugdfit')).toMatchObject({
       name: 'Jeugdfit – eenmalig',
       choiceLabel: 'Jeugd – eenmalig',
       description:
-        'Voor fietsers onder 16: één fit, zonder opvolging. Met het volledige pakket ({{prijs:bikefit-huidige-fiets:youth-package}}) krijg je {{opvolging:jeugd-pakket}} gratis opvolging; dat raden we aan, want jonge renners groeien snel.',
+        'Voor fietsers onder 16: één fit, afgestemd op een lichaam in groei, zonder opvolging.',
       durationMinutes: 120,
       priceCents: 15000,
-      requiresGuardian: true,
+      requiresGuardian: false,
     });
-    expect(bySlug('jeugdfit-pakket')).toMatchObject({
-      name: 'Jeugdfit – volledig pakket',
-      choiceLabel: 'Jeugd – volledig pakket',
-      description:
-        'Voor fietsers onder 16: de volledige fit met {{opvolging:jeugd-pakket}} gratis opvolging. Aangeraden: jonge renners groeien snel, en hun fiets groeit niet vanzelf mee.',
-      durationMinutes: 120,
-      priceCents: 27500,
-      showPrice: true,
-      requiresGuardian: true,
-      location: null,
-      sortOrder: 2,
-    });
+    expect(DEFAULT_SERVICES.every((service) => !service.requiresGuardian)).toBe(true);
     expect(bySlug('volwassenenfit')?.description).toContain(
       'Probleemopvolging tot {{opvolging:volwassene}} na je fit is inbegrepen.',
     );

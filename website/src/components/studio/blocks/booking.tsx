@@ -42,7 +42,7 @@ import type { BlockProps } from './types';
  * shown offering links to appear once, under that offer, as a sub-selection
  * (`groupBookingChoices()`: "Bikefit – huidige fiets" → Volwassene / Jeugd);
  * services no offer links to stay directly selectable. The chosen SERVICE is
- * what is booked, with its own duration, availability and guardian rule.
+ * what is booked, with its own duration and availability.
  *
  * Extra's (20 Oct 2026): per service the catalogue says which extras a
  * visitor may tick (`addonsByService`); `?extra=<slug>` (validated by the

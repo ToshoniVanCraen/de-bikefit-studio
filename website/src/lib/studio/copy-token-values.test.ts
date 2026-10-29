@@ -88,9 +88,9 @@ describe('buildCopyTokenLookup: the facts of the settings', () => {
     expect(
       read(
         lookup,
-        '{{opvolging:volwassene}} | {{opvolging:jeugd-pakket}} | {{tweede-bezoek-gratis}} | {{cadeaubon-geldigheid}}',
+        '{{opvolging:volwassene}} | {{tweede-bezoek-gratis}} | {{cadeaubon-geldigheid}}',
       ),
-    ).toBe('zes maanden | een jaar | zes maanden | een jaar');
+    ).toBe('zes maanden | zes maanden | een jaar');
     // Instellingen → Contact is empty: the phone is the constant pair, the rest is empty.
     expect(read(lookup, '{{telefoon}} | {{telefoon-href}}')).toBe(
       '+32 473 95 26 33 | tel:+32473952633',
@@ -177,7 +177,6 @@ describe('buildCopyTokenLookup: the facts of the settings', () => {
     };
     settings.rules = {
       followUpMonthsAdult: 9,
-      followUpMonthsYouthPackage: 24,
       secondVisitFreeMonths: 3,
       voucherValidityMonths: 12,
     };
@@ -186,33 +185,26 @@ describe('buildCopyTokenLookup: the facts of the settings', () => {
       'Studio BV, Zetelstraat 1, Bus 2, 9000 Gent, 0123.456.789, BE 0123.456.789',
     );
     expect(
-      read(
-        lookup,
-        '{{opvolging:volwassene}}, {{opvolging:jeugd-pakket}}, {{tweede-bezoek-gratis}}, {{cadeaubon-geldigheid}}',
-      ),
-    ).toBe('9 maanden, twee jaar, 3 maanden, een jaar');
+      read(lookup, '{{opvolging:volwassene}}, {{tweede-bezoek-gratis}}, {{cadeaubon-geldigheid}}'),
+    ).toBe('9 maanden, 3 maanden, een jaar');
   });
 });
 
 describe('buildCopyTokenLookup: prices', () => {
   const fit = offer({
     slug: 'bikefit-huidige-fiets',
-    priceLabel:
-      'Volwassene € 275,00 · Jeugd – eenmalig € 150,00 · Jeugd – volledig pakket € 275,00',
-    variants: [variant('adult', 27500), variant('youth', 15000), variant('youth-package', 27500)],
+    priceLabel: 'Volwassene € 275,00 · Jeugd – eenmalig € 150,00',
+    variants: [variant('adult', 27500), variant('youth', 15000)],
   });
 
   it('the line form is the card line, the variant form is one amount in prose', () => {
     const lookup = build({ offers: [fit] });
     expect(read(lookup, '{{prijs:bikefit-huidige-fiets}}')).toBe(
-      'Volwassene € 275,00 · Jeugd – eenmalig € 150,00 · Jeugd – volledig pakket € 275,00',
+      'Volwassene € 275,00 · Jeugd – eenmalig € 150,00',
     );
     expect(
-      read(
-        lookup,
-        '{{prijs:bikefit-huidige-fiets:adult}}, {{prijs:bikefit-huidige-fiets:youth}}, {{prijs:bikefit-huidige-fiets:youth-package}}',
-      ),
-    ).toBe('€ 275, € 150, € 275');
+      read(lookup, '{{prijs:bikefit-huidige-fiets:adult}}, {{prijs:bikefit-huidige-fiets:youth}}'),
+    ).toBe('€ 275, € 150');
   });
 
   it('an amount with cents keeps them; a variant without a price reads "op aanvraag"', () => {

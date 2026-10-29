@@ -119,12 +119,11 @@ describe('offering Service JSON-LD', () => {
     ]);
   });
 
-  it('names the three variants of a fit like the page does (27 Oct 2026)', () => {
-    const fit = [variant('adult', 27500), variant('youth', 15000), variant('youth-package', 27500)];
+  it('names the two variants of a fit like the page does (29 Oct 2026)', () => {
+    const fit = [variant('adult', 27500), variant('youth', 15000)];
     expect(node(fit).offers).toEqual([
       { '@type': 'Offer', name: 'Volwassene', price: '275.00', priceCurrency: 'EUR' },
       { '@type': 'Offer', name: 'Jeugd – eenmalig', price: '150.00', priceCurrency: 'EUR' },
-      { '@type': 'Offer', name: 'Jeugd – volledig pakket', price: '275.00', priceCurrency: 'EUR' },
     ]);
   });
 

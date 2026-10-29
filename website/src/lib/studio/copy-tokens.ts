@@ -12,12 +12,12 @@ import { escapeHtml } from '@/lib/html';
  *
  *   {{duur:<service-slug>}}                the service's planning duration ("2 uur", "1 u 30 min")
  *   {{prijs:<offering-slug>}}              the price line /aanbod shows for the offering
- *   {{prijs:<offering-slug>:<audience>}}   one variant's amount, "€ 275" (all, adult, youth, youth-package)
+ *   {{prijs:<offering-slug>:<audience>}}   one variant's amount, "€ 275" (all, adult, youth)
  *   {{extra:<offering-slug>}}              an extra: "€ 75 en 30 minuten extra"
  *   {{extra:<offering-slug>:<choice-key>}} one choice of an extra, same shape
  *   {{telefoon}} {{telefoon-href}} {{e-mail}} {{adres}} {{adres-studio}}
  *   {{bedrijf}} {{zetel}} {{kbo}} {{btw}}
- *   {{opvolging:volwassene}} {{opvolging:jeugd-pakket}} {{tweede-bezoek-gratis}} {{cadeaubon-geldigheid}}
+ *   {{opvolging:volwassene}} {{tweede-bezoek-gratis}} {{cadeaubon-geldigheid}}
  *
  * Rules the callers rely on:
  *  - **Single pass.** A token is replaced by its text and that text is never
@@ -43,7 +43,6 @@ export const FACT_TOKENS = [
   'kbo',
   'btw',
   'opvolging:volwassene',
-  'opvolging:jeugd-pakket',
   'tweede-bezoek-gratis',
   'cadeaubon-geldigheid',
 ] as const;

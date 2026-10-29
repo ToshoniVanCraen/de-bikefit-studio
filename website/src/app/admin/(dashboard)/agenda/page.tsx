@@ -151,7 +151,7 @@ export default async function AdminAgendaPage({ searchParams }: { searchParams: 
           canEdit={can(user.role, 'service.subscribe.own') || can(user.role, 'provider.manage')}
           groups={groups}
           title="Mijn aanbod"
-          description="Vink aan wat je zelf aanbiedt, per aanbod en variant (bv. Volwassene, Jeugd – eenmalig en Jeugd – volledig pakket), en kies per dienst eventueel een andere locatie. Een aanbod is pas online te boeken als minstens één aanbieder het aanbiedt. Tekst, duur en prijs beheert de beheerder onder Aanbod."
+          description="Vink aan wat je zelf aanbiedt, per aanbod en variant (bv. Volwassene en Jeugd – eenmalig), en kies per dienst eventueel een andere locatie. Een aanbod is pas online te boeken als minstens één aanbieder het aanbiedt. Tekst, duur en prijs beheert de beheerder onder Aanbod."
         />
         <ProviderProfileForm
           provider={editor.profile}

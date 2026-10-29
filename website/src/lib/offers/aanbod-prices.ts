@@ -11,8 +11,8 @@ import type { OfferingAudience, OfferingVariantMode } from './offering';
  * the old nor the new value was edited by an admin and blocks the patch. The
  * new values come from the defaults themselves, so the two can never drift
  * (`aanbod-prices.test.ts`) — except for what Toshoni's corrections of 27 Oct
- * 2026 moved on in the defaults: the two fits (the youth price made explicit,
- * a third variant) and the copy of five other offerings (one term
+ * 2026 moved on in the defaults: the two fits (the youth price made explicit)
+ * and the copy of five other offerings (one term
  * "inspanningstest", copy tokens instead of typed prices; `corrections-2026-10-27.ts`).
  * Their targets are written out below, as this patch left them on the live
  * database, so a re-run on a database at the 20 Oct values still ends in
@@ -72,7 +72,7 @@ const FOLLOW_UP_20_OCT =
   'Probleemopvolging tot zes maanden na je fit is inbegrepen. Onder 16: € 150 zonder opvolging, € 275 met.';
 const SECOND_VISIT_20_OCT = 'Een tweede bezoek na meer dan zes maanden: € 75.';
 const SECOND_BIKE_20_OCT = 'Een tweede fiets erbij: vanaf € 75.';
-/** Volwassene € 275, Jeugd € 150: two variants; the third, "Jeugd – volledig pakket", is of 27 Oct. */
+/** Volwassene € 275, Jeugd € 150: the two variants. */
 const FIT_VARIANTS_20_OCT: OfferingPriceState['variants'] = [
   { audience: 'adult', priceCents: 27500 },
   { audience: 'youth', priceCents: 15000 },

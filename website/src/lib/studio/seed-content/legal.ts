@@ -12,13 +12,18 @@ import type { SeedPage } from './shared';
  * one number that stays: the policy itself, written where it is stated.
  */
 
+/** Privacy §8 "Minderjarigen" (Toshoni, 29 Oct 2026): what a jeugdfit needs, no guardian rule. */
+export const PRIVACY_MINORS_HTML =
+  '<p>Voor een jeugdfit verwerken wij ook gegevens van jongeren onder 16: enkel wat nodig is om de afspraak te plannen en de fit uit te voeren.</p>';
+
 /**
  * Privacyverklaring — work block 2026-09-24-legal-pages.md, page 1 (verbatim + KBO substitutions).
  * 20 Oct 2026 (Toshoni): commercial e-mail to customers is allowed, always with an unsubscribe
  * link (section 2 "Nieuws en aanbiedingen per e-mail", the retention and rights lines), the
  * experience question after an appointment is named, the phone number in the +32 format.
+ * 29 Oct 2026 (Toshoni): no parent or guardian is asked for a jeugdfit any more (§2, §8).
  */
-export const PRIVACY_HTML = `<p><em>Laatst bijgewerkt: 27 oktober 2026</em></p>
+export const PRIVACY_HTML = `<p><em>Laatst bijgewerkt: 29 oktober 2026</em></p>
 
 <h2>1. Wie zijn wij?</h2>
 <p>De Bikefit Studio is een handelsnaam van <strong>{{bedrijf}}</strong>, met maatschappelijke zetel te {{zetel}}, ingeschreven in de Kruispuntbank van Ondernemingen onder het nummer <strong>{{kbo}}</strong> (RPR Brussel, Nederlandstalige afdeling). Wij zijn de verwerkingsverantwoordelijke voor de persoonsgegevens die je via deze website en bij een bikefit aan ons toevertrouwt.</p>
@@ -26,7 +31,7 @@ export const PRIVACY_HTML = `<p><em>Laatst bijgewerkt: 27 oktober 2026</em></p>
 
 <h2>2. Welke gegevens verwerken wij, en waarom?</h2>
 <h3>Als je een afspraak maakt</h3>
-<p>Via het afsprakenformulier of telefonisch verzamelen wij je naam, e-mailadres, telefoonnummer, de gekozen dienst, datum en tijdstip, en optioneel je leeftijd, gegevens over je fiets en een korte omschrijving van je klachten of doelen. Bij een jeugdfit vragen wij de contactgegevens van een ouder of voogd en de naam en leeftijd van het kind. Bij een fit aan huis vragen wij het adres waar de fit doorgaat.</p>
+<p>Via het afsprakenformulier of telefonisch verzamelen wij je naam, e-mailadres, telefoonnummer, de gekozen dienst, datum en tijdstip, en optioneel je leeftijd, gegevens over je fiets en een korte omschrijving van je klachten of doelen. Bij een fit aan huis vragen wij het adres waar de fit doorgaat.</p>
 <p>Wij gebruiken deze gegevens om de afspraak vast te leggen, te bevestigen en voor te bereiden, om je te bereiken bij wijzigingen en om de dienst uit te voeren. Rechtsgrond: de uitvoering van de overeenkomst die je met ons sluit (art. 6.1.b AVG) en, voor de gegevens over je klachten of gezondheid, je uitdrukkelijke toestemming (art. 9.2.a AVG). Die omschrijving is vrijblijvend: laat het veld leeg als je liever niets deelt, dan bespreken we het ter plaatse.</p>
 <h3>Agenda van de bikefitter</h3>
 <p>Een afspraak wordt ingeschreven in de agenda van de bikefitter die de fit uitvoert. Daarvoor gebruiken wij Google Agenda (Google Ireland Ltd). In die agenda staan enkel de dienst, het tijdstip, je naam en de contactgegevens die nodig zijn om de afspraak uit te voeren.</p>
@@ -81,13 +86,13 @@ export const PRIVACY_HTML = `<p><em>Laatst bijgewerkt: 27 oktober 2026</em></p>
 <p>Wij beveiligen je gegevens met versleutelde verbindingen (HTTPS), versleutelde opslag van toegangssleutels, beperkte toegang voor medewerkers en logging van wijzigingen in het beheergedeelte. Geen enkel systeem is volledig waterdicht; als er toch iets misgaat met je gegevens, brengen wij jou en, waar nodig, de Gegevensbeschermingsautoriteit op de hoogte zoals de wet dat voorschrijft.</p>
 
 <h2>8. Minderjarigen</h2>
-<p>Voor een jeugdfit verwerken wij gegevens van kinderen. Dat doen wij enkel met de betrokkenheid van een ouder of voogd, die de afspraak maakt en de contactpersoon is.</p>
+${PRIVACY_MINORS_HTML}
 
 <h2>9. Wijzigingen</h2>
 <p>Wij passen deze verklaring aan wanneer onze werking of de wetgeving verandert. De datum bovenaan zegt wanneer dat voor het laatst gebeurde. Belangrijke wijzigingen kondigen wij aan op deze pagina.</p>`;
 
 /** Art. 14 says the version of the booking day applies, so a change to the terms bumps this line. */
-export const TERMS_VERSION_HTML = '<p><em>Versie van 27 oktober 2026</em></p>';
+export const TERMS_VERSION_HTML = '<p><em>Versie van 29 oktober 2026</em></p>';
 
 /**
  * Art. 3, first paragraph. The heading and the second paragraph (inspanningsverbintenis) stay
@@ -96,7 +101,11 @@ export const TERMS_VERSION_HTML = '<p><em>Versie van 27 oktober 2026</em></p>';
 export const TERMS_ART_3_SERVICES_HTML =
   '<p>Wij bieden bikefits aan, met de bijhorende analyses, tests en coaching. Wat wij precies aanbieden en wat elke dienst inhoudt, staat op onze website. Voor jouw afspraak geldt de omschrijving zoals die op de website stond op het moment dat je je afspraak maakte. Onze diensten zijn <strong>geen medische behandeling en vervangen geen doktersbezoek</strong>. Bij pijn, letsels of medische vragen raadpleeg je een arts of kinesitherapeut. Een test waarbij je een inspanning levert, voer je uit op eigen verantwoordelijkheid; je bevestigt vooraf dat je gezond genoeg bent om een inspanning te leveren en meldt ons relevante medische aandoeningen.</p>';
 
-/** Algemene voorwaarden — work block 2026-09-24-legal-pages.md, page 2 (verbatim + KBO substitutions); art. 3 generic since 27 Oct 2026 (Toshoni, `corrections-2026-10-27.ts`). */
+/**
+ * Algemene voorwaarden — work block 2026-09-24-legal-pages.md, page 2 (verbatim + KBO
+ * substitutions); art. 3 generic since 27 Oct 2026 (Toshoni, `corrections-2026-10-27.ts`);
+ * art. 8 without the bullet on minors and a parent or guardian since 29 Oct 2026 (Toshoni).
+ */
 export const TERMS_HTML = `${TERMS_VERSION_HTML}
 
 <h2>Artikel 1: Wie wij zijn</h2>
@@ -130,7 +139,6 @@ ${TERMS_ART_3_SERVICES_HTML}
 <ul>
 <li>Je geeft ons juiste en volledige gegevens en meldt vooraf klachten, letsels of beperkingen die voor de fit of de test van belang zijn.</li>
 <li>Je brengt je fiets in goede en veilige staat mee, samen met je fietskledij, schoenen en pedalen. Aanpassingen aan je fiets gebeuren in overleg; je blijft eigenaar en verantwoordelijk voor je fiets en materiaal.</li>
-<li>Minderjarigen worden vergezeld door een ouder of voogd, die de afspraak maakt en aanwezig is.</li>
 </ul>
 
 <h2>Artikel 9: Aansprakelijkheid</h2>

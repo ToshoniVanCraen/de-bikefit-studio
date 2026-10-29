@@ -331,14 +331,14 @@ export const blockRegistry = {
 
   services: {
     label: 'Diensten',
-    description: 'Kaartenraster, bv. “Vier manieren om te boeken”.',
+    description: 'Kaartenraster, bv. “Drie manieren om te boeken”.',
     schema: servicesSchema,
     defaultData: {
       variant: 'gray',
       eyebrow: 'Onze fits',
-      title: 'Vier manieren om te boeken',
+      title: 'Drie manieren om te boeken',
       lede: 'We fitten koers-, gravel-, mountain-, stads-, toer- en e-bikes. De principes blijven dezelfde: het lichaam van de fietser moet bij de fiets passen.',
-      columns: 4,
+      columns: 3,
       cards: [
         {
           label: '',
@@ -353,14 +353,6 @@ export const blockRegistry = {
           title: 'Jeugdfit – eenmalig',
           body: 'Voor fietsers onder 16: één fit, afgestemd op een lichaam in groei, zonder opvolging.',
           duration: '{{duur:jeugdfit}}',
-          image: emptyImage,
-          cta: null,
-        },
-        {
-          label: '',
-          title: 'Jeugdfit – volledig pakket',
-          body: 'Voor fietsers onder 16: dezelfde fit met {{opvolging:jeugd-pakket}} gratis opvolging. Aangeraden, want jonge renners groeien snel.',
-          duration: '{{duur:jeugdfit-pakket}}',
           image: emptyImage,
           cta: null,
         },
@@ -578,17 +570,6 @@ export const blockRegistry = {
           duration: '{{duur:jeugdfit}}',
           description:
             'Voor fietsers onder 16: één fit, afgestemd op een lichaam in groei, zonder opvolging.',
-          features: [],
-          highlighted: false,
-          cta: null,
-        },
-        {
-          title: 'Jeugdfit – volledig pakket',
-          priceCents: null,
-          priceLabel: '{{prijs:bikefit-huidige-fiets:youth-package}}',
-          duration: '{{duur:jeugdfit-pakket}}',
-          description:
-            'Voor fietsers onder 16: dezelfde fit met {{opvolging:jeugd-pakket}} gratis opvolging. Aangeraden, want jonge renners groeien snel.',
           features: [],
           highlighted: false,
           cta: null,

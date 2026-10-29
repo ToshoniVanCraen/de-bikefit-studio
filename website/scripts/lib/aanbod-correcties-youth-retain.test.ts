@@ -1,28 +1,23 @@
 import { describe, expect, it } from 'vitest';
-import { formatPriceInProse } from '@/lib/booking/format';
 import {
   decideProviderRemoval,
-  decideYouthPackage,
   STAGING_RETAIN_FLAG,
   type ProviderMode,
   type ProviderRow,
-  type ServiceRow,
+  type ServiceRef,
   type SubscriptionRow,
-  type VariantRow,
 } from './aanbod-correcties-youth.mjs';
 
 /**
  * `--staging-retain-toshoni` (Toshoni, 27 Oct 2026, 15:12; staging only): on a
  * database whose one provider is Toshoni, as staging's is, he stays a provider with
- * every offering and is offered the youth package too; on any other database
- * (production has a second provider) the flag stops the run. Without the flag
- * nothing changed: that database still stops, and with a second provider his
- * offerings go and the package goes to the other provider only.
+ * every offering; on any other database (production has a second provider) the flag
+ * stops the run. Without the flag nothing changed: that database still stops, and
+ * with a second provider his offerings go.
  */
 
 /** The login staging's profile has: the default of `cms:seed-booking`. */
 const SEED_LOGIN = 'toshoni@gmail.com';
-const PRICE = formatPriceInProse(27500);
 
 const provider = (
   id: string,
@@ -35,51 +30,24 @@ const sub = (
   serviceId: string,
   locationId: string | null = null,
 ): SubscriptionRow => ({ providerId, serviceId, locationId });
-const service = (id: string, slug: string, over: Partial<ServiceRow> = {}): ServiceRow => ({
+const service = (id: string, slug: string): ServiceRef => ({
   id,
   slug,
   name: slug,
   isActive: true,
-  choiceLabel: '',
-  description: '',
-  durationMinutes: 120,
-  bufferAfterMinutes: 15,
-  priceCents: null,
-  showPrice: false,
-  locationId: null,
-  requiresGuardian: false,
-  sortOrder: 0,
-  ...over,
 });
-const variant = (
-  offeringId: string,
-  audience: string,
-  serviceId: string | null,
-  priceCents: number | null,
-): VariantRow => ({ offeringId, audience, serviceId, priceCents });
 
 // Staging on 27 Oct 2026: one provider, five offerings (guards: services 5, subscriptions 5).
 const toshoni = provider('p1', 'Toshoni Van Craen', SEED_LOGIN);
 const winston = provider('p2', 'Winston', 'winston@example.com');
 const services = [
-  service('s-adult', 'volwassenenfit', { sortOrder: 60 }),
-  service('s-youth', 'jeugdfit', { sortOrder: 61 }),
+  service('s-adult', 'volwassenenfit'),
+  service('s-youth', 'jeugdfit'),
   service('s-foot', 'voetanalyse'),
   service('s-saddle', 'zadelanalyse'),
   service('s-cleat', 'afstellen-schoenplaatjes'),
 ];
 const his = services.map((entry) => sub('p1', entry.id));
-const huidige = {
-  id: 'o-huidige',
-  slug: 'bikefit-huidige-fiets',
-  title: 'Bikefit – huidige fiets',
-  bookingMode: 'direct',
-  variantMode: 'audience',
-};
-const fits = [
-  variant(huidige.id, 'adult', 's-adult', 27500),
-  variant(huidige.id, 'youth', 's-youth', 15000),
-];
 
 const removal = (
   providers: ProviderRow[],
@@ -87,22 +55,6 @@ const removal = (
   providerMode?: ProviderMode,
   planned: Array<Pick<SubscriptionRow, 'providerId' | 'serviceId'>> = [],
 ) => decideProviderRemoval({ providers, subscriptions, services, planned, providerMode });
-const packageOf = (
-  providers: ProviderRow[],
-  subscriptions: SubscriptionRow[],
-  providerMode?: ProviderMode,
-  more: { services?: ServiceRow[]; variants?: VariantRow[] } = {},
-) =>
-  decideYouthPackage({
-    offering: huidige,
-    variants: more.variants ?? fits,
-    services: more.services ?? services,
-    subscriptions,
-    providers,
-    targetPriceCents: 27500,
-    defaultYouthServiceSlug: 'jeugdfit',
-    providerMode,
-  });
 
 const SCOPE = `provider Toshoni: ${STAGING_RETAIN_FLAG} is for a database whose only provider is Toshoni (staging)`;
 
@@ -121,35 +73,6 @@ describe('--staging-retain-toshoni on staging: Toshoni Van Craen, the only provi
       changes: [],
       blockers: [],
     });
-  });
-
-  it('offers him the youth package like anybody else: offered by 1 provider(s), no blocker', () => {
-    const pack = packageOf([toshoni], his, 'staging-retain');
-    expect(pack.action).toBe('update');
-    expect(pack.blockers).toEqual([]);
-    expect(pack.subscribe).toEqual([{ providerId: 'p1', locationId: null }]);
-    expect(pack.changes).toEqual([
-      `Jeugd – volledig pakket: add variant at ${PRICE}`,
-      `new service jeugdfit-pakket ("Jeugdfit – volledig pakket", 120 min, ${PRICE})`,
-      'offered by 1 provider(s)',
-    ]);
-    // From where he offers the youth fit, as for anybody.
-    const fromStudio = [
-      ...his.filter((row) => row.serviceId !== 's-youth'),
-      sub('p1', 's-youth', 'l1'),
-    ];
-    expect(packageOf([toshoni], fromStudio, 'staging-retain').subscribe).toEqual([
-      { providerId: 'p1', locationId: 'l1' },
-    ]);
-  });
-
-  it('a package service he offers already (the bootstrap and cms:seed-booking) needs nothing more', () => {
-    const made = service('s-pack', 'jeugdfit-pakket', { priceCents: 27500, showPrice: true });
-    const done = packageOf([toshoni], [...his, sub('p1', 's-pack')], 'staging-retain', {
-      services: [...services, made],
-      variants: [...fits, variant(huidige.id, 'youth-package', 's-pack', 27500)],
-    });
-    expect(done).toMatchObject({ action: 'none', subscribe: [], changes: [], blockers: [] });
   });
 });
 
@@ -201,7 +124,6 @@ describe('--staging-retain-toshoni on any other database stops the run (!)', () 
         his,
         'staging-retain',
       ),
-      packageOf([toshoni], his, 'staging-retain'),
     ]) {
       expect(JSON.stringify(decision)).not.toContain('gmail');
     }
@@ -209,7 +131,7 @@ describe('--staging-retain-toshoni on any other database stops the run (!)', () 
 });
 
 describe('without the flag nothing changed', () => {
-  it('the same database still stops: the fits would be left without a provider, the package offered by nobody', () => {
+  it('the same database still stops: the fits would be left without a provider', () => {
     for (const mode of [undefined, 'remove'] as const) {
       const decision = removal([toshoni], his, mode);
       expect(decision.provider).toEqual({ id: 'p1', displayName: 'Toshoni Van Craen' });
@@ -220,24 +142,12 @@ describe('without the flag nothing changed', () => {
             `provider Toshoni Van Craen: service ${entry.slug} would be left without a provider — add a replacement provider for it in Beheer → Aanbieders first`,
         ),
       );
-      const pack = packageOf([toshoni], his, mode);
-      expect(pack.subscribe).toEqual([]);
-      expect(pack.blockers).toEqual([
-        'offering bikefit-huidige-fiets: Jeugd – volledig pakket would be offered by no provider — add a replacement provider for jeugdfit in Beheer → Aanbieders first',
-      ]);
     }
   });
 
-  it('with a second provider his offerings go and the package goes to the other provider only; the flag would stop there', () => {
+  it('with a second provider his offerings go; the flag would stop there', () => {
     const subscriptions = [...his, ...services.map((entry) => sub('p2', entry.id))];
-    const pack = packageOf([toshoni, winston], subscriptions, 'remove');
-    expect(pack.subscribe).toEqual([{ providerId: 'p2', locationId: null }]);
-    const gone = removal(
-      [toshoni, winston],
-      subscriptions,
-      'remove',
-      pack.subscribe.map((target) => ({ providerId: target.providerId, serviceId: 'new:package' })),
-    );
+    const gone = removal([toshoni, winston], subscriptions, 'remove');
     expect(gone).toEqual({
       provider: { id: 'p1', displayName: 'Toshoni Van Craen' },
       rows: his,

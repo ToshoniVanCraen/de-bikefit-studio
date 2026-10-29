@@ -58,8 +58,8 @@ niet meer.
 
 - Sinds 27 okt 2026: een aanbod **op aanvraag** kan een vrije **Prijs (tekst)** tonen (veld onder
   **Duur (tekst)**, bv. "Gratis binnen 6 maanden na je fit, daarna € 75", P-08); leeg = de bedragen
-  per variant. "Volwassene en Jeugd apart" heeft drie varianten, elk met een eigen prijs:
-  **Volwassene**, **Jeugd – eenmalig** en **Jeugd – volledig pakket** (P-01, P-02).
+  per variant. "Volwassene en Jeugd apart" heeft twee varianten, elk met een eigen prijs:
+  **Volwassene** en **Jeugd – eenmalig** (P-01, P-02).
 - Nu staat in **Prijslabel** de bewerkbare tekst "Prijs op aanvraag"; **Prijs in eurocent** is
   leeg. Voor een aanbod gekoppeld aan boekingsdiensten zijn deze twee redactionele velden
   **niet** de publieke prijsbron: kaart en detail tonen "Prijs op aanvraag" tot de dienstprijzen
@@ -80,8 +80,8 @@ niet meer.
 
 | ID | Pagina (titel in CMS) | Nu | Nodig | Status |
 | --- | --- | --- | --- | --- |
-| P-01 | `/aanbod/bikefit-nieuwe-fiets` (*Bikefit – aankoop nieuwe fiets*) | Volwassene € 275,00 · Jeugd – eenmalig € 150,00 · Jeugd – volledig pakket € 275,00 (Toshoni, 20 en 27 okt 2026; `src/lib/offers/defaults.ts`, bestaande databank: de bedragen van 20 okt via `cms:patch-aanbod-prijzen`, de drie varianten van 27 okt via een eigen patch); onder 16 kies je € 150 voor een eenmalige fit zonder opvolging of € 275 voor het volledige pakket met een jaar gratis opvolging, dat we aanraden | — | afgerond 2026-10-20 |
-| P-02 | `/aanbod/bikefit-huidige-fiets` (*Bikefit – huidige fiets*) | Volwassene € 275,00 · Jeugd – eenmalig € 150,00 · Jeugd – volledig pakket € 275,00 (Toshoni, 20 en 27 okt 2026; `src/lib/offers/defaults.ts`, bestaande databank zoals bij P-01); de widget toont dezelfde bedragen en labels uit `cms_services` (K-06) | — | afgerond 2026-10-20 |
+| P-01 | `/aanbod/bikefit-nieuwe-fiets` (*Bikefit – aankoop nieuwe fiets*) | Volwassene € 275,00 · Jeugd – eenmalig € 150,00 (Toshoni, 20, 27 en 29 okt 2026; `src/lib/offers/defaults.ts`, bestaande databank: de bedragen van 20 okt via `cms:patch-aanbod-prijzen`, de teksten van 27 okt via een eigen patch); onder 16 is er enkel de eenmalige fit zonder opvolging (€ 150) | — | afgerond 2026-10-20 |
+| P-02 | `/aanbod/bikefit-huidige-fiets` (*Bikefit – huidige fiets*) | Volwassene € 275,00 · Jeugd – eenmalig € 150,00 (Toshoni, 20, 27 en 29 okt 2026; `src/lib/offers/defaults.ts`, bestaande databank zoals bij P-01); de widget toont dezelfde bedragen en labels uit `cms_services` (K-06) | — | afgerond 2026-10-20 |
 | P-03 | `/aanbod/voetanalyse` (*Voetanalyse*) | € 85,00 (Toshoni, 20 okt 2026; `src/lib/offers/defaults.ts`, bestaande databank via `cms:patch-aanbod-prijzen`) | — | afgerond 2026-10-20 |
 | P-04 | `/aanbod/zadelanalyse` (*Zadelanalyse*) | € 60,00 (Toshoni, 20 okt 2026; `src/lib/offers/defaults.ts`, bestaande databank via `cms:patch-aanbod-prijzen`) | — | afgerond 2026-10-20 |
 | P-05 | `/aanbod/afstellen-schoenplaatjes` (*Afstellen schoenplaatjes*) | € 15,00 (Toshoni, 20 okt 2026; `src/lib/offers/defaults.ts`, bestaande databank via `cms:patch-aanbod-prijzen`) | — | afgerond 2026-10-20 |
@@ -104,7 +104,7 @@ veld **Duur in de agenda (minuten)**, dat zowel de agenda als de getoonde duur b
 | ID | Pagina (titel in CMS) | Nu | Nodig | Status |
 | --- | --- | --- | --- | --- |
 | D-01 | `/aanbod/bikefit-nieuwe-fiets` (*Bikefit – aankoop nieuwe fiets*) | 2 uur | — | afgerond 2026-10-20 |
-| D-02 | `/aanbod/bikefit-huidige-fiets` (*Bikefit – huidige fiets*) | Volwassene: 2 uur · Jeugd – eenmalig: 2 uur · Jeugd – volledig pakket: 2 uur (uit gekoppelde `cms_services`; Toshoni, 20 okt 2026: "duurtijd 2u" voor de fit, voor beide Jeugd-varianten overgenomen) | bevestigen dat ook de jeugdfit 2 uur duurt | afgerond 2026-10-20 |
+| D-02 | `/aanbod/bikefit-huidige-fiets` (*Bikefit – huidige fiets*) | Volwassene: 2 uur · Jeugd – eenmalig: 2 uur (uit gekoppelde `cms_services`; Toshoni, 20 okt 2026: "duurtijd 2u" voor de fit, voor Jeugd overgenomen) | bevestigen dat ook de jeugdfit 2 uur duurt | afgerond 2026-10-20 |
 | D-03 | `/aanbod/voetanalyse` (*Voetanalyse*) | 30 minuten | — | afgerond 2026-10-20 |
 | D-04 | `/aanbod/zadelanalyse` (*Zadelanalyse*) | 1 uur | — | afgerond 2026-10-20 |
 | D-05 | `/aanbod/afstellen-schoenplaatjes` (*Afstellen schoenplaatjes*) | 15 minuten | — | afgerond 2026-10-20 |
@@ -119,7 +119,7 @@ veld **Duur (tekst)** bevat sinds 27 okt 2026 `{{duur:volwassenenfit}}` en toont
 die dienst 120 minuten duurt.
 
 De planningsduur van een **boekbare** dienst staat in `/admin` → **Diensten** → veld
-**Duur (minuten)** (Volwassenenfit, Jeugdfit – eenmalig en Jeugdfit – volledig pakket: 120, sinds 20 en 27 okt 2026).
+**Duur (minuten)** (Volwassenenfit en Jeugdfit – eenmalig: 120, sinds 20 okt 2026).
 Bij een gekoppeld aanbod toont de publieke detailpagina elke boekbare variant met de actuele
 dienstduur; het redactionele veld **Duur** van het aanbod wordt dan genegeerd. Voor een
 niet-gekoppeld aanbod blijft dat veld de publieke tekst. Een duur op de aanbodpagina wijzigt
@@ -207,12 +207,12 @@ dienst; K-03, K-04).
 
 | ID | Onderwerp | Nu | Nodig | Status |
 | --- | --- | --- | --- | --- |
-| K-01 | *Bikefit – huidige fiets* | gekoppeld aan de diensten `volwassenenfit`, `jeugdfit` (*Jeugdfit – eenmalig*) en, sinds 27 okt 2026, `jeugdfit-pakket` (*Jeugdfit – volledig pakket*), alle drie 2 uur. Sinds 16 okt 2026 toont `/afspraak` dit aanbod **één keer**, met daaronder "Voor wie?": **Volwassene**, **Jeugd – eenmalig** en **Jeugd – volledig pakket** (het keuzelabel volgt het aanbod); de gekozen dienst bepaalt duur, beschikbaarheid, formulier (ouder bij beide Jeugd-varianten) en wat geboekt wordt | bevestigen dat dit dezelfde dienst is | te bevestigen |
+| K-01 | *Bikefit – huidige fiets* | gekoppeld aan de diensten `volwassenenfit` en `jeugdfit` (*Jeugdfit – eenmalig*), beide 2 uur. Sinds 16 okt 2026 toont `/afspraak` dit aanbod **één keer**, met daaronder "Voor wie?": **Volwassene** en **Jeugd – eenmalig** (het keuzelabel volgt het aanbod); de gekozen dienst bepaalt duur, beschikbaarheid en wat geboekt wordt; het formulier is voor elke fit hetzelfde, ook voor Jeugd (29 okt 2026) | bevestigen dat dit dezelfde dienst is | te bevestigen |
 | K-02 | De andere acht diensten | op aanvraag: aanvraagformulier op de dienstpagina, niet online boekbaar; sinds 20 okt 2026 met prijs en (waar gegeven) duur | per dienst: aanbieder(s) die het zelf bevestigen (K-05); dan dienst aanmaken in **Beheer → Aanbod** op *Rechtstreeks online boeken* zetten | open |
 | K-03 | Het aanbod *Inspanningstest* (adres `/aanbod/lactaattest`; tot 27 okt 2026 *Lactaattest*) vs. de bestaande dienst Inspanningstest | de dienst Inspanningstest is uitgezet (17 okt 2026); het aanbod blijft op aanvraag | als de inspanningstest online boekbaar moet worden: in **Beheer → Aanbod** op *Rechtstreeks online boeken* zetten met een echte duur | afgerond 2026-10-17 |
 | K-04 | Bestaande diensten Gezinspakket, Fit aan huis (en Inspanningstest, K-03) | uitgezet op 17 okt 2026 (beslissing Toshoni: enkel wat in het aanbod stond blijft); niet meer op `/afspraak`; bestaande boekingen behouden hun dienst | niets; wie een van deze weer wil aanbieden, maakt een nieuw aanbod in **Beheer → Aanbod** | afgerond 2026-10-17 |
 | K-05 | Aanbieders per dienst | ongewijzigd: enkel de bestaande aanbieder op de vijf oude diensten. Sinds 16 okt 2026 maakt een aanbieder geen diensten meer aan en past ze niet aan; hij of zij schrijft zich enkel in voor actieve diensten (**Mijn agenda** → **Mijn aanbod**, per aanbod en variant) | wie biedt welke nieuwe dienst aan, enkel door de persoon zelf bevestigd; een nieuwe dienst maakt een beheerder aan | open |
-| K-06 | Prijzen in de boekingswidget | Volwassenenfit € 275, Jeugdfit – eenmalig € 150 en Jeugdfit – volledig pakket € 275, alle drie getoond (**Prijs tonen** aan); de eerste twee sinds 20 okt 2026 (`src/lib/booking/defaults.ts`; bestaande databank via `cms:patch-aanbod-prijzen`), het pakket sinds 27 okt 2026; onder *Bikefit – huidige fiets* toont de widget per keuze dat bedrag | — | afgerond 2026-10-20 |
+| K-06 | Prijzen in de boekingswidget | Volwassenenfit € 275 en Jeugdfit – eenmalig € 150, beide getoond (**Prijs tonen** aan), sinds 20 okt 2026 (`src/lib/booking/defaults.ts`; bestaande databank via `cms:patch-aanbod-prijzen`); onder *Bikefit – huidige fiets* toont de widget per keuze dat bedrag | — | afgerond 2026-10-20 |
 
 ## 7. Bestaande hiaten in aangeraakte inhoud (G)
 

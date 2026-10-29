@@ -6,7 +6,7 @@
  * reads the rows, `aanbod-correcties-plan.mts` feeds them in here,
  * `aanbod-correcties-apply.mts` writes, and `aanbod-correcties-targets.test.ts`
  * pins the rules. The page texts are the same idea in `aanbod-correcties-pages.mts`,
- * the youth package and the provider in `aanbod-correcties-youth.mts`.
+ * the provider in `aanbod-correcties-youth.mts`.
  *
  * Toshoni, 27 Oct 2026. The data lives next to the seeds it must agree with:
  * the address (`seed-content/location-section.ts`), the phone number and the
@@ -27,7 +27,7 @@ import {
   type SiteSettingKey,
 } from '@/lib/cms/site-settings';
 import type { ServiceTextFields } from '@/lib/offers/corrections-2026-10-27';
-import { AUDIENCE_LABELS, type OfferingAudience } from '@/lib/offers/offering';
+import type { OfferingAudience } from '@/lib/offers/offering';
 import { CADEAUBON_PROMO } from '@/lib/studio/seed-content/cadeaubon-promo';
 import {
   PHONE_HREF_AFTER,
@@ -324,7 +324,6 @@ const LABELS_OF_20_OCT: Readonly<Record<OfferingAudience, string>> = {
   all: '',
   adult: 'Volwassene',
   youth: 'Jeugd',
-  'youth-package': AUDIENCE_LABELS['youth-package'],
 };
 
 /**

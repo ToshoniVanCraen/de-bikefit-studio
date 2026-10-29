@@ -6,7 +6,6 @@ import type { OfferingFormValues } from '@/components/admin/offering-form';
 import { DEFAULT_LOCALE } from '@/db/cms-schema';
 import { listMedia } from '@/lib/cms/repo';
 import { offeringPriceLabel } from '@/lib/offers/offering';
-import { isYouthAudience } from '@/lib/offers/offering-audience';
 import { EMPTY_OFFERING_CONTENT } from '@/lib/offers/offering-content';
 import type { AdminOffering, AdminOfferingService } from '@/lib/offers/repo';
 
@@ -56,7 +55,6 @@ export function toOfferingFormValues(
         durationMinutes: service?.durationMinutes ?? null,
         bufferAfterMinutes: service?.bufferAfterMinutes ?? null,
         locationId: service?.locationId ?? null,
-        requiresGuardian: service?.requiresGuardian ?? isYouthAudience(variant.audience),
         providerNames: service?.providerNames ?? [],
       };
     }),

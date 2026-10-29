@@ -6,10 +6,9 @@
  *  0. migrations 0010 + 0011: guarded statements only (no data change, no
  *     DROP), re-running them twice is a no-op;
  *  1. the bootstrap offerings (`ensureDefaultOfferings`): nine rows, all
- *     shown, the current-bike fit booked directly as the section-14 services
- *     plus the third fit service (Jeugd – volledig pakket, 27 Oct 2026), the
- *     free-text price of the second visit, a second run keeps them; the public
- *     catalogue and `?dienst=` follow;
+ *     shown, the current-bike fit booked directly as the section-14 services,
+ *     the free-text price of the second visit, a second run keeps them; the
+ *     public catalogue and `?dienst=` follow;
  *  2. `cms:migrate-aanbod` on legacy offer pages (raw rows, as a database from
  *     before 17 Oct 2026 holds them): the dry run writes nothing; the apply
  *     converts a published page (derived settings), a draft page (hidden) and
@@ -18,9 +17,9 @@
  *     offer pages, audits once; a second apply finds nothing;
  *  3. permissions: a provider and an editor are refused (`offering.manage` is
  *     the admin's), nothing written;
- *  4. the admin writes an offering with its three services (Volwassene, Jeugd
- *     – eenmalig, Jeugd – volledig pakket): created with the variant slugs,
- *     labels and order, unavailable until a provider subscribes their own
+ *  4. the admin writes an offering with its two services (Volwassene, Jeugd
+ *     – eenmalig; no guardian asked for, 29 Oct 2026): created with the variant
+ *     slugs, labels and order, unavailable until a provider subscribes their own
  *     profile, then bookable with that variant only; an edit updates the
  *     service by id; enquiry (with a price text that then replaces the price)
  *     and hidden hold the services back (availability refused, page 404);
@@ -166,21 +165,6 @@ export async function offeringsSection(ctx: {
     offerings: offeringSchema,
     log: silentLog,
   };
-  // The third fit service as `cms:bootstrap` makes it (27 Oct 2026), offered by the provider too.
-  const [packageFit] = await db
-    .insert(schema.cmsServices)
-    .values({
-      locale,
-      slug: 'jeugdfit-pakket',
-      name: 'Jeugdfit – volledig pakket',
-      choiceLabel: 'Jeugd – volledig pakket',
-      durationMinutes: 120,
-      requiresGuardian: true,
-    })
-    .returning({ id: schema.cmsServices.id });
-  await db
-    .insert(schema.cmsProviderServices)
-    .values({ providerId: provider.id, serviceId: packageFit.id });
   const first = await ensureDefaultOfferings(bootstrapDeps);
   const again = await ensureDefaultOfferings(bootstrapDeps);
   const seeded = await loadOfferCatalogue(locale);
@@ -192,7 +176,7 @@ export async function offeringsSection(ctx: {
   const adultId = publicServices.find((s) => s.slug === 'volwassenenfit')?.id;
   const youthId = publicServices.find((s) => s.slug === 'jeugdfit')?.id;
   const homeId = publicServices.find((s) => s.slug === 'fit-aan-huis')?.id;
-  const threePrices = `Volwassene ${formatPrice(27500)} · Jeugd – eenmalig ${formatPrice(15000)} · Jeugd – volledig pakket ${formatPrice(27500)}`;
+  const twoPrices = `Volwassene ${formatPrice(27500)} · Jeugd – eenmalig ${formatPrice(15000)}`;
   check(
     'bootstrap: nine offerings created once (all shown, no hidden legacy ones), kept on a second run',
     first.created.length === 9 &&
@@ -204,14 +188,13 @@ export async function offeringsSection(ctx: {
     `${first.created.length} created, ${seeded.offers.length} shown, hidden ${seeded.hiddenSlugs.join(',')}`,
   );
   check(
-    'bootstrap: Bikefit – huidige fiets is bookable as Volwassenenfit + the two Jeugdfit services (section-14 durations, priced variants); seven on request, tweede fiets an extra only',
+    'bootstrap: Bikefit – huidige fiets is bookable as Volwassenenfit + Jeugdfit (section-14 durations, priced variants); seven on request, tweede fiets an extra only',
     huidige?.status === 'bookable' &&
-      huidige.bookingServiceSlugs.join() === 'volwassenenfit,jeugdfit,jeugdfit-pakket' &&
-      huidige.durationLabel ===
-        'Volwassene: 1 u 30 min · Jeugd – eenmalig: 1 uur · Jeugd – volledig pakket: 2 uur' &&
-      huidige.priceLabel === threePrices &&
+      huidige.bookingServiceSlugs.join() === 'volwassenenfit,jeugdfit' &&
+      huidige.durationLabel === 'Volwassene: 1 u 30 min · Jeugd – eenmalig: 1 uur' &&
+      huidige.priceLabel === twoPrices &&
       seeded.offers.find((offer) => offer.slug === 'bikefit-nieuwe-fiets')?.priceLabel ===
-        threePrices &&
+        twoPrices &&
       // The catalogue carries the text as stored (tokens); the site resolves it at render time.
       seeded.offers.find((offer) => offer.slug === 'bikefit-tweede-bezoek')?.priceLabel ===
         'Gratis binnen {{tweede-bezoek-gratis}} na je fit, daarna {{prijs:bikefit-tweede-bezoek:all}}' &&
@@ -234,9 +217,9 @@ export async function offeringsSection(ctx: {
   const asked = select('lactaattest');
   const hiddenOne = select('fit-aan-huis');
   check(
-    '?dienst=: the current-bike fit narrows to Volwassene + both Jeugd variants; Inspanningstest is an enquiry; a service on its own stays a service',
+    '?dienst=: the current-bike fit narrows to Volwassene + Jeugd; Inspanningstest is an enquiry; a service on its own stays a service',
     linked.kind === 'offer' &&
-      linked.serviceIds.join() === [adultId, youthId, packageFit.id].join() &&
+      linked.serviceIds.join() === [adultId, youthId].join() &&
       asked.kind === 'offer' &&
       asked.serviceIds.length === 0 &&
       asked.offer.status === 'enquiry' &&
@@ -507,7 +490,10 @@ export async function offeringsSection(ctx: {
   );
 
   // --- 3: permissions --------------------------------------------------------
-  /** One variant as the form sends it: price and the facts of its service (minutes, buffer, guardian). */
+  /**
+   * One variant as the form sends it: price and the facts of its service (minutes, buffer, and
+   * the guardian flag the form of before 29 Oct 2026 sent, which is ignored now).
+   */
   const variantOf = (
     audience: string,
     serviceId: string | null,
@@ -543,7 +529,6 @@ export async function offeringsSection(ctx: {
       variants: [
         variantOf('adult', null, 14950, 75, null, false),
         variantOf('youth', null, null, 45, 10, true),
-        variantOf('youth-package', null, 27500, 90, 10, true),
       ],
     },
     ...overrides,
@@ -579,8 +564,7 @@ export async function offeringsSection(ctx: {
       (group) =>
         group.title === 'Bikefit – huidige fiets' &&
         group.bookable &&
-        group.variants.map((v) => v.label).join('/') ===
-          'Volwassene/Jeugd – eenmalig/Jeugd – volledig pakket',
+        group.variants.map((v) => v.label).join('/') === 'Volwassene/Jeugd – eenmalig',
     ),
     JSON.stringify(groups.map((group) => group.title)),
   );
@@ -597,31 +581,27 @@ export async function offeringsSection(ctx: {
     : [];
   const adultService = createdServices.find((s) => s.slug === 'selftest-nieuw-volwassene');
   const youthService = createdServices.find((s) => s.slug === 'selftest-nieuw-jeugd');
-  const packageService = createdServices.find((s) => s.slug === 'selftest-nieuw-jeugd-pakket');
   check(
-    'admin: createOffering writes the three services (slug, label, name, duration, guardian, order) and the variants',
+    'admin: createOffering writes the two services (slug, label, name, duration, no guardian, order) and the variants',
     created.ok &&
+      createdServices.length === 2 &&
       adultService?.choiceLabel === 'Volwassene' &&
       adultService.name === 'Selftest nieuw – Volwassene' &&
       adultService.durationMinutes === 75 &&
       adultService.isActive &&
       youthService?.choiceLabel === 'Jeugd – eenmalig' &&
-      youthService.requiresGuardian === true &&
+      // An old form's guardian flag is ignored: no service asks for a guardian (29 Oct 2026).
+      youthService.requiresGuardian === false &&
       youthService.durationMinutes === 45 &&
       youthService.bufferAfterMinutes === 10 &&
-      packageService?.choiceLabel === 'Jeugd – volledig pakket' &&
-      packageService.name === 'Selftest nieuw – Jeugd – volledig pakket' &&
-      packageService.requiresGuardian === true &&
-      packageService.durationMinutes === 90 &&
-      // begeleiding is the second category: 10 000 + sort order 80 × 3, then 0, 1, 2 for the audiences.
-      [adultService, youthService, packageService].map((s) => s.sortOrder).join() ===
-        '10240,10241,10242' &&
+      // begeleiding is the second category: 10 000 + sort order 80 × 3, then 0, 1 for the audiences.
+      [adultService, youthService].map((s) => s.sortOrder).join() === '10240,10241' &&
       (await card('selftest-nieuw'))?.status === 'unavailable',
     created.ok ? createdServices.map((s) => s.slug).join() : created.message,
   );
-  if (!created.ok || !adultService || !youthService || !packageService) return;
+  if (!created.ok || !adultService || !youthService) return;
   const offeringId = created.data.id;
-  const serviceIds = [adultService.id, youthService.id, packageService.id];
+  const serviceIds = [adultService.id, youthService.id];
   /** The new offering's variants, each pointing at the service its first save created. */
   const withServices = () =>
     newOffering().settings.variants.map((v, i) => ({ ...v, serviceId: serviceIds[i] }));
@@ -644,10 +624,8 @@ export async function offeringsSection(ctx: {
     subscribe.ok &&
       bookable?.status === 'bookable' &&
       bookable.bookingServiceSlugs.join(',') === 'selftest-nieuw-volwassene' &&
-      bookable.priceLabel ===
-        `Volwassene ${formatPrice(14950)} · Jeugd – eenmalig op aanvraag · Jeugd – volledig pakket ${formatPrice(27500)}` &&
-      bookable.durationLabel ===
-        'Volwassene: 1 u 15 min · Jeugd – eenmalig: 45 min · Jeugd – volledig pakket: 1 u 30 min',
+      bookable.priceLabel === `Volwassene ${formatPrice(14950)} · Jeugd – eenmalig op aanvraag` &&
+      bookable.durationLabel === 'Volwassene: 1 u 15 min · Jeugd – eenmalig: 45 min',
     JSON.stringify(bookable),
   );
 
@@ -660,7 +638,6 @@ export async function offeringsSection(ctx: {
         variants: [
           variantOf('adult', adultService.id, 15000, 90, 15, false),
           variantOf('youth', youthService.id, null, 45, 10, true),
-          variantOf('youth-package', packageService.id, 27500, 90, 10, true),
         ],
       },
     }),
@@ -675,14 +652,14 @@ export async function offeringsSection(ctx: {
       adultAfter.durationMinutes === 90 &&
       adultAfter.bufferAfterMinutes === 15 &&
       (await card('selftest-nieuw'))?.durationLabel ===
-        'Volwassene: 1 u 30 min · Jeugd – eenmalig: 45 min · Jeugd – volledig pakket: 1 u 30 min' &&
+        'Volwassene: 1 u 30 min · Jeugd – eenmalig: 45 min' &&
       (await card('selftest-nieuw'))?.status === 'bookable' &&
       (
         await db
           .select()
           .from(schema.cmsServices)
           .where(like(schema.cmsServices.slug, 'selftest-nieuw%'))
-      ).length === 3,
+      ).length === 2,
     edited.ok ? '' : edited.message,
   );
   const clash = await offersRepo.createOffering(
@@ -880,8 +857,8 @@ export async function offeringsSection(ctx: {
   await signInAs(provider.userId);
   await bookingRepo.setProviderServices(provider.id, ownBefore);
   await signInAs(admin.id);
-  // The three services of the new offering and the fit service this section added in 1.
-  const ownServices = [...serviceIds, packageFit.id];
+  // The two services of the new offering.
+  const ownServices = [...serviceIds];
   await db
     .delete(schema.cmsProviderServices)
     .where(inArray(schema.cmsProviderServices.serviceId, ownServices));

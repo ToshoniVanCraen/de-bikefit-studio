@@ -249,8 +249,8 @@ describe('copy refers to the master: no literal fact in the visitor-facing texts
     expect(durations['bikefit-nieuwe-fiets']).toBe('{{duur:volwassenenfit}}');
     expect(durations['voetanalyse']).toBe('30 minuten');
     // The booking services carry the minutes and the prices as numbers.
-    expect(DEFAULT_SERVICES.map((service) => service.durationMinutes)).toEqual([120, 120, 120]);
-    expect(DEFAULT_SERVICES.map((service) => service.priceCents)).toEqual([27500, 15000, 27500]);
+    expect(DEFAULT_SERVICES.map((service) => service.durationMinutes)).toEqual([120, 120]);
+    expect(DEFAULT_SERVICES.map((service) => service.priceCents)).toEqual([27500, 15000]);
   });
 });
 

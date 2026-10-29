@@ -226,7 +226,7 @@ export function servicesJsonLd(
 /**
  * The `offers` of an offering, mirroring its Kostprijs: one `Offer` per
  * variant that has a price set in Beheer → Aanbod (named after its variant
- * label — "Volwassene", "Jeugd – eenmalig", "Jeugd – volledig pakket" — when
+ * label — "Volwassene", "Jeugd – eenmalig" — when
  * the offering has several), nothing while every variant is "Prijs op
  * aanvraag". An offering that is asked for may show a free-text Kostprijs
  * instead ("Gratis binnen 6 maanden na je fit, daarna € 75", 27 Oct 2026):

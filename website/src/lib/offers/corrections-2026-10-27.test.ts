@@ -75,7 +75,7 @@ describe('offering text corrections', () => {
         'Probleemopvolging tot zes maanden na je fit is inbegrepen. Onder 16: € 150 zonder opvolging, € 275 met.',
       );
     }
-    // The new bike's adjustment and the youth package are of 27 Oct: the live text has neither.
+    // The new bike's adjustment is of 27 Oct: the live text does not have it.
     expect(correctionOf('bikefit-nieuwe-fiets').from.extras).toContain(
       'Afstelling van je nieuwe fiets na de aankoop.',
     );
@@ -92,16 +92,24 @@ describe('offering text corrections', () => {
     expect(correctionOf('bikefit-huidige-fiets').from).not.toHaveProperty('duration');
   });
 
-  it('turns the youth sentence of the fits into two bullets of tokens: adult window, three prices', () => {
+  it('turns the youth sentence of the fits into two bullets of tokens: adult window, the one-off youth price', () => {
     for (const slug of ['bikefit-nieuwe-fiets', 'bikefit-huidige-fiets']) {
       const to = correctionOf(slug).to.contents ?? [];
       expect(to.at(-2)).toBe(
         'Probleemopvolging tot {{opvolging:volwassene}} na je fit is inbegrepen.',
       );
-      expect(to.at(-1)).toContain(`{{prijs:${slug}:youth}}`);
-      expect(to.at(-1)).toContain(`{{prijs:${slug}:youth-package}}`);
-      expect(to.at(-1)).toContain('{{opvolging:jeugd-pakket}}');
+      expect(to.at(-1)).toBe(
+        `Jeugd (onder 16): {{prijs:${slug}:youth}} voor een eenmalige fit zonder opvolging.`,
+      );
     }
+  });
+
+  it('writes no text that names the withdrawn youth package (29 Oct 2026)', () => {
+    const written = JSON.stringify([
+      OFFERING_TEXT_CORRECTIONS.map((entry) => entry.to),
+      SERVICE_TEXT_CORRECTIONS.map((entry) => entry.to),
+    ]);
+    expect(written).not.toMatch(/volledig pakket|volledige pakket|youth-package|jeugd-pakket/i);
   });
 
   it('gives Bikefit – tweede bezoek its price text (empty before) and lets the window and price follow the master', () => {
@@ -164,7 +172,7 @@ describe('service text corrections', () => {
     }
   });
 
-  it('renames Jeugdfit as the 20 Oct 2026 patch left it: the package is a third service', () => {
+  it('renames Jeugdfit as the 20 Oct 2026 patch left it: the one-off fit, without follow-up', () => {
     const { from, to } = byService('jeugdfit');
     expect(from).toEqual({
       name: 'Jeugdfit',
@@ -174,9 +182,9 @@ describe('service text corrections', () => {
     });
     expect(to.name).toBe('Jeugdfit – eenmalig');
     expect(to.choiceLabel).toBe('Jeugd – eenmalig');
-    expect(to.description).toContain('{{prijs:bikefit-huidige-fiets:youth-package}}');
-    expect(to.description).toContain('{{opvolging:jeugd-pakket}}');
-    expect(DEFAULT_SERVICES.map((service) => service.slug)).toContain('jeugdfit-pakket');
+    expect(to.description).toBe(
+      'Voor fietsers onder 16: één fit, afgestemd op een lichaam in groei, zonder opvolging.',
+    );
   });
 
   it('lets the adult description follow the follow-up window of the master', () => {

@@ -67,10 +67,9 @@ describe('business: the legal identity', () => {
 });
 
 describe('rules: the lengths in the copy', () => {
-  it('defaults to six months of follow-up, a year for the youth package, six months free, a year valid', () => {
+  it('defaults to six months of follow-up, six months free, a year valid', () => {
     expect(defaultSiteSettings().rules).toEqual({
       followUpMonthsAdult: 6,
-      followUpMonthsYouthPackage: 12,
       secondVisitFreeMonths: 6,
       voucherValidityMonths: 12,
     });
@@ -79,7 +78,16 @@ describe('rules: the lengths in the copy', () => {
   it('reads a stored value field by field', () => {
     expect(parseSiteSetting('rules', { followUpMonthsAdult: 9 })).toEqual({
       followUpMonthsAdult: 9,
-      followUpMonthsYouthPackage: 12,
+      secondVisitFreeMonths: 6,
+      voucherValidityMonths: 12,
+    });
+  });
+
+  it('a stored value with the youth package length of 27 Oct 2026 still reads, without it', () => {
+    expect(
+      parseSiteSetting('rules', { followUpMonthsAdult: 9, followUpMonthsYouthPackage: 12 }),
+    ).toEqual({
+      followUpMonthsAdult: 9,
       secondVisitFreeMonths: 6,
       voucherValidityMonths: 12,
     });

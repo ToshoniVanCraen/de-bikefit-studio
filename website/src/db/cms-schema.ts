@@ -433,7 +433,7 @@ export const cmsLocations = pgTable(
 
 /**
  * A bookable service: the canonical catalogue entry (admin-managed, migration
- * 0009 for `choice_label`). Duration, buffer, price and guardian rule live
+ * 0009 for `choice_label`). Duration, buffer and price live
  * here and nowhere else: offers point at a service by slug, providers only
  * subscribe to it. `location_id` null means "the provider's default location"
  * (or the per-provider override in `cms_provider_services`).
@@ -457,7 +457,7 @@ export const cmsServices = pgTable(
     priceCents: integer('price_cents'),
     showPrice: boolean('show_price').default(false).notNull(),
     locationId: text('location_id').references(() => cmsLocations.id, { onDelete: 'set null' }),
-    /** Jeugdfit: the form asks for a parent/guardian. */
+    /** Jeugdfit asked for a parent or guardian until 29 Oct 2026 (Toshoni); a save writes `false`. */
     requiresGuardian: boolean('requires_guardian').default(false).notNull(),
     isActive: boolean('is_active').default(true).notNull(),
     sortOrder: integer('sort_order').default(0).notNull(),

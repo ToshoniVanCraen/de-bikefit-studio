@@ -1,11 +1,12 @@
 /**
  * The check after `npm run cms:patch-aanbod-correcties --apply`, on what
- * visitors get: a second plan (in the mode of the first) finds nothing left,
- * the row counts moved by exactly the plan, and the public readers show the
- * corrections (the catalogue, the site settings, the main menu, the published
- * pages, the provider list: without Toshoni, or with `staging-retain` with him,
- * every offering he had and the youth package). An empty list means the
- * corrections are live as intended. Read-only.
+ * visitors get: a second plan (in the mode of the first) finds nothing left (so
+ * no youth package exists and no youth service asks for a guardian), the row
+ * counts moved by exactly the plan, and the public readers show the corrections
+ * (the catalogue, the site settings, the main menu, the published pages, the
+ * provider list: without Toshoni, or with `staging-retain` with him and every
+ * offering he had). An empty list means the corrections are live as intended.
+ * Read-only.
  *
  * The readers are the cached ones the site uses; in a script `unstable_cache`
  * is a pass-through, so they read the database. The catalogue read is repeated
@@ -32,11 +33,9 @@ import {
   PHONE_LABEL_AFTER,
 } from '@/lib/studio/seed-content/corrections-2026-10-27';
 
-const SPLIT_LABELS = [
-  AUDIENCE_LABELS.adult,
-  AUDIENCE_LABELS.youth,
-  AUDIENCE_LABELS['youth-package'],
-];
+const SPLIT_LABELS = [AUDIENCE_LABELS.adult, AUDIENCE_LABELS.youth];
+/** The two bikefits, split by audience (Volwassene, Jeugd – eenmalig) since 20 Oct 2026. */
+const SPLIT_FITS = ['bikefit-nieuwe-fiets', 'bikefit-huidige-fiets'];
 
 /** Sections of a plan that still have something to do, by name. */
 function pendingSections(plan: CorrectiesPlan): string[] {
@@ -45,8 +44,8 @@ function pendingSections(plan: CorrectiesPlan): string[] {
   return [
     pending(plan.settings) && 'settings',
     pending([plan.location]) && 'location',
-    pending(plan.packages) && 'youth package',
     pending(plan.services) && 'services',
+    pending(plan.guardians) && 'guardian rule',
     pending(plan.durations) && 'durations',
     pending(plan.offerings) && 'offerings',
     pending([plan.provider]) && 'provider',
@@ -59,9 +58,8 @@ type ListPublicProviders = typeof import('@/lib/booking/content').listPublicProv
 
 /**
  * `staging-retain`: Toshoni (the provider the second plan finds) is in the
- * public provider list, still offers every service he offered before the apply
- * (with the same location), and offers the package of every fit the plan gave
- * him, as the public reader of that service lists him.
+ * public provider list and still offers every service he offered before the
+ * apply (with the same location).
  */
 async function keptProviderProblems(
   world: World,
@@ -71,8 +69,8 @@ async function keptProviderProblems(
 ): Promise<string[]> {
   const toshoni = plan.provider.provider;
   if (!toshoni) return []; // the second plan's blocker says why
-  const listed = async (serviceId?: string) =>
-    (await listPublicProviders(serviceId)).some((provider) => provider.id === toshoni.id);
+  const listed = async () =>
+    (await listPublicProviders()).some((provider) => provider.id === toshoni.id);
   const problems: string[] = [];
   if (!(await listed())) {
     problems.push(
@@ -90,15 +88,6 @@ async function keptProviderProblems(
     problems.push(
       `providers: ${toshoni.displayName} lost ${lost.length} of the ${before.provider.kept.length} offering(s) he had before the apply`,
     );
-  }
-  for (const entry of before.packages) {
-    if (!entry.subscribe.some((target) => target.providerId === toshoni.id)) continue;
-    const service = plan.packages.find((item) => item.slug === entry.slug)?.service;
-    if (service?.kind !== 'existing' || !(await listed(service.id))) {
-      problems.push(
-        `providers: ${toshoni.displayName} does not offer the ${AUDIENCE_LABELS['youth-package']} of ${entry.slug}`,
-      );
-    }
   }
   return problems;
 }
@@ -122,17 +111,17 @@ export async function verifyCorrecties(deps: PlanDeps, before: CorrectiesPlan): 
   const { listPublicProviders } = await import('@/lib/booking/content');
   const inputs = defaultInputs();
 
-  // The catalogue: three labelled variants on both bikefits, the free-text price, the durations.
+  // The catalogue: two labelled variants on both bikefits, the free-text price, the durations.
   let catalogue = await loadOfferCatalogue(deps.locale);
   if (catalogue.offers.length === 0) {
     await new Promise((resolve) => setTimeout(resolve, 750));
     catalogue = await loadOfferCatalogue(deps.locale);
   }
-  for (const target of inputs.youthPackages) {
-    const labels = catalogue.bySlug[target.slug]?.offering.variants.map((variant) => variant.label);
+  for (const slug of SPLIT_FITS) {
+    const labels = catalogue.bySlug[slug]?.offering.variants.map((variant) => variant.label);
     if (!sameValue(labels, SPLIT_LABELS)) {
       problems.push(
-        `catalogue: ${target.slug} shows ${JSON.stringify(labels ?? null)}, expected ${JSON.stringify(SPLIT_LABELS)}`,
+        `catalogue: ${slug} shows ${JSON.stringify(labels ?? null)}, expected ${JSON.stringify(SPLIT_LABELS)}`,
       );
     }
   }

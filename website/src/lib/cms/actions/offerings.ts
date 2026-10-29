@@ -70,7 +70,6 @@ function serviceFrom(
       durationMinutes,
       bufferAfterMinutes,
       locationId: field(form, `location:${audience}`) || null,
-      requiresGuardian: boolField(form, `guardian:${audience}`),
     },
   };
 }

@@ -11,12 +11,14 @@ import type { ProviderMode } from './aanbod-correcties-youth.mjs';
 
 /**
  * The whole plan of `cms:patch-aanbod-correcties` in both provider modes, on a
- * world that holds only what the youth package and the provider sections read:
- * both bikefits split by audience (the current-bike fit booked online through
- * `volwassenenfit` and `jeugdfit`), five services, and staging's one provider or
- * production's two. The other sections block on such a world (no settings, no
- * pages); what is pinned here is the provider, the package, the row counts the
- * verify holds the apply to, and the provider line of the printout.
+ * world that holds only what the provider, the guardian and the package-guard
+ * sections read: both bikefits split by audience (the current-bike fit booked
+ * online through `volwassenenfit` and `jeugdfit`, which still asks for a
+ * guardian), five services, and staging's one provider or production's two. The
+ * other sections block on such a world (no settings, no pages); what is pinned
+ * here is the provider, the guardian rule, that no youth package is made (and a
+ * database that holds one blocks), the row counts the verify holds the apply to,
+ * and the provider and guardian lines of the printout.
  */
 
 const SEED_LOGIN = 'toshoni@gmail.com';
@@ -39,7 +41,8 @@ const services = SLUGS.map((slug, index) => ({
   priceCents: null,
   showPrice: false,
   locationId: null,
-  requiresGuardian: false,
+  // Before 29 Oct 2026 the Jeugd service asked for a parent or guardian.
+  requiresGuardian: slug === 'jeugdfit',
   isActive: true,
   sortOrder: 60 + index,
 }));
@@ -87,13 +90,16 @@ const offersAll = (providerId: string) =>
 function worldWith(
   providers: ReadonlyArray<typeof toshoni>,
   subscriptions: ReadonlyArray<{ providerId: string; serviceId: string; locationId: null }>,
+  more: { services?: typeof services; variants?: typeof variants } = {},
 ): World {
+  const allServices = more.services ?? services;
+  const allVariants = more.variants ?? variants;
   const counts: Counts = {
     pages: 0,
     blocks: 0,
     offerings: offerings.length,
-    variants: variants.length,
-    services: services.length,
+    variants: allVariants.length,
+    services: allServices.length,
     bookings: 3,
     providers: providers.length,
     subscriptions: subscriptions.length,
@@ -105,8 +111,8 @@ function worldWith(
     mainMenu: { exists: false, items: null },
     pages: [],
     offerings,
-    variants,
-    services,
+    variants: allVariants,
+    services: allServices,
     providers,
     subscriptions,
     counts,
@@ -114,19 +120,18 @@ function worldWith(
 }
 
 const plan = (world: World, mode?: ProviderMode) => planCorrecties(world, defaultInputs(), mode);
-const packageOf = (result: CorrectiesPlan) =>
-  result.packages.find((entry) => entry.slug === 'bikefit-huidige-fiets');
 /** The blockers of the sections that look at who offers what (the others block on this world). */
 const whoOffers = (result: CorrectiesPlan) =>
-  correctiesBlockers(result).filter(
-    (line) => line.startsWith('provider ') || line.includes('would be offered by no provider'),
-  );
-/** The provider lines of the printout (the variant line names a count of providers too). */
-const printed = (result: CorrectiesPlan) => {
+  correctiesBlockers(result).filter((line) => line.startsWith('provider '));
+/** The whole printout. */
+const printout = (result: CorrectiesPlan) => {
   const lines: string[] = [];
   printCorrectiesPlan(result, (symbol, message) => lines.push(`${symbol} ${message}`));
-  return lines.filter((line) => /^[=~→] provider/.test(line));
+  return lines;
 };
+/** The provider lines of the printout. */
+const printed = (result: CorrectiesPlan) =>
+  printout(result).filter((line) => /^[=~→] provider/.test(line));
 
 const staging = worldWith([toshoni], offersAll('p1'));
 const production = worldWith([toshoni, winston], [...offersAll('p1'), ...offersAll('p2')]);
@@ -134,7 +139,7 @@ const production = worldWith([toshoni, winston], [...offersAll('p1'), ...offersA
 describe('planCorrecties with --staging-retain-toshoni on staging (Toshoni Van Craen the only provider)', () => {
   const result = plan(staging, 'staging-retain');
 
-  it('removes none of his offerings, blocks nothing of the provider or the package, and keeps the mode', () => {
+  it('removes none of his offerings, blocks nothing of the provider, and keeps the mode', () => {
     expect(result.providerMode).toBe('staging-retain');
     expect(result.provider).toEqual({
       provider: { id: 'p1', displayName: 'Toshoni Van Craen' },
@@ -147,30 +152,19 @@ describe('planCorrecties with --staging-retain-toshoni on staging (Toshoni Van C
     expect(whoOffers(result)).toEqual([]);
   });
 
-  it('subscribes him to the package of the fit that is booked online, and nobody to the one that is asked for', () => {
-    expect(packageOf(result)).toMatchObject({
-      action: 'update',
-      variant: 'create',
-      service: { kind: 'create', facts: { slug: 'jeugdfit-pakket' } },
-      subscribe: [{ providerId: 'p1', locationId: null }],
-      blockers: [],
-    });
-    expect(packageOf(result)?.changes.at(-1)).toBe('offered by 1 provider(s)');
-    expect(
-      result.packages.find((entry) => entry.slug === 'bikefit-nieuwe-fiets')?.subscribe,
-    ).toEqual([]);
+  it('makes no youth package: no variant, no service, no subscription; only the guardian rule goes off', () => {
+    expect(result.packageGuard).toEqual({ changes: [], blockers: [], action: 'none' });
+    expect(result.guardians.map((entry) => [entry.row.slug, entry.changes, entry.action])).toEqual([
+      ['jeugdfit', ['requiresGuardian: true → false'], 'update'],
+    ]);
+    expect(result.expected).toEqual(result.guards);
+    expect(describeCountChanges(result.guards, result.expected)).toBe('');
   });
 
-  it('expects one service, two variants and one subscription more; no provider and no booking moves', () => {
-    expect(result.expected).toEqual({
-      ...result.guards,
-      variants: result.guards.variants + 2,
-      services: result.guards.services + 1,
-      subscriptions: result.guards.subscriptions + 1,
-    });
-    expect(describeCountChanges(result.guards, result.expected)).toBe(
-      'variants 6 (+2), services 6 (+1), subscriptions 6 (+1)',
-    );
+  it('prints the guardian change of the youth service and no package line', () => {
+    const lines = printout(result);
+    expect(lines).toContain('~ service jeugdfit — requiresGuardian: true → false');
+    expect(lines.filter((line) => /pakket|package/i.test(line))).toEqual([]);
   });
 
   it('prints him as kept, without the provider-list line of a removal', () => {
@@ -197,13 +191,12 @@ describe('planCorrecties with --staging-retain-toshoni on production (a second p
 });
 
 describe('planCorrecties without the flag: unchanged', () => {
-  it('staging still stops: his removal would leave every service without a provider, the package offered by nobody', () => {
+  it('staging still stops: his removal would leave every service without a provider', () => {
     for (const result of [plan(staging), plan(staging, 'remove')]) {
       expect(result.providerMode).toBe('remove');
       expect(result.provider.rows).toEqual(offersAll('p1'));
       expect(result.provider.kept).toEqual([]);
       expect(whoOffers(result)).toEqual([
-        'offering bikefit-huidige-fiets: Jeugd – volledig pakket would be offered by no provider — add a replacement provider for jeugdfit in Beheer → Aanbieders first',
         ...SLUGS.map(
           (slug) =>
             `provider Toshoni Van Craen: service ${slug} would be left without a provider — add a replacement provider for it in Beheer → Aanbieders first`,
@@ -212,7 +205,7 @@ describe('planCorrecties without the flag: unchanged', () => {
     }
   });
 
-  it('production: his five offerings go, the package goes to the other provider; one subscription for five', () => {
+  it('production: his five offerings go to nobody new; five subscriptions fewer, no package', () => {
     const result = plan(production);
     expect(result.provider).toMatchObject({
       provider: { id: 'p1', displayName: 'Toshoni Van Craen' },
@@ -221,12 +214,73 @@ describe('planCorrecties without the flag: unchanged', () => {
       blockers: [],
       action: 'update',
     });
-    expect(packageOf(result)?.subscribe).toEqual([{ providerId: 'p2', locationId: null }]);
     expect(whoOffers(result)).toEqual([]);
-    expect(result.expected.subscriptions).toBe(result.guards.subscriptions - 5 + 1);
+    expect(result.expected).toEqual({
+      ...result.guards,
+      subscriptions: result.guards.subscriptions - 5,
+    });
+    expect(result.guardians.map((entry) => entry.changes)).toEqual([
+      ['requiresGuardian: true → false'],
+    ]);
     expect(printed(result)).toEqual([
       '~ provider Toshoni Van Craen — 5 offering(s) removed: volwassenenfit, jeugdfit, voetanalyse, zadelanalyse, afstellen-schoenplaatjes',
       '→ provider list: cached for up to 5 minutes, so Toshoni Van Craen leaves the options within that time',
     ]);
+  });
+});
+
+describe('the youth package of 27 Oct 2026 is withdrawn (Toshoni, 29 Oct 2026)', () => {
+  const packaged = (extra: { services?: typeof services; variants?: typeof variants }) =>
+    plan(worldWith([toshoni, winston], [...offersAll('p1'), ...offersAll('p2')], extra));
+  const guard = (result: CorrectiesPlan) =>
+    correctiesBlockers(result).filter((line) => line.startsWith('youth package:'));
+
+  it('a database that holds its variant or service blocks the plan with one line: restore the 27 Oct backup first', () => {
+    const pakket = { ...services[1], id: 's-pakket', slug: 'jeugdfit-pakket', name: 'pakket' };
+    const result = packaged({
+      services: [...services, pakket],
+      variants: [
+        ...variants,
+        {
+          offeringId: 'o-bikefit-huidige-fiets',
+          audience: 'youth-package',
+          serviceId: 's-pakket',
+          priceCents: 27500,
+        },
+      ],
+    });
+    expect(guard(result)).toEqual([
+      'youth package: this database holds the withdrawn "Jeugd – volledig pakket" (variant youth-package of bikefit-huidige-fiets, service jeugdfit-pakket) — restore the backup of 27 Oct 2026 first, then run again',
+    ]);
+    expect(correctiesBlockers(result)[0]).toBe(guard(result)[0]);
+    expect(result.packageGuard.action).toBe('blocked');
+  });
+
+  it('so does a package service a Beheer save made for a fit (`<offering>-jeugd-pakket`), on its own', () => {
+    const made = {
+      ...services[1],
+      id: 's-nb',
+      slug: 'bikefit-nieuwe-fiets-jeugd-pakket',
+      name: 'nb',
+    };
+    expect(guard(packaged({ services: [...services, made] }))).toEqual([
+      expect.stringContaining('(service bikefit-nieuwe-fiets-jeugd-pakket)'),
+    ]);
+  });
+
+  it('a youth service that asks for no guardian already is as intended; other services are not looked at', () => {
+    const done = services.map((entry) => ({
+      ...entry,
+      requiresGuardian: entry.slug === 'voetanalyse',
+    }));
+    const result = packaged({ services: done });
+    expect(guard(result)).toEqual([]);
+    expect(result.guardians.map((entry) => [entry.row.slug, entry.action])).toEqual([
+      ['jeugdfit', 'none'],
+    ]);
+    expect(printout(result)).toContain('= service jeugdfit — no guardian asked for');
+    expect(
+      printout(result).filter((line) => line.includes('voetanalyse — requiresGuardian')),
+    ).toEqual([]);
   });
 });

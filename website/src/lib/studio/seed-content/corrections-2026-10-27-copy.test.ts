@@ -11,7 +11,7 @@ import {
   PRIVACY_MAPS_HTML,
   privacyText,
   SETTING_TEXT_CORRECTIONS,
-  TERMS_HOME_FIT_BULLET_FROM_HTML,
+  TERMS_ART_8_TAIL_FROM_HTML,
   termsText,
   tokeniseContactText,
   ALLOWED_DASH_NAMES,
@@ -223,17 +223,27 @@ describe('the texts of the seed script and the seeds', () => {
     expect(subtitle?.kind === 'set' && subtitle.to).toBe(AANBOD_INTRO);
   });
 
-  it('the terms: "Artikel N:" in the fourteen headings, art. 8 without "fit aan huis"', () => {
+  it('the terms: "Artikel N:" in the fourteen headings, art. 8 without "fit aan huis" and without a guardian (29 Oct 2026)', () => {
     expect(TERMS_HTML).not.toMatch(/Artikel \d+ – /);
     expect(TERMS_HTML).not.toMatch(/fit aan huis/i);
+    expect(TERMS_HTML).not.toMatch(/ouder of voogd|minderjarig/i);
     expect(TERMS_HTML).toContain(
-      '<li>Minderjarigen worden vergezeld door een ouder of voogd, die de afspraak maakt en aanwezig is.</li>\n</ul>',
+      'verantwoordelijk voor je fiets en materiaal.</li>\n</ul>\n\n<h2>Artikel 9:',
     );
-    expect(TERMS_HOME_FIT_BULLET_FROM_HTML).toMatch(
-      /^die de afspraak maakt en aanwezig is\.<\/li>\n<li>Bij een fit aan huis/,
+    expect(TERMS_HTML).toContain('<p><em>Versie van 29 oktober 2026</em></p>');
+    expect(TERMS_ART_8_TAIL_FROM_HTML).toMatch(
+      /^verantwoordelijk voor je fiets en materiaal\.<\/li>\n<li>Minderjarigen worden vergezeld door een ouder of voogd, .*<\/li>\n<li>Bij een fit aan huis .*<\/li>\n<\/ul>$/,
     );
     // The 48 hours of art. 6 are the policy, written once, in the terms.
     expect(TERMS_HTML).toContain('<strong>48 uur</strong>');
+  });
+
+  it('the privacy statement asks for no parent or guardian; §8 keeps its heading (29 Oct 2026)', () => {
+    expect(PRIVACY_HTML).not.toMatch(/ouder of voogd/i);
+    expect(PRIVACY_HTML).toContain(
+      '<h2>8. Minderjarigen</h2>\n<p>Voor een jeugdfit verwerken wij ook gegevens van jongeren onder 16: enkel wat nodig is om de afspraak te plannen en de fit uit te voeren.</p>',
+    );
+    expect(PRIVACY_HTML).toContain('<p><em>Laatst bijgewerkt: 29 oktober 2026</em></p>');
   });
 
   it('the privacy statement names Google Maps, the click on "Kaart tonen", the IP address and the cookies', () => {
@@ -303,9 +313,7 @@ describe('the texts of the seed script and the seeds', () => {
         'Bikefit – tweede bezoek',
         'Bikefit – tweede fiets',
         'Jeugdfit – eenmalig',
-        'Jeugdfit – volledig pakket',
         'Jeugd – eenmalig',
-        'Jeugd – volledig pakket',
       ]),
     );
     expect(ALLOWED_DASH_NAMES.every((name) => !/—/.test(name))).toBe(true);

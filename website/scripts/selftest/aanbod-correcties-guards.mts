@@ -4,14 +4,13 @@
  *
  * Each guard changes one row the way an editor could, expects the named `!` line
  * and the verdict "blocked" (the apply refuses the same way, and writes nothing),
- * and puts the row back. Then two states the patch has to accept as they are, a
- * service text the repo wrote on 20 Oct 2026 and a package service the bootstrap
- * made, and the apply from there, which must reach the end state of the first
- * apply.
+ * and puts the row back. A database that already holds the withdrawn youth package
+ * (an earlier run of the patch of 27 Oct 2026) blocks the same way. Then a state
+ * the patch has to accept as it is, a service text the repo wrote on 20 Oct 2026,
+ * and the apply from there, which must reach the end state of the first apply.
  */
 import * as orm from 'drizzle-orm';
-import { cmsOfferings } from '@/db/cms-offering-schema';
-import { DEFAULT_SERVICES } from '@/lib/booking/defaults';
+import { cmsOfferings, cmsOfferingVariants } from '@/db/cms-offering-schema';
 import type { seedBefore } from './aanbod-correcties-fixture.mjs';
 import {
   diffPrints,
@@ -32,8 +31,7 @@ export async function guardChecks(env: {
 }): Promise<void> {
   const { ctx, kit, fx, afterApply } = env;
   const { db, check } = ctx;
-  const { schema, locale, lines, run, serviceRow, offeringRow, subscriptions } = kit;
-  const defaults = DEFAULT_SERVICES.find((entry) => entry.slug === 'jeugdfit-pakket');
+  const { schema, locale, lines, run, serviceRow, offeringRow } = kit;
 
   // --- 5: what must block ----------------------------------------------------------------------
   /**
@@ -116,7 +114,7 @@ export async function guardChecks(env: {
     'service jeugdfit: name holds neither the old nor the new text',
   );
 
-  // What the repo left (the prices patch of 20 Oct 2026) is the old text, not an edit; so is a service the bootstrap made.
+  // What the repo left (the prices patch of 20 Oct 2026) is the old text, not an edit.
   await db
     .update(schema.cmsServices)
     .set({
@@ -125,54 +123,54 @@ export async function guardChecks(env: {
       description: fit!.summary,
     })
     .where(eq(schema.cmsServices.id, youthBefore!.id));
-  // As `cms:bootstrap` makes it from the defaults.
-  const [bootstrapped] = await db
+
+  // The withdrawn youth package, as the run of 27 Oct 2026 made it on staging: restore first.
+  const [pakket] = await db
     .insert(schema.cmsServices)
     .values({
       locale,
       slug: 'jeugdfit-pakket',
-      name: defaults?.name ?? '',
-      choiceLabel: defaults?.choiceLabel ?? '',
-      description: defaults?.description ?? '',
-      durationMinutes: defaults?.durationMinutes ?? 120,
-      bufferAfterMinutes: 15,
-      priceCents: defaults?.priceCents ?? null,
-      showPrice: defaults?.showPrice ?? false,
-      requiresGuardian: defaults?.requiresGuardian ?? false,
-      sortOrder: defaults?.sortOrder ?? 0,
+      name: 'Jeugdfit – volledig pakket',
+      durationMinutes: 120,
+      requiresGuardian: true,
     })
     .returning();
+  await db.insert(cmsOfferingVariants).values({
+    offeringId: fit!.id,
+    audience: 'youth-package',
+    serviceId: pakket.id,
+    priceCents: 27500,
+  });
+  await blockedBy(
+    'a database that holds the withdrawn youth package',
+    'youth package: this database holds the withdrawn "Jeugd – volledig pakket" (variant youth-package of bikefit-huidige-fiets, service jeugdfit-pakket) — restore the backup of 27 Oct 2026 first, then run again',
+    true,
+  );
+  await db
+    .delete(cmsOfferingVariants)
+    .where(
+      and(
+        eq(cmsOfferingVariants.offeringId, fit!.id),
+        eq(cmsOfferingVariants.audience, 'youth-package'),
+      ),
+    );
+  await db.delete(schema.cmsServices).where(eq(schema.cmsServices.id, pakket.id));
+
   await run({ apply: false, restore: null });
   check(
-    'a service the repo wrote (name "<offering> – Jeugd", the offering summary) is the old text, and a package service the bootstrap made is used, not made again',
+    'a service the repo wrote (name "<offering> – Jeugd", the offering summary) is the old text; no package is planned',
     lines.some((line) => line.startsWith('~ service jeugdfit — name: ')) &&
-      lines.some(
-        (line) =>
-          line.startsWith('~ variant bikefit-huidige-fiets — ') &&
-          !line.includes('new service') &&
-          line.includes('offered by 1 provider(s)'),
-      ) &&
+      lines.some((line) => line === '~ service jeugdfit — requiresGuardian: true → false') &&
+      !planLines(lines).some((line) => /-pakket|volledig pakket|^. variant /.test(line)) &&
       !lines.some((line) => line.startsWith('!')),
     planLines(lines)
-      .filter((line) => /service jeugdfit|variant bikefit-huidige/.test(line))
+      .filter((line) => /service jeugdfit|variant /.test(line))
       .join(' | '),
   );
   await run({ apply: true, restore: null });
-  const adopted = await serviceRow('jeugdfit-pakket');
-  check(
-    'apply: the existing package service is the one the variant books through, offered by Winston, and not made twice',
-    adopted?.id === bootstrapped.id &&
-      (
-        await db
-          .select()
-          .from(schema.cmsServices)
-          .where(eq(schema.cmsServices.slug, 'jeugdfit-pakket'))
-      ).length === 1 &&
-      (await subscriptions(fx.winstonId)).some((row) => row.serviceId === bootstrapped.id),
-  );
   const final = await fingerprint(db, schema);
   check(
-    'apply from this state reaches the end state of the first apply (the package service made by the bootstrap carries the same facts)',
+    'apply from this state reaches the end state of the first apply',
     final === afterApply,
     diffPrints(afterApply, final),
   );

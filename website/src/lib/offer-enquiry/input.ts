@@ -111,7 +111,7 @@ function isField(key: PropertyKey | undefined): key is OfferEnquiryField {
 
 /**
  * Validates one enquiry. `audiences` are the choices the offering has (none
- * for a single option, `adult`, `youth` and `youth-package` for a split one);
+ * for a single option, `adult` and `youth` for a split one);
  * the server passes the offering's own, so a crafted value never reaches the mail.
  */
 export function validateOfferEnquiry(

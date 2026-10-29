@@ -16,7 +16,6 @@ function service(partial: Partial<BookingServiceOption> & { id: string }): Booki
     choiceLabel: '',
     description: '',
     durationMinutes: 60,
-    requiresGuardian: false,
     location: null,
     priceLabel: '',
     priceCents: null,
@@ -36,14 +35,6 @@ const youth = service({
   name: 'Jeugdfit – eenmalig',
   choiceLabel: 'Jeugd – eenmalig',
   durationMinutes: 60,
-  requiresGuardian: true,
-});
-const youthPackage = service({
-  id: 'jeugdfit-pakket',
-  name: 'Jeugdfit – volledig pakket',
-  choiceLabel: 'Jeugd – volledig pakket',
-  durationMinutes: 60,
-  requiresGuardian: true,
 });
 const family = service({ id: 'gezinspakket', name: 'Gezinspakket', durationMinutes: 150 });
 
@@ -54,7 +45,7 @@ const bikefit: BookingChoice = {
     title: 'Bikefit – huidige fiets',
     path: '/aanbod/bikefit-huidige-fiets',
   },
-  serviceIds: ['volwassenenfit', 'jeugdfit', 'jeugdfit-pakket'],
+  serviceIds: ['volwassenenfit', 'jeugdfit'],
 };
 const choices: BookingChoice[] = [bikefit, { kind: 'service', serviceId: 'gezinspakket' }];
 
@@ -82,14 +73,10 @@ describe('the service step as data', () => {
 
   it("shows each choice's own duration and price; no amount means Prijs op aanvraag under an offer", () => {
     expect(serviceMeta(adult, true)).toEqual(['90 minuten', 'Prijs op aanvraag']);
-    expect(serviceMeta(youth, true)).toEqual([
-      '60 minuten',
-      'met ouder of voogd',
-      'Prijs op aanvraag',
-    ]);
+    // Jeugd asks for no parent or guardian (Toshoni, 29 Oct 2026): nothing extra on its line.
+    expect(serviceMeta(youth, true)).toEqual(['60 minuten', 'Prijs op aanvraag']);
     expect(serviceMeta({ ...youth, priceLabel: '€ 95,00' }, true)).toEqual([
       '60 minuten',
-      'met ouder of voogd',
       '€ 95,00',
     ]);
     // A service on its own looks as before: no price line unless one is shown.
@@ -98,13 +85,7 @@ describe('the service step as data', () => {
 
   it('summarises the choice with the offer and the label of the booked service', () => {
     expect(serviceSummary(youth, offerOfService(choices, 'jeugdfit'))).toBe(
-      'Bikefit – huidige fiets · Jeugd – eenmalig · 60 minuten · met ouder of voogd · Prijs op aanvraag',
-    );
-    // Jeugd – volledig pakket is its own choice with its own price (27 Oct 2026).
-    const priced = { ...youthPackage, priceLabel: '€ 275,00' };
-    expect(offerOfService(choices, 'jeugdfit-pakket')).toBe(bikefit);
-    expect(serviceSummary(priced, offerOfService(choices, 'jeugdfit-pakket'))).toBe(
-      'Bikefit – huidige fiets · Jeugd – volledig pakket · 60 minuten · met ouder of voogd · € 275,00',
+      'Bikefit – huidige fiets · Jeugd – eenmalig · 60 minuten · Prijs op aanvraag',
     );
     expect(serviceSummary(adult, offerOfService(choices, 'volwassenenfit'))).toBe(
       'Bikefit – huidige fiets · Volwassene · 90 minuten · Prijs op aanvraag',
@@ -123,11 +104,8 @@ describe('the service step as data', () => {
     ]);
     expect(narrowChoices(choices, new Set())).toEqual([]);
     // Every id: unchanged.
-    expect(
-      narrowChoices(
-        choices,
-        new Set(['volwassenenfit', 'jeugdfit', 'jeugdfit-pakket', 'gezinspakket']),
-      ),
-    ).toEqual(choices);
+    expect(narrowChoices(choices, new Set(['volwassenenfit', 'jeugdfit', 'gezinspakket']))).toEqual(
+      choices,
+    );
   });
 });

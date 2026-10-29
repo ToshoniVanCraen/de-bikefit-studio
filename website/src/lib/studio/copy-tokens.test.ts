@@ -32,7 +32,6 @@ const FACTS: Record<FactToken, string> = {
   kbo: 'BE 1036.912.281',
   btw: 'BE 1036.912.281',
   'opvolging:volwassene': 'zes maanden',
-  'opvolging:jeugd-pakket': 'een jaar',
   'tweede-bezoek-gratis': 'zes maanden',
   'cadeaubon-geldigheid': 'een jaar',
 };
@@ -144,7 +143,6 @@ describe('copy tokens: {{prijs:…}}', () => {
   it('reads "op aanvraag" for an offering, a variant or an audience that is not there', () => {
     expect(resolve('{{prijs:onbekend}}')).toBe(PRICE_TOKEN_FALLBACK);
     expect(resolve('{{prijs:onbekend:adult}}')).toBe(PRICE_TOKEN_FALLBACK);
-    expect(resolve('{{prijs:bikefit-huidige-fiets:youth-package}}')).toBe(PRICE_TOKEN_FALLBACK);
     expect(resolve('{{prijs:bikefit-huidige-fiets:volwassen}}')).toBe(PRICE_TOKEN_FALLBACK);
     expect(PRICE_TOKEN_FALLBACK).toBe('op aanvraag');
   });

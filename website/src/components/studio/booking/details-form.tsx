@@ -15,10 +15,8 @@ type FieldErrors = Partial<Record<DetailsField, string>>;
  * Step 4 — "Jouw gegevens". Labels are short and in the voice of the copy deck
  * (`content/booking.html`): "Wat zit je dwars?" rather than "symptomen".
  *
- * The form adapts to the fit:
- *  - jeugdfit (`guardian`): the contact fields move to the parent, with the
- *    child's name and age as separate fields;
- *  - a fit at the customer's place (`address`): an address block appears.
+ * The form is the same for every fit (Jeugd included, 29 Oct 2026); only a fit
+ * at the customer's place (`address`) adds an address block.
  *
  * Every input has a visible label; errors are tied to their field with
  * `aria-describedby` + `aria-invalid`, and the widget moves focus to the first
@@ -61,60 +59,29 @@ export function DetailsForm({
         if (!submitting) onSubmit();
       }}
     >
-      {mode.guardian ? (
-        <>
-          <fieldset className="studio-booking__fieldset">
-            <legend className="studio-booking__legend-title">Je kind</legend>
-            <div className="studio-booking__row">
-              <TextField {...field('childName')} label="Naam van je kind" autoComplete="off" />
-              <TextField
-                {...field('childAge')}
-                label="Leeftijd van je kind"
-                inputMode="numeric"
-                autoComplete="off"
-              />
-            </div>
-          </fieldset>
-          <fieldset className="studio-booking__fieldset">
-            <legend className="studio-booking__legend-title">Jij, als ouder</legend>
-            <TextField {...field('guardianName')} label="Je naam" autoComplete="name" />
-            <div className="studio-booking__row">
-              <TextField
-                {...field('guardianEmail')}
-                label="E-mail"
-                type="email"
-                autoComplete="email"
-                hint="Hier komt de bevestiging naartoe."
-              />
-              <PhoneField {...field('guardianPhone')} />
-            </div>
-          </fieldset>
-        </>
-      ) : (
-        <fieldset className="studio-booking__fieldset">
-          <legend className="studio-booking__legend-title">Jouw gegevens</legend>
-          <TextField {...field('name')} label="Voornaam en naam" autoComplete="name" />
-          <div className="studio-booking__row">
-            <TextField
-              {...field('email')}
-              label="E-mail"
-              type="email"
-              autoComplete="email"
-              hint="Hier komt de bevestiging naartoe."
-            />
-            <PhoneField {...field('phone')} />
-          </div>
-          <div className="studio-booking__row">
-            <TextField
-              {...field('age')}
-              label="Leeftijd"
-              optional
-              inputMode="numeric"
-              autoComplete="off"
-            />
-          </div>
-        </fieldset>
-      )}
+      <fieldset className="studio-booking__fieldset">
+        <legend className="studio-booking__legend-title">Jouw gegevens</legend>
+        <TextField {...field('name')} label="Voornaam en naam" autoComplete="name" />
+        <div className="studio-booking__row">
+          <TextField
+            {...field('email')}
+            label="E-mail"
+            type="email"
+            autoComplete="email"
+            hint="Hier komt de bevestiging naartoe."
+          />
+          <PhoneField {...field('phone')} />
+        </div>
+        <div className="studio-booking__row">
+          <TextField
+            {...field('age')}
+            label="Leeftijd"
+            optional
+            inputMode="numeric"
+            autoComplete="off"
+          />
+        </div>
+      </fieldset>
 
       {mode.address ? (
         <fieldset className="studio-booking__fieldset">

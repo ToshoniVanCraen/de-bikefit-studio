@@ -105,7 +105,6 @@ function valueFor(key: SiteSettingKey, form: FormData): unknown {
     case 'rules':
       return {
         followUpMonthsAdult: monthsOrUndefined(form, 'followUpMonthsAdult'),
-        followUpMonthsYouthPackage: monthsOrUndefined(form, 'followUpMonthsYouthPackage'),
         secondVisitFreeMonths: monthsOrUndefined(form, 'secondVisitFreeMonths'),
         voucherValidityMonths: monthsOrUndefined(form, 'voucherValidityMonths'),
       };
@@ -132,7 +131,6 @@ const FIELD_LABELS: Readonly<Record<string, string>> = {
   enterpriseNumber: 'Ondernemingsnummer',
   vatNumber: 'Btw-nummer',
   followUpMonthsAdult: 'Probleemopvolging volwassene',
-  followUpMonthsYouthPackage: 'Opvolging jeugd – volledig pakket',
   secondVisitFreeMonths: 'Gratis tweede bezoek',
   voucherValidityMonths: 'Geldigheid cadeaubon',
 };

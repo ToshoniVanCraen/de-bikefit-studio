@@ -13,19 +13,20 @@
  *              the gift voucher on the home page, the voucher page and the card on `/aanbod`
  *   menu       "Cadeaubon" in front of "Contact"
  *   offerings  the copy of the nine offerings; the free-text price of tweede bezoek
- *   variants   "Jeugd – volledig pakket" (€ 275) on both bikefits, with its booking
- *              service and providers where the fit is booked online
- *   services   the copy of the booking services; durations (both bikefits 2 u,
+ *   services   the copy of the booking services; no guardian asked for on the youth
+ *              services (Toshoni, 29 Oct 2026); durations (both bikefits 2 u,
  *              voetanalyse 30, zadelanalyse 60, schoenplaatjes 15 min)
  *   provider   Toshoni's offerings as Aanbieder, so his name no longer shows; or,
  *              with `providerMode: 'staging-retain'` (`--staging-retain-toshoni`,
  *              staging only, Toshoni 27 Oct 2026), he stays with every offering
- *              and is offered the youth package too
+ *
+ * The youth package "Jeugd – volledig pakket" of that day is withdrawn (Toshoni,
+ * 29 Oct 2026): never made; a database that holds one blocks the plan (`!`).
  *
  * Never touched: the extra's (`cms:patch-aanbod-extras` runs BEFORE this one),
  * prices, bookings, providers themselves, users, media. The rules:
  * `aanbod-correcties-targets.mts` and `aanbod-correcties-pages.mts`; the plan:
- * `aanbod-correcties-plan.mts`. Runbook: `docs/staging-runbook.md` §24.
+ * `aanbod-correcties-plan.mts`. Runbook: `docs/staging-runbook.md` §25.
  *
  *   plan     read-only; every field holds the target (`=`), the value it had
  *            before (`~`), or an admin's own (`!`, which refuses the apply); the
@@ -173,7 +174,7 @@ export async function runAanbodCorrectiesPatch(
   if (providerMode === 'staging-retain') {
     log(
       '→',
-      'provider mode: staging retain — Toshoni stays a provider and gets the youth package (staging only)',
+      'provider mode: staging retain — Toshoni stays a provider with every offering (staging only)',
     );
   }
   const writing = options.apply || options.restore !== null;

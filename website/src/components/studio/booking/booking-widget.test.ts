@@ -31,7 +31,6 @@ function service(id: string, name: string): BookingServiceOption {
     choiceLabel: '',
     description: '',
     durationMinutes: 60,
-    requiresGuardian: false,
     location: null,
     priceLabel: '',
     priceCents: null,

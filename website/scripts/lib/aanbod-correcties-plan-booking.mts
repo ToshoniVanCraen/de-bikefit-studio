@@ -1,10 +1,10 @@
 /**
  * The booking-service sections of the `cms:patch-aanbod-correcties` plan: the
- * third variant "Jeugd – volledig pakket" of both bikefits, the copy and the
- * durations of the booking services, and Toshoni's offerings as Aanbieder (they
- * go, or with `staging-retain` they stay and he is offered the package). Pure:
- * the rules are `aanbod-correcties-targets.mts` and `aanbod-correcties-youth.mts`,
- * the rows come from `aanbod-correcties-world.mts`.
+ * copy, the guardian rule and the durations of the booking services, Toshoni's
+ * offerings as Aanbieder (they go, or with `staging-retain` they stay), and the
+ * guard against the withdrawn youth package. Pure: the rules are
+ * `aanbod-correcties-targets.mts` and `aanbod-correcties-youth.mts`, the rows
+ * come from `aanbod-correcties-world.mts`.
  *
  * A service whose copy was last written by Beheer → Aanbod (or the prices patch
  * of 20 Oct 2026, which saves the current-bike fit through the same repo) holds
@@ -23,35 +23,24 @@ import {
 } from './aanbod-correcties-targets.mjs';
 import {
   decideProviderRemoval,
-  decideYouthPackage,
   type ProviderMode,
   type ProviderRemoval,
   type SubscriptionRow,
-  type YouthPackageDecision,
 } from './aanbod-correcties-youth.mjs';
-import type { OfferingRowFull, ServiceRowFull, World } from './aanbod-correcties-world.mjs';
+import type { ServiceRowFull, World } from './aanbod-correcties-world.mjs';
 
-/** Per offering with a third variant in the defaults: its price and the service the youth variant books through. */
-export type YouthPackageTarget = {
-  slug: string;
-  priceCents: number;
-  defaultYouthServiceSlug: string | null;
-};
 export type DurationTarget = { slug: string; minutes: number };
 
 const asRecord = (row: object) => row as unknown as Record<string, unknown>;
 
-export type PackagePlan = YouthPackageDecision & {
-  offering: OfferingRowFull | null;
-  /** The third variant row as it is now (`null`: there is none yet). */
-  thirdBefore: { serviceId: string | null; priceCents: number | null } | null;
-};
 export type ServicePlan = Planned & {
   slug: string;
   row: ServiceRowFull | null;
   writes: Record<string, unknown>;
   before: Record<string, unknown>;
 };
+/** A youth service whose `requires_guardian` is set to false (or already is). */
+export type GuardianPlan = Planned & { row: ServiceRowFull };
 export type DurationPlan = Planned & {
   /** `<offering slug>` or `<offering slug> (<variant label>)`. */
   label: string;
@@ -65,46 +54,55 @@ export type ProviderPlan = Planned &
     kept: SubscriptionRow[];
   };
 
-export function planPackages(
-  world: World,
-  targets: readonly YouthPackageTarget[],
-  providerMode: ProviderMode = 'remove',
-): PackagePlan[] {
-  return targets.map((target) => {
-    const offering = world.offerings.find((entry) => entry.slug === target.slug) ?? null;
-    if (!offering) {
-      return {
-        offeringId: '',
-        slug: target.slug,
-        priceCents: target.priceCents,
-        action: 'blocked' as const,
-        variant: 'exists' as const,
-        service: { kind: 'none' as const },
-        subscribe: [],
-        changes: [],
-        blockers: [`offering ${target.slug}: missing — run cms:patch-aanbod-prijzen first`],
-        offering: null,
-        thirdBefore: null,
-      };
-    }
-    const variants = world.variants.filter((variant) => variant.offeringId === offering.id);
-    const decision = decideYouthPackage({
-      offering,
-      variants,
-      services: world.services,
-      subscriptions: world.subscriptions,
-      providers: world.providers,
-      targetPriceCents: target.priceCents,
-      defaultYouthServiceSlug: target.defaultYouthServiceSlug,
-      providerMode,
+/** The package services of 27 Oct 2026: `jeugdfit-pakket` and `<offering>-jeugd-pakket`. */
+const PACKAGE_SERVICE_SLUG = /^(jeugdfit-pakket|.+-jeugd-pakket)$/;
+
+/**
+ * The youth package of 27 Oct 2026 ("Jeugd – volledig pakket") is withdrawn
+ * (Toshoni, 29 Oct 2026): this patch never makes it. A database that holds one
+ * (a `youth-package` variant, or a package service) is not the state the patch
+ * starts from: one blocker, so nothing is written.
+ */
+export function planPackageGuard(world: World): Planned {
+  const found = [
+    ...world.variants
+      .filter((variant) => variant.audience === 'youth-package')
+      .map((variant) => {
+        const offering = world.offerings.find((entry) => entry.id === variant.offeringId);
+        return `variant youth-package of ${offering?.slug ?? variant.offeringId}`;
+      }),
+    ...world.services
+      .filter((service) => PACKAGE_SERVICE_SLUG.test(service.slug))
+      .map((service) => `service ${service.slug}`),
+  ];
+  const blockers =
+    found.length > 0
+      ? [
+          `youth package: this database holds the withdrawn "Jeugd – volledig pakket" (${found.join(', ')}) — restore the backup of 27 Oct 2026 first, then run again`,
+        ]
+      : [];
+  return { changes: [], blockers, action: statusOf(blockers, []) };
+}
+
+/**
+ * No booking asks for a parent or guardian any more (Toshoni, 29 Oct 2026): every
+ * service a Jeugd variant books through, and `jeugdfit`, ends with
+ * `requires_guardian` false; one that is false already is done. Other services
+ * are not looked at.
+ */
+export function planGuardians(world: World): GuardianPlan[] {
+  const youth = new Set(
+    world.variants
+      .filter((variant) => variant.audience === 'youth' && variant.serviceId !== null)
+      .map((variant) => variant.serviceId),
+  );
+  return world.services
+    .filter((service) => youth.has(service.id) || service.slug === 'jeugdfit')
+    .sort((a, b) => a.slug.localeCompare(b.slug))
+    .map((row) => {
+      const changes = row.requiresGuardian ? ['requiresGuardian: true → false'] : [];
+      return { row, changes, blockers: [], action: statusOf([], changes) };
     });
-    const third = variants.find((variant) => variant.audience === 'youth-package');
-    return {
-      ...decision,
-      offering,
-      thirdBefore: third ? { serviceId: third.serviceId, priceCents: third.priceCents } : null,
-    };
-  });
 }
 
 /**
@@ -216,22 +214,12 @@ export function planDurations(world: World, targets: readonly DurationTarget[]):
   return plans;
 }
 
-export function planProvider(
-  world: World,
-  packages: readonly PackagePlan[],
-  providerMode: ProviderMode = 'remove',
-): ProviderPlan {
-  const planned = packages.flatMap((entry) =>
-    entry.subscribe.map((target) => ({
-      providerId: target.providerId,
-      serviceId: entry.service.kind === 'existing' ? entry.service.id : `new:${entry.slug}`,
-    })),
-  );
+export function planProvider(world: World, providerMode: ProviderMode = 'remove'): ProviderPlan {
   const removal = decideProviderRemoval({
     providers: world.providers,
     subscriptions: world.subscriptions,
     services: world.services,
-    planned,
+    planned: [],
     providerMode,
   });
   // What stays his: the verify checks every one of these rows is still there after the apply.

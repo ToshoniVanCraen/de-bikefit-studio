@@ -23,7 +23,9 @@ describe('block defaults an editor starts from', () => {
 
   it('name no package that is no longer sold', () => {
     const text = JSON.stringify(Object.values(blockRegistry).map((block) => block.defaultData));
-    expect(text).not.toMatch(/gezinspakket|gezinsfit|inspanningstest/i);
+    expect(text).not.toMatch(
+      /gezinspakket|gezinsfit|inspanningstest|volledig pakket|jeugd-pakket|youth-package/i,
+    );
   });
 
   it('the services card grid offers the fits of the booking widget, their length a token', () => {

@@ -40,12 +40,6 @@ export function RulesSettingsForm({
           months={rules.followUpMonthsAdult}
         />
         <MonthsField
-          name="followUpMonthsYouthPackage"
-          label="Opvolging jeugd – volledig pakket (maanden)"
-          token="{{opvolging:jeugd-pakket}}"
-          months={rules.followUpMonthsYouthPackage}
-        />
-        <MonthsField
           name="secondVisitFreeMonths"
           label="Tweede bezoek gratis binnen (maanden)"
           token="{{tweede-bezoek-gratis}}"

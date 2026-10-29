@@ -242,6 +242,12 @@ export async function createPublicBooking(
     return fail('invalid', 'Controleer de gemarkeerde velden.', baseErrors);
   }
 
+  // Retired guardian fields from a stale client are bounded above but never used for a
+  // new booking. Historical booking rows remain untouched.
+  input.guardianName = '';
+  input.guardianEmail = '';
+  input.guardianPhone = '';
+
   const now = context.now ?? new Date();
   const email = input.customerEmail.toLowerCase();
   const ip = context.ipAddress === undefined ? await requestIp() : context.ipAddress || null;
@@ -252,10 +258,7 @@ export async function createPublicBooking(
     // Reserve before anything is looked at: one statement per key, so a
     // parallel burst cannot get past the limit. A full key gives back what was
     // taken; an attempt that got through keeps its hits, whatever comes next.
-    const reserved = await reserveRateLimit(
-      db,
-      bookingRateLimitScopes({ email, guardianEmail: input.guardianEmail, ip }),
-    );
+    const reserved = await reserveRateLimit(db, bookingRateLimitScopes({ email, ip }));
     if (!reserved.ok) {
       return fail(
         'rate_limited',
@@ -270,12 +273,6 @@ export async function createPublicBooking(
       .limit(1);
     if (!service) {
       return fail('invalid', 'Deze dienst bestaat niet (meer).', { serviceId: 'Kies een dienst.' });
-    }
-    if (service.requiresGuardian) {
-      const guardianErrors = validateBookingFields(input, { requiresGuardian: true });
-      if (Object.keys(guardianErrors).length > 0) {
-        return fail('invalid', 'Controleer de gemarkeerde velden.', guardianErrors);
-      }
     }
 
     // The extras: only what the catalogue offers for this service, priced and timed there.
@@ -337,10 +334,7 @@ export async function createPublicBooking(
       !input.providerId && (await countEligibleProviders(service.id)) > 1 ? 'pending' : 'assigned';
 
     if (location?.kind === 'customer') {
-      const addressErrors = validateBookingFields(input, {
-        requiresGuardian: service.requiresGuardian,
-        requiresAddress: true,
-      });
+      const addressErrors = validateBookingFields(input, { requiresAddress: true });
       if (Object.keys(addressErrors).length > 0) {
         return fail('invalid', 'Controleer de gemarkeerde velden.', addressErrors);
       }
@@ -365,9 +359,9 @@ export async function createPublicBooking(
           customerEmail: email,
           customerPhone: storedPhone(input.customerPhone),
           customerAge: age,
-          guardianName: input.guardianName || null,
-          guardianEmail: input.guardianEmail.toLowerCase() || null,
-          guardianPhone: storedPhone(input.guardianPhone),
+          guardianName: null,
+          guardianEmail: null,
+          guardianPhone: null,
           bikeDetails: input.bikeDetails || null,
           notes: input.notes || null,
           customerAddress: location?.kind === 'customer' ? input.customerAddress || null : null,

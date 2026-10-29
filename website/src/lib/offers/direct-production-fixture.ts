@@ -1,15 +1,16 @@
 import { DEFAULT_SERVICES } from '@/lib/booking/defaults';
+import { planGuardians } from '../../../scripts/lib/aanbod-correcties-plan-booking.mjs';
 import {
   decideProviderRemoval,
-  decideYouthPackage,
   type ProviderRow,
-  type ServiceRow,
+  type ServiceRef,
   type SubscriptionRow,
 } from '../../../scripts/lib/aanbod-correcties-youth.mjs';
 import {
   decideDuration,
   DURATION_TARGETS,
 } from '../../../scripts/lib/aanbod-correcties-targets.mjs';
+import type { World } from '../../../scripts/lib/aanbod-correcties-world.mjs';
 import { type BookableService } from './catalogue';
 import { DEFAULT_OFFERINGS, PRICES } from './defaults';
 import { buildOfferCatalogue } from './offer-catalogue';
@@ -23,11 +24,26 @@ import type { OfferingRecord } from './offering-content';
  * Synthetic data, no real rows: the Beheer-made services of the new-bike fit and
  * of the three analyses carry no price of their own (`repo-variant-services.ts`
  * creates them with `priceCents: null`, `showPrice: false`); two providers, of whom
- * Toshoni loses his offerings. The package service is not typed here: it is what
- * `cms:patch-aanbod-correcties` decides (`decideYouthPackage`), so this file pins
- * the chain patch → catalogue → what `/aanbod`, the offer pages and the booking
- * widget's choices get. The widget's own rendering: `booking/direct-booking-widget.test.ts`.
+ * Toshoni loses his offerings. What `cms:patch-aanbod-correcties` changes is not
+ * typed here: the durations (`decideDuration`), the guardian rule (`planGuardians`,
+ * off since 29 Oct 2026) and Toshoni (`decideProviderRemoval`) are the patch's own
+ * decisions, so this file pins the chain patch → catalogue → what `/aanbod`, the
+ * offer pages and the booking widget's choices get. No youth package exists (it is
+ * withdrawn). The widget's own rendering: `booking/direct-booking-widget.test.ts`.
  */
+
+/** A `cms_services` row as the patch and the catalogue read it. */
+export type ServiceRow = ServiceRef & {
+  choiceLabel: string;
+  description: string;
+  durationMinutes: number;
+  bufferAfterMinutes: number | null;
+  priceCents: number | null;
+  showPrice: boolean;
+  locationId: string | null;
+  requiresGuardian: boolean;
+  sortOrder: number;
+};
 
 /** Intl puts a no-break space between the euro sign and the amount. */
 const plain = (value: string) => value.replace(/\s/g, ' ');
@@ -93,7 +109,8 @@ const NB_YOUTH = serviceRow('bikefit-nieuwe-fiets-jeugd', {
   requiresGuardian: true,
   sortOrder: 31,
 });
-// The current-bike fit: the bootstrap services, saved once through the repo (sort order 60–62).
+// The current-bike fit: the bootstrap services, saved once through the repo (sort order 60–61);
+// its Jeugd service asked for a guardian before the patch, like the new-bike one.
 const FITS = DEFAULT_SERVICES.map((service, index) =>
   serviceRow(service.slug, {
     name: service.name,
@@ -102,7 +119,7 @@ const FITS = DEFAULT_SERVICES.map((service, index) =>
     durationMinutes: service.durationMinutes,
     priceCents: service.priceCents,
     showPrice: service.showPrice,
-    requiresGuardian: service.requiresGuardian,
+    requiresGuardian: service.slug === 'jeugdfit',
     sortOrder: 60 + index,
   }),
 );
@@ -128,51 +145,26 @@ const BEFORE_SUBSCRIPTIONS: SubscriptionRow[] = PROVIDERS.flatMap((provider) =>
   })),
 );
 
-// cms:patch-aanbod-correcties on that state (target and youth slug as `defaultInputs()` gives them).
-const PACKAGE_DECISION = decideYouthPackage({
-  offering: {
-    id: offeringId('bikefit-nieuwe-fiets'),
-    slug: 'bikefit-nieuwe-fiets',
-    title: NEW_BIKE.content.title,
-    bookingMode: 'direct',
-    variantMode: 'audience',
-  },
-  variants: [
-    {
-      offeringId: offeringId('bikefit-nieuwe-fiets'),
-      audience: 'adult',
-      serviceId: NB_ADULT.id,
-      priceCents: PRICES.bikefit,
-    },
-    {
-      offeringId: offeringId('bikefit-nieuwe-fiets'),
-      audience: 'youth',
-      serviceId: NB_YOUTH.id,
-      priceCents: PRICES.bikefitUnder16,
-    },
-  ],
-  services: BEFORE_SERVICES,
-  subscriptions: BEFORE_SUBSCRIPTIONS,
-  providers: PROVIDERS,
-  targetPriceCents: PRICES.bikefitYouthPackage,
-  defaultYouthServiceSlug: null,
-});
-if (PACKAGE_DECISION.service.kind !== 'create') {
-  throw new Error('the patch no longer creates the package service of the new-bike fit');
-}
-const NB_PACKAGE: ServiceRow = {
-  ...PACKAGE_DECISION.service.facts,
-  id: serviceId(PACKAGE_DECISION.service.facts.slug),
-};
 const REMOVAL = decideProviderRemoval({
   providers: PROVIDERS,
   subscriptions: BEFORE_SUBSCRIPTIONS,
   services: BEFORE_SERVICES,
-  planned: PACKAGE_DECISION.subscribe.map((row) => ({
-    providerId: row.providerId,
-    serviceId: NB_PACKAGE.id,
-  })),
+  planned: [],
 });
+
+// The variants the Jeugd services are booked through, as the guardian section of the patch reads them.
+const YOUTH_VARIANTS = [
+  { offeringId: offeringId('bikefit-nieuwe-fiets'), audience: 'youth', serviceId: NB_YOUTH.id },
+  {
+    offeringId: offeringId('bikefit-huidige-fiets'),
+    audience: 'youth',
+    serviceId: serviceId('jeugdfit'),
+  },
+];
+const GUARDIANS = planGuardians({
+  services: BEFORE_SERVICES,
+  variants: YOUTH_VARIANTS,
+} as unknown as World);
 
 // The duration section of the patch updates only time; it does not rename the
 // Beheer-made adult/youth services. The audience label on the public offer
@@ -189,20 +181,20 @@ const AFTER_MINUTES: Record<string, number> = {
   zadelanalyse: durationTarget('zadelanalyse'),
   'afstellen-schoenplaatjes': durationTarget('afstellen-schoenplaatjes'),
 };
-const SERVICES = [
-  ...BEFORE_SERVICES.map((service) => {
-    const target = AFTER_MINUTES[service.slug];
-    if (target === undefined) return service;
-    const decision = decideDuration(service.durationMinutes, target);
-    if (decision.action === 'blocked') throw new Error(`duration blocked for ${service.slug}`);
-    return { ...service, durationMinutes: target };
-  }),
-  NB_PACKAGE,
-];
-const SUBSCRIPTIONS: SubscriptionRow[] = [
-  ...BEFORE_SUBSCRIPTIONS.filter((row) => !REMOVAL.rows.includes(row)),
-  ...PACKAGE_DECISION.subscribe.map((row) => ({ ...row, serviceId: NB_PACKAGE.id })),
-];
+const FLIPPED = new Set(
+  GUARDIANS.filter((entry) => entry.action === 'update').map((entry) => entry.row.id),
+);
+const SERVICES = BEFORE_SERVICES.map((service) => {
+  const target = AFTER_MINUTES[service.slug];
+  const guardian = FLIPPED.has(service.id) ? { requiresGuardian: false } : {};
+  if (target === undefined) return { ...service, ...guardian };
+  const decision = decideDuration(service.durationMinutes, target);
+  if (decision.action === 'blocked') throw new Error(`duration blocked for ${service.slug}`);
+  return { ...service, ...guardian, durationMinutes: target };
+});
+const SUBSCRIPTIONS: SubscriptionRow[] = BEFORE_SUBSCRIPTIONS.filter(
+  (row) => !REMOVAL.rows.includes(row),
+);
 /** `listPublicServices()`'s rule: active, offered by an active provider with an active login. */
 const BOOKABLE = new Set(
   SUBSCRIPTIONS.filter((row) =>
@@ -246,7 +238,6 @@ const NEW_BIKE_DIRECT: Partial<OfferingSettings> = {
   variants: [
     variant('adult', NB_ADULT, PRICES.bikefit),
     variant('youth', NB_YOUTH, PRICES.bikefitUnder16),
-    variant('youth-package', NB_PACKAGE, PRICES.bikefitYouthPackage),
   ],
 };
 const single = (service: ServiceRow, priceCents: number): Partial<OfferingSettings> => ({
@@ -288,7 +279,7 @@ const offerOf = (slug: string) => ({
   title: defaultOffering(slug).content.title,
   path: `/aanbod/${slug}`,
 });
-const NB_IDS = [NB_ADULT.id, NB_YOUTH.id, NB_PACKAGE.id];
+const NB_IDS = [NB_ADULT.id, NB_YOUTH.id];
 const FIT_IDS = FITS.map((service) => service.id);
 
 export {
@@ -304,8 +295,7 @@ export {
   CLEATS,
   BEFORE_SERVICES,
   BEFORE_SUBSCRIPTIONS,
-  PACKAGE_DECISION,
-  NB_PACKAGE,
+  GUARDIANS,
   REMOVAL,
   AFTER_MINUTES,
   SERVICES,

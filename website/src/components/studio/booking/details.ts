@@ -5,7 +5,8 @@ import type { BookActionInput } from './types';
  * The details form's values, validation and mapping onto `bookAction`'s input.
  * Pure — the server validates again (zod in `@/lib/booking/public-booking`);
  * this layer only exists so a visitor sees Dutch messages next to the field
- * before anything is sent.
+ * before anything is sent. One form for every fit: since 29 Oct 2026 (Toshoni)
+ * a Jeugd booking no longer switches to a parent's or guardian's details.
  */
 
 export type DetailsValues = {
@@ -13,11 +14,6 @@ export type DetailsValues = {
   email: string;
   phone: string;
   age: string;
-  childName: string;
-  childAge: string;
-  guardianName: string;
-  guardianEmail: string;
-  guardianPhone: string;
   street: string;
   city: string;
   bikeType: string;
@@ -34,11 +30,6 @@ export const EMPTY_DETAILS: DetailsValues = {
   email: '',
   phone: '',
   age: '',
-  childName: '',
-  childAge: '',
-  guardianName: '',
-  guardianEmail: '',
-  guardianPhone: '',
   street: '',
   city: '',
   bikeType: '',
@@ -48,8 +39,6 @@ export const EMPTY_DETAILS: DetailsValues = {
 };
 
 export type DetailsMode = {
-  /** Jeugdfit: the parent is the contact, the child is the one being fitted. */
-  guardian: boolean;
   /** The fit happens at the customer's place, so we need an address. */
   address: boolean;
 };
@@ -84,11 +73,11 @@ function isAge(value: string): boolean {
 
 /** The fields in the order they appear, so the first error can take focus. */
 export function fieldOrder(mode: DetailsMode): DetailsField[] {
-  const contact: DetailsField[] = mode.guardian
-    ? ['childName', 'childAge', 'guardianName', 'guardianEmail', 'guardianPhone']
-    : ['name', 'email', 'phone', 'age'];
   return [
-    ...contact,
+    'name',
+    'email',
+    'phone',
+    'age',
     ...(mode.address ? (['street', 'city'] as DetailsField[]) : []),
     'bikeType',
     'bikeModel',
@@ -113,20 +102,10 @@ export function validateDetails(
     else if (!isPhone(value)) errors[field] = 'Dit telefoonnummer lijkt niet te kloppen.';
   };
 
-  if (mode.guardian) {
-    if (!v.childName) errors.childName = 'Vul de naam van je kind in.';
-    if (!v.childAge) errors.childAge = 'Vul de leeftijd van je kind in.';
-    else if (!isAge(v.childAge)) errors.childAge = 'Vul een leeftijd tussen 1 en 120 in.';
-    if (!v.guardianName) errors.guardianName = 'Vul je naam in.';
-    email('guardianEmail', v.guardianEmail);
-    phone('guardianPhone', v.guardianPhone);
-  } else {
-    if (!v.name) errors.name = 'Vul je voornaam en naam in.';
-    email('email', v.email);
-    phone('phone', v.phone);
-    if (v.age && !isAge(v.age))
-      errors.age = 'Vul een leeftijd tussen 1 en 120 in, of laat het leeg.';
-  }
+  if (!v.name) errors.name = 'Vul je voornaam en naam in.';
+  email('email', v.email);
+  phone('phone', v.phone);
+  if (v.age && !isAge(v.age)) errors.age = 'Vul een leeftijd tussen 1 en 120 in, of laat het leeg.';
 
   if (mode.address) {
     if (!v.street) errors.street = 'Vul de straat en het huisnummer in.';
@@ -152,47 +131,20 @@ export function toBookInput(
     .filter(Boolean)
     .join(' · ');
 
-  const common = {
+  return {
+    name: v.name,
+    age: v.age ? Number(v.age) : null,
+    email: v.email,
+    phone: formatPhoneForInput(v.phone),
     address: mode.address ? [v.street, v.city].filter(Boolean).join(', ') : '',
     bikeDetails,
     notes: v.notes,
     website: raw.website,
   };
-
-  if (mode.guardian) {
-    return {
-      ...common,
-      name: v.childName,
-      age: v.childAge ? Number(v.childAge) : null,
-      email: v.guardianEmail,
-      phone: formatPhoneForInput(v.guardianPhone),
-      guardianName: v.guardianName,
-      guardianEmail: v.guardianEmail,
-      guardianPhone: formatPhoneForInput(v.guardianPhone),
-    };
-  }
-
-  return {
-    ...common,
-    name: v.name,
-    age: v.age ? Number(v.age) : null,
-    email: v.email,
-    phone: formatPhoneForInput(v.phone),
-    guardianName: '',
-    guardianEmail: '',
-    guardianPhone: '',
-  };
 }
 
 /** Maps a server-side field error (keyed by `BookActionInput`) back onto a form field. */
-export function formFieldFor(inputKey: string, mode: DetailsMode): DetailsField | null {
-  const guardianMap: Record<string, DetailsField> = {
-    name: 'childName',
-    age: 'childAge',
-    email: 'guardianEmail',
-    phone: 'guardianPhone',
-  };
-  if (mode.guardian && guardianMap[inputKey]) return guardianMap[inputKey];
+export function formFieldFor(inputKey: string): DetailsField | null {
   if (inputKey === 'address') return 'street';
   if (inputKey === 'bikeDetails') return 'bikeModel';
   return inputKey in EMPTY_DETAILS ? (inputKey as DetailsField) : null;

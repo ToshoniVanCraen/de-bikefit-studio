@@ -4,7 +4,7 @@ import {
   formatPrice,
   formatPriceInProse,
 } from '@/lib/booking/format';
-import { baseAudienceOf, type OfferingAudience } from './offering-audience';
+import type { OfferingAudience } from './offering-audience';
 import type { AddonChoice, OfferingSettings } from './offering';
 
 /**
@@ -71,9 +71,8 @@ export function addonChoiceId(offeringId: string, key: string): string {
 
 /**
  * The price of an extra for the audience of the variant it is added to:
- * that audience's own variant, else its base audience (the full Jeugd package
- * is priced like Jeugd, `baseAudienceOf()`), else the single option, else the
- * first variant with a price. `null` when the extra has no price at all.
+ * that audience's own variant, else the single option, else the first variant
+ * with a price. `null` when the extra has no price at all.
  */
 export function addonPriceFor(
   addon: Pick<AddonSource, 'settings'>,
@@ -82,13 +81,7 @@ export function addonPriceFor(
   const priced = addon.settings.variants.filter((variant) => variant.priceCents != null);
   const priceOf = (wanted: OfferingAudience) =>
     priced.find((variant) => variant.audience === wanted)?.priceCents ?? null;
-  return (
-    priceOf(audience) ??
-    priceOf(baseAudienceOf(audience)) ??
-    priceOf('all') ??
-    priced[0]?.priceCents ??
-    null
-  );
+  return priceOf(audience) ?? priceOf('all') ?? priced[0]?.priceCents ?? null;
 }
 
 /**

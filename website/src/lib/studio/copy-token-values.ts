@@ -114,7 +114,6 @@ function factsOf(
     kbo: business.enterpriseNumber.trim(),
     btw: business.vatNumber.trim(),
     'opvolging:volwassene': monthsInWords(rules.followUpMonthsAdult),
-    'opvolging:jeugd-pakket': monthsInWords(rules.followUpMonthsYouthPackage),
     'tweede-bezoek-gratis': monthsInWords(rules.secondVisitFreeMonths),
     'cadeaubon-geldigheid': monthsInWords(rules.voucherValidityMonths),
   };
