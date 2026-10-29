@@ -1930,6 +1930,9 @@ this section without Toshoni's explicit GO for that deployment.
 
 ## 26. Production-only youth-service reconciliation (29 Oct 2026; pending release)
 
+**Writer-freeze implementation candidate:** see [`cms-writer-freeze.md`](cms-writer-freeze.md). It is staging-only code pending Arend’s independent Staging role split, negative probes and ingress/drain proof. It does not change the Production hold or grant any Production access.
+
+
 This section amends §25 for the Production state Arend audited on 27 Oct. It does **not**
 authorise a Production run. Toshoni accepted *Op aanvraag* for the four non-current-bike offers on Staging.
 Production has its own current configuration: preserve each existing booking mode and
