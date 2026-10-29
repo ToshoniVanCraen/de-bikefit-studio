@@ -58,11 +58,7 @@ describe('aanbod prices of 20 Oct 2026 (what the patch changes)', () => {
         { audience: 'adult', priceCents: 27500 },
         { audience: 'youth', priceCents: 15000 },
       ]);
-      expect(defaults.variants.map((variant) => variant.audience)).toEqual([
-        'adult',
-        'youth',
-        'youth-package',
-      ]);
+      expect(defaults.variants.map((variant) => variant.audience)).toEqual(['adult', 'youth']);
       expect(to.contents.at(-1)).toBe(
         'Probleemopvolging tot zes maanden na je fit is inbegrepen. Onder 16: € 150 zonder opvolging, € 275 met.',
       );
@@ -147,7 +143,6 @@ describe('aanbod prices of 20 Oct 2026 (what the patch changes)', () => {
     expect(PRICES).toEqual({
       bikefit: 27500,
       bikefitUnder16: 15000,
-      bikefitYouthPackage: 27500,
       secondVisit: 7500,
       secondBikeSameType: 7500,
       secondBikeOtherType: 15000,

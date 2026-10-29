@@ -58,7 +58,7 @@ export type OfferingFormValues = {
 /**
  * Beheer → Aanbod: one form for everything about an offering — the text a
  * visitor reads, whether it is shown, how it is booked, and per variant the
- * booking facts (duration, buffer, location, guardian rule) and the price.
+ * booking facts (duration, buffer, location) and the price.
  * Saving writes the offering and its booking services in one go
  * (`src/lib/offers/repo.ts`); who offers a variant stays the providers' own
  * choice (Mijn agenda → Mijn aanbod). The server action is the boundary
@@ -237,7 +237,7 @@ export function OfferingForm({
                 checked={variantMode === 'audience'}
                 onChange={() => setVariantMode('audience')}
                 label="Volwassene en Jeugd apart"
-                hint={`Per variant (${splitLabels.join(', ')}) een eigen duur, ouderregel en prijs.`}
+                hint={`Per variant (${splitLabels.join(', ')}) een eigen duur en prijs.`}
               />
             </fieldset>
             <fieldset className="flex flex-col gap-1.5">

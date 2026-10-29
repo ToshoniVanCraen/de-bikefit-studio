@@ -48,7 +48,7 @@ describe('validateOfferEnquiry', () => {
   });
 
   it('asks who it is for only when the offering splits by audience', () => {
-    const split = ['adult', 'youth', 'youth-package'] as const;
+    const split = ['adult', 'youth'] as const;
     expect(validateOfferEnquiry({ ...VALID, audience: 'youth' }, [])).toMatchObject({
       ok: true,
       enquiry: { audience: '' },
@@ -66,14 +66,13 @@ describe('validateOfferEnquiry', () => {
     expect(validateOfferEnquiry({ ...VALID, audience: 'all' }, split).ok).toBe(false);
   });
 
-  it('accepts Jeugd – volledig pakket only when the offering has it (older offerings do not)', () => {
-    const older = ['adult', 'youth'] as const;
-    expect(validateOfferEnquiry({ ...VALID, audience: 'youth-package' }, older)).toEqual({
+  it('refuses an audience the offering does not have', () => {
+    expect(validateOfferEnquiry({ ...VALID, audience: 'child' }, ['adult', 'youth'])).toEqual({
       ok: false,
       fieldErrors: { audience: 'Kies voor wie de aanvraag is.' },
     });
     // The longest audience value fits under the raw cap, so it is never cut off.
-    expect('youth-package'.length).toBeLessThanOrEqual(OFFER_ENQUIRY_RAW_LIMITS.audience);
+    expect('adult'.length).toBeLessThanOrEqual(OFFER_ENQUIRY_RAW_LIMITS.audience);
   });
 
   it('gives every field its message at once', () => {

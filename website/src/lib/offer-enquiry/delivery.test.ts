@@ -21,7 +21,7 @@ const INSPANNINGSTEST: EnquiryOffer = {
 const BIKEFIT_ENQUIRY: EnquiryOffer = {
   title: 'Bikefit – nieuwe fiets',
   url: 'https://studio.test/aanbod/bikefit-nieuwe-fiets',
-  audiences: ['adult', 'youth', 'youth-package'],
+  audiences: ['adult', 'youth'],
 };
 
 const INPUT = {
@@ -84,7 +84,7 @@ describe('deliverOfferEnquiry', () => {
     expect(store.markSent).toHaveBeenCalledWith(INPUT.requestId);
   });
 
-  it('names who it is for — Volwassene, Jeugd – eenmalig or Jeugd – volledig pakket — and requires the choice', async () => {
+  it('names who it is for — Volwassene or Jeugd – eenmalig — and requires the choice', async () => {
     const { deps, send } = setup();
     const missing = await deliverOfferEnquiry(
       { ...INPUT, offerSlug: 'bikefit-nieuwe-fiets' },
@@ -106,14 +106,13 @@ describe('deliverOfferEnquiry', () => {
     };
     expect(await sentText('adult')).toContain('Voor: Volwassene');
     expect(await sentText('youth')).toContain('Voor: Jeugd – eenmalig');
-    expect(await sentText('youth-package')).toContain('Voor: Jeugd – volledig pakket');
   });
 
-  it('an offering without the package refuses it: the server uses the offering’s own audiences', async () => {
-    const older: EnquiryOffer = { ...BIKEFIT_ENQUIRY, audiences: ['adult', 'youth'] };
-    const { deps, send } = setup({ findOffer: async () => older });
+  it('an audience the offering does not have is refused: the server uses the offering’s own audiences', async () => {
+    const adultsOnly: EnquiryOffer = { ...BIKEFIT_ENQUIRY, audiences: ['adult'] };
+    const { deps, send } = setup({ findOffer: async () => adultsOnly });
     const result = await deliverOfferEnquiry(
-      { ...INPUT, offerSlug: 'bikefit-nieuwe-fiets', audience: 'youth-package' },
+      { ...INPUT, offerSlug: 'bikefit-nieuwe-fiets', audience: 'youth' },
       deps,
     );
     expect(result).toMatchObject({

@@ -2,7 +2,7 @@
 
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
-import { CheckboxField, Field, SectionCard } from '@/components/admin/form';
+import { Field, SectionCard } from '@/components/admin/form';
 import {
   centsToEuroInput,
   locationOptionLabel,
@@ -11,7 +11,6 @@ import {
 import {
   AUDIENCE_LABELS,
   audiencesFor,
-  isYouthAudience,
   type OfferingAudience,
   type OfferingVariantMode,
 } from '@/lib/offers/offering-audience';
@@ -25,18 +24,16 @@ export type OfferingFormVariant = {
   durationMinutes: number | null;
   bufferAfterMinutes: number | null;
   locationId: string | null;
-  requiresGuardian: boolean;
   providerNames: string[];
 };
 
 /**
  * The "Varianten" / "Boeking" card of the offering form, split from
- * `offering-form.tsx`: per variant — Volwassene, Jeugd – eenmalig and Jeugd –
- * volledig pakket for an offering split by audience, else the one option — the
- * booking facts (duration, buffer, location, guardian rule) and the price. The
- * fields are named `<field>:<audience>`, which `saveOfferingAction` reads back
- * through `audiencesFor()`. Both Jeugd variants default to "Ouder of voogd
- * verplicht".
+ * `offering-form.tsx`: per variant — Volwassene and Jeugd – eenmalig for an
+ * offering split by audience, else the one option — the booking facts
+ * (duration, buffer, location) and the price. The fields are named
+ * `<field>:<audience>`, which `saveOfferingAction` reads back through
+ * `audiencesFor()`.
  */
 export function OfferingVariantsFields({
   variantMode,
@@ -60,7 +57,7 @@ export function OfferingVariantsFields({
       title={variantMode === 'audience' ? 'Varianten' : 'Boeking'}
       description={
         bookingMode === 'direct'
-          ? 'Per variant: hoe lang de afspraak duurt in de agenda, de buffer erna, de locatie, of een ouder of voogd verplicht is, en de prijs. Aanbieders kiezen zelf wat ze aanbieden (Mijn agenda).'
+          ? 'Per variant: hoe lang de afspraak duurt in de agenda, de buffer erna, de locatie en de prijs. Aanbieders kiezen zelf wat ze aanbieden (Mijn agenda).'
           : 'Op aanvraag: enkel de prijs telt. Een ingevulde duur wordt bewaard voor als je later rechtstreeks online boeken aanzet.'
       }
     >
@@ -140,14 +137,6 @@ export function OfferingVariantsFields({
                   defaultValue={centsToEuroInput(current?.priceCents ?? null)}
                 />
               </Field>
-              <div className="sm:col-span-2">
-                <CheckboxField
-                  name={`guardian:${audience}`}
-                  label="Ouder of voogd verplicht"
-                  defaultChecked={current?.requiresGuardian ?? isYouthAudience(audience)}
-                  hint="Het boekingsformulier vraagt dan de gegevens van een ouder."
-                />
-              </div>
               {bookingMode === 'direct' && current?.serviceId ? (
                 <p className="text-xs text-muted-foreground sm:col-span-2">
                   {current.providerNames.length > 0

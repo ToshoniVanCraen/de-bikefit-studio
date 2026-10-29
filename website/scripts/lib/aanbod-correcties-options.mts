@@ -5,7 +5,7 @@
  * `./aanbod-correcties-options.test.ts`. Runbook: `docs/staging-runbook.md` §24.
  *
  * `--staging-retain-toshoni` (Toshoni, 27 Oct 2026, 15:12; staging only) keeps him
- * as a provider and offers him the youth package (`ProviderMode`,
+ * as a provider with every offering (`ProviderMode`,
  * `aanbod-correcties-youth.mts`). The same explicit flags bind every run of it to
  * one host: on Neon the dry run needs `--expect-host` too, equal to the
  * DATABASE_URL host as for `--apply`, so the dry run and the apply read the same

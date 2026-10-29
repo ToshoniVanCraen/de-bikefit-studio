@@ -6,16 +6,15 @@
  * audit, cache bust); only what no repo function does alone is a direct write
  * with its own audit entry: the copy columns of an offering (`updateOffering`
  * would rewrite the name and description of the booking services of a fit that
- * is booked online on every call) and the third variant row.
+ * is booked online on every call).
  *
  * Called by `applyAanbodCorrecties` (`aanbod-correcties-patch.mts`) after the
  * plan found no blocker and the backup was written. neon-http has no
  * transactions: each section is ordered so a failure halfway leaves valid data,
  * and a repeated run finds the finished sections as intended.
  */
-import { cmsOfferingVariants, cmsOfferings } from '@/db/cms-offering-schema';
+import { cmsOfferings } from '@/db/cms-offering-schema';
 import type { BlockType, SiteSettingKey } from '@/lib/cms/blocks';
-import { AUDIENCE_LABELS } from '@/lib/offers/offering';
 import { STUDIO_LOCATION_ADDRESS } from '@/lib/studio/seed-content/location-section';
 import type { CorrectiesPlan, PagePlan } from './aanbod-correcties-plan.mjs';
 import type { RolloutDeps } from './aanbod-rollout.mjs';
@@ -29,7 +28,6 @@ export const OFFERING_CACHE_TAGS = ['cms', 'cms:offerings', 'booking'];
 export type ApplySummary = {
   settings: string[];
   location: boolean;
-  variants: string[];
   services: string[];
   offerings: string[];
   provider: string[];
@@ -44,8 +42,6 @@ export function must<T>(
   if (!result.ok) throw new Error(`${label}: ${result.message}`);
   return result.data;
 }
-
-const PACKAGE_LABEL = AUDIENCE_LABELS['youth-package'];
 
 async function applySettings(deps: CorrectiesDeps, plan: CorrectiesPlan, summary: ApplySummary) {
   for (const entry of plan.settings.filter((item) => item.action === 'update')) {
@@ -75,79 +71,22 @@ async function applyLocation(deps: CorrectiesDeps, plan: CorrectiesPlan, summary
 }
 
 /**
- * The providers get the package service by adding it to what they offer
- * already (`setProviderServices` replaces a provider's whole set): with
- * `staging-retain` that is how Toshoni keeps every offering he has.
+ * The copy, the guardian rule (off on the youth services) and the duration of the
+ * booking services, through `updateService` (validated, audited).
  */
-async function subscribe(
-  deps: CorrectiesDeps,
-  serviceId: string,
-  targets: ReadonlyArray<{ providerId: string; locationId: string | null }>,
-) {
-  const { eq } = deps.orm;
-  const table = deps.schema.cmsProviderServices;
-  for (const target of targets) {
-    const current = await deps.db
-      .select({ serviceId: table.serviceId, locationId: table.locationId })
-      .from(table)
-      .where(eq(table.providerId, target.providerId));
-    must(
-      `provider ${target.providerId}`,
-      await deps.bookingRepo.setProviderServices(target.providerId, [
-        ...current,
-        { serviceId, locationId: target.locationId },
-      ]),
-    );
-  }
-}
-
-/** The third variant: its service first, then the row, then who offers it. */
-async function applyPackages(deps: CorrectiesDeps, plan: CorrectiesPlan, summary: ApplySummary) {
-  for (const entry of plan.packages.filter((item) => item.action === 'update')) {
-    let serviceId = entry.thirdBefore?.serviceId ?? null;
-    if (entry.service.kind === 'existing') serviceId = entry.service.id;
-    if (entry.service.kind === 'create') {
-      const created = must(
-        `service ${entry.service.facts.slug}`,
-        await deps.bookingRepo.createService({ ...entry.service.facts, locale: deps.locale }),
-      );
-      serviceId = created.id;
-      summary.services.push(created.slug);
-    }
-    if (entry.variant !== 'exists' || entry.service.kind === 'create') {
-      await deps.db
-        .insert(cmsOfferingVariants)
-        .values({
-          offeringId: entry.offeringId,
-          audience: 'youth-package',
-          serviceId,
-          priceCents: entry.priceCents,
-        })
-        .onConflictDoUpdate({
-          target: [cmsOfferingVariants.offeringId, cmsOfferingVariants.audience],
-          set: { serviceId, priceCents: entry.priceCents },
-        });
-      await deps.auth.recordAudit(deps.db, deps.actor, {
-        action: 'offering.update',
-        entityType: 'cms_offering',
-        entityId: entry.offeringId,
-        summary: `${entry.slug}: ${PACKAGE_LABEL} (patch aanbod-correcties)`,
-        metadata: { variant: 'youth-package', serviceId, priceCents: entry.priceCents },
-      });
-      summary.variants.push(entry.slug);
-    }
-    if (serviceId && entry.subscribe.length > 0) await subscribe(deps, serviceId, entry.subscribe);
-    deps.log('~', `variant ${entry.slug} — ${entry.changes.join('; ')}`);
-  }
-}
-
-/** The copy and the duration of the booking services, through `updateService` (validated, audited). */
 async function applyServices(deps: CorrectiesDeps, plan: CorrectiesPlan, summary: ApplySummary) {
   for (const entry of plan.services.filter((item) => item.action === 'update')) {
     if (!entry.row) continue;
     must(`service ${entry.slug}`, await deps.bookingRepo.updateService(entry.row.id, entry.writes));
     summary.services.push(entry.slug);
     deps.log('~', `service ${entry.slug} — ${entry.changes.join('; ')}`);
+  }
+  for (const entry of plan.guardians.filter((item) => item.action === 'update')) {
+    must(
+      `service ${entry.row.slug}`,
+      await deps.bookingRepo.updateService(entry.row.id, { requiresGuardian: false }),
+    );
+    deps.log('~', `service ${entry.row.slug} — ${entry.changes.join('; ')}`);
   }
   for (const entry of plan.durations.filter((item) => item.action === 'update')) {
     if (!entry.row) continue;
@@ -251,7 +190,6 @@ export async function applyCorrecties(
   const summary: ApplySummary = {
     settings: [],
     location: false,
-    variants: [],
     services: [],
     offerings: [],
     provider: [],
@@ -260,7 +198,6 @@ export async function applyCorrecties(
   };
   await applySettings(deps, plan, summary);
   await applyLocation(deps, plan, summary);
-  await applyPackages(deps, plan, summary);
   await applyServices(deps, plan, summary);
   await applyOfferings(deps, plan, summary);
   await applyProvider(deps, plan, summary);

@@ -10,7 +10,7 @@ import type { OfferingRecord } from './offering-content';
 /**
  * The public catalogue as Beheer → Aanbod shapes it: cards, statuses, prices,
  * durations, hidden offerings, and which services `/afspraak` may offer. The
- * offerings are the seeded ones (`defaults.ts`); the services are the three
+ * offerings are the seeded ones (`defaults.ts`); the services are the two
  * seeded fits plus the three retired services, as an older database has them.
  */
 
@@ -58,7 +58,6 @@ const SERVICES: OfferingServiceInfo[] = [...DEFAULT_SERVICES, ...RETIRED_SERVICE
 const ALL_OFFERED = new Set(SERVICES.map((service) => service.id));
 const ADULT = 'svc-volwassenenfit';
 const YOUTH = 'svc-jeugdfit';
-const PACKAGE = 'svc-jeugdfit-pakket';
 const HOME = 'svc-fit-aan-huis';
 
 function record(entry: DefaultOffering, settings: Partial<OfferingSettings> = {}): OfferingRecord {
@@ -102,17 +101,15 @@ function card(catalogue: ReturnType<typeof build>, slug: string) {
   return catalogue.offers.find((offer) => offer.slug === slug);
 }
 
-/** What the offer page prints for the two fits (27 Oct 2026: Jeugd in two variants). */
+/** What the offer page prints for the two fits (29 Oct 2026: Jeugd is the one-off fit only). */
 const BIKEFIT_PRICE = [
   `Volwassene ${formatPrice(27500)}`,
   `Jeugd – eenmalig ${formatPrice(15000)}`,
-  `Jeugd – volledig pakket ${formatPrice(27500)}`,
 ].join(' · ');
-const BIKEFIT_DURATION =
-  'Volwassene: 2 uur · Jeugd – eenmalig: 2 uur · Jeugd – volledig pakket: 2 uur';
+const BIKEFIT_DURATION = 'Volwassene: 2 uur · Jeugd – eenmalig: 2 uur';
 
 describe('buildOfferCatalogue: the seeded offer', () => {
-  it('nine shown offers in category order; Bikefit bookable as Volwassene / Jeugd – eenmalig / Jeugd – volledig pakket, the rest on request', () => {
+  it('nine shown offers in category order; Bikefit bookable as Volwassene / Jeugd – eenmalig, the rest on request', () => {
     const catalogue = build();
     expect(catalogue.offers.map((offer) => offer.slug)).toEqual([
       'bikefit-nieuwe-fiets',
@@ -127,7 +124,7 @@ describe('buildOfferCatalogue: the seeded offer', () => {
     ]);
     expect(card(catalogue, 'bikefit-huidige-fiets')).toMatchObject({
       status: 'bookable',
-      bookingServiceSlugs: ['volwassenenfit', 'jeugdfit', 'jeugdfit-pakket'],
+      bookingServiceSlugs: ['volwassenenfit', 'jeugdfit'],
       durationLabel: BIKEFIT_DURATION,
       priceLabel: BIKEFIT_PRICE,
     });
@@ -146,12 +143,12 @@ describe('buildOfferCatalogue: the seeded offer', () => {
     expect(catalogue.bySlug['fit-aan-huis']).toBeUndefined();
   });
 
-  it('the widget shows Bikefit once with its three variants; a lone active service stays its own choice', () => {
+  it('the widget shows Bikefit once with its two variants; a lone active service stays its own choice', () => {
     const catalogue = build();
     const withheld = new Set(catalogue.withheldServiceIds);
     const services = SERVICES.filter((service) => !withheld.has(service.id));
     expect(groupBookingChoices({ offers: catalogue.offers, services })).toEqual([
-      expect.objectContaining({ kind: 'offer', serviceIds: [ADULT, YOUTH, PACKAGE] }),
+      expect.objectContaining({ kind: 'offer', serviceIds: [ADULT, YOUTH] }),
       { kind: 'service', serviceId: 'svc-gezinspakket' },
       { kind: 'service', serviceId: HOME },
       { kind: 'service', serviceId: 'svc-inspanningstest' },
@@ -161,11 +158,12 @@ describe('buildOfferCatalogue: the seeded offer', () => {
       priceLabel: formatPrice(27500),
       priceCents: 27500,
     });
-    // The widget prints the same two Jeugd choices, with their own prices, as the offer page.
-    expect([YOUTH, PACKAGE].map((id) => catalogue.variantDisplay[id])).toEqual([
-      { label: 'Jeugd – eenmalig', priceLabel: formatPrice(15000), priceCents: 15000 },
-      { label: 'Jeugd – volledig pakket', priceLabel: formatPrice(27500), priceCents: 27500 },
-    ]);
+    // The widget prints the Jeugd choice, with its own price, as the offer page.
+    expect(catalogue.variantDisplay[YOUTH]).toEqual({
+      label: 'Jeugd – eenmalig',
+      priceLabel: formatPrice(15000),
+      priceCents: 15000,
+    });
     // Retired for real means deactivated: then it is not among the public services at all.
     const withoutRetired = services.filter((service) => service.id !== HOME);
     expect(
@@ -210,7 +208,7 @@ describe('buildOfferCatalogue: what Beheer → Aanbod controls', () => {
     expect(catalogue.bySlug['bikefit-huidige-fiets']?.content.title).toBe(
       'Bikefit – huidige fiets',
     );
-    expect(catalogue.withheldServiceIds).toEqual(expect.arrayContaining([ADULT, YOUTH, PACKAGE]));
+    expect(catalogue.withheldServiceIds).toEqual(expect.arrayContaining([ADULT, YOUTH]));
   });
 
   it('switching Bikefit to enquiry holds its services back and keeps the editorial duration', () => {
@@ -223,7 +221,7 @@ describe('buildOfferCatalogue: what Beheer → Aanbod controls', () => {
       bookingServiceSlugs: [],
       durationLabel: 'Duur in overleg',
     });
-    expect(catalogue.withheldServiceIds).toEqual(expect.arrayContaining([ADULT, YOUTH, PACKAGE]));
+    expect(catalogue.withheldServiceIds).toEqual(expect.arrayContaining([ADULT, YOUTH]));
   });
 
   it('prices and labels per variant reach the cards and the widget', () => {
@@ -231,21 +229,15 @@ describe('buildOfferCatalogue: what Beheer → Aanbod controls', () => {
       variants: [
         { audience: 'adult', serviceId: ADULT, priceCents: 15000 },
         { audience: 'youth', serviceId: YOUTH, priceCents: null },
-        { audience: 'youth-package', serviceId: PACKAGE, priceCents: 22500 },
       ],
     });
     const catalogue = build([priced]);
     expect(card(catalogue, 'bikefit-huidige-fiets')?.priceLabel).toBe(
-      `Volwassene ${formatPrice(15000)} · Jeugd – eenmalig op aanvraag · Jeugd – volledig pakket ${formatPrice(22500)}`,
+      `Volwassene ${formatPrice(15000)} · Jeugd – eenmalig op aanvraag`,
     );
     expect(catalogue.variantDisplay).toEqual({
       [ADULT]: { label: 'Volwassene', priceLabel: formatPrice(15000), priceCents: 15000 },
       [YOUTH]: { label: 'Jeugd – eenmalig', priceLabel: '', priceCents: null },
-      [PACKAGE]: {
-        label: 'Jeugd – volledig pakket',
-        priceLabel: formatPrice(22500),
-        priceCents: 22500,
-      },
     });
   });
 
@@ -290,7 +282,6 @@ describe('buildOfferCatalogue: what Beheer → Aanbod controls', () => {
     ]);
     expect(catalogue.addonsByService[ADULT]?.[0].id).toBe('off-bikefit-tweede-fiets#zelfde-type');
     expect(catalogue.addonsByService[YOUTH]).toHaveLength(2);
-    expect(catalogue.addonsByService[PACKAGE]).toHaveLength(2);
     expect(card(catalogue, 'bikefit-tweede-fiets')?.priceLabel).toBe(
       `Zelfde type fiets ${formatPrice(7500)} · Ander type fiets ${formatPrice(15000)}`,
     );
@@ -298,7 +289,7 @@ describe('buildOfferCatalogue: what Beheer → Aanbod controls', () => {
       'Zelfde type fiets: 30 min · Ander type fiets: 1 uur',
     );
     // The enquiry bikefit lists the extras too, but offers nothing through the widget.
-    expect(Object.keys(catalogue.addonsByService)).toEqual([ADULT, YOUTH, PACKAGE]);
+    expect(Object.keys(catalogue.addonsByService)).toEqual([ADULT, YOUTH]);
     const tweede = catalogue.bySlug['bikefit-tweede-fiets'];
     expect(tweede.offering.status).toBe('addon');
     expect(tweede.offer.bookingServiceSlugs).toEqual([]);

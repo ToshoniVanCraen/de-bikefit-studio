@@ -74,7 +74,6 @@ export function serviceMeta(service: BookingServiceOption, underOffer = false): 
   return [
     durationLabel(service.durationMinutes),
     service.location?.kind === 'customer' ? 'bij jou thuis' : '',
-    service.requiresGuardian && underOffer ? 'met ouder of voogd' : '',
     service.priceLabel || (underOffer ? OFFER_PRICE_FALLBACK : ''),
   ].filter(Boolean);
 }

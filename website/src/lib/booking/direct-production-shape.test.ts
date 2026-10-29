@@ -11,11 +11,11 @@ import { formatTime } from './time';
 
 /**
  * The booking side of the production shape (27 Oct 2026, synthetic data): the
- * lengths production books online (the new-bike fit and its package 2 hours,
- * voetanalyse 30 min, zadelanalyse 1 hour, schoenplaatjes 15 min) through the
- * pure slot engine, and the guardian rule of the package service
- * ("Bikefit – aankoop nieuwe fiets – Jeugd – volledig pakket", `requiresGuardian`,
- * as `cms:patch-aanbod-correcties` creates it; pinned in
+ * lengths production books online (the new-bike fit 2 hours, voetanalyse 30 min,
+ * zadelanalyse 1 hour, schoenplaatjes 15 min) through the pure slot engine, and a
+ * Jeugd booking without a parent or guardian (Toshoni, 29 Oct 2026), also on a
+ * service row that still says `requiresGuardian` (production before
+ * `cms:patch-aanbod-correcties`; the patch itself is pinned in
  * `offers/offer-catalogue-direct.test.ts`) through the field rules and
  * `createPublicBooking()`. No database: `@/db/cms` is a fake that answers each
  * awaited query from a queue; the live availability, the calendar, the mails and
@@ -90,9 +90,9 @@ const SATURDAY = '2026-11-07';
 const FITTER_ID = 'prov-2';
 const STUDIO_ID = 'loc-studio';
 
-/** Every service of the patch keeps the 15-minute buffer of the Jeugd service it copies. */
+/** Every service keeps the 15-minute buffer Beheer gave it. */
 const LENGTHS: Record<string, SlotService> = {
-  package: { durationMinutes: 120, bufferAfterMinutes: 15 },
+  newBike: { durationMinutes: 120, bufferAfterMinutes: 15 },
   voetanalyse: { durationMinutes: 30, bufferAfterMinutes: 15 },
   zadelanalyse: { durationMinutes: 60, bufferAfterMinutes: 15 },
   schoenplaatjes: { durationMinutes: 15, bufferAfterMinutes: 15 },
@@ -120,12 +120,12 @@ const starts = (list: ReturnType<typeof slots>) => list.map((slot) => formatTime
 
 describe('availability for the lengths production books (30-minute grid, Mon–Fri 09:00–18:00)', () => {
   it('every slot is exactly the service’s length, on the grid, inside the hours, at the studio', () => {
-    const pkg = slots(LENGTHS.package);
-    expect(minutesOf(pkg)).toEqual([120]);
-    expect(pkg).toHaveLength(15);
-    expect(local(pkg).slice(0, 2)).toEqual(['09:00–11:00', '09:30–11:30']);
-    expect(local(pkg).at(-1)).toBe('16:00–18:00');
-    expect(pkg[0]).toEqual({
+    const fit = slots(LENGTHS.newBike);
+    expect(minutesOf(fit)).toEqual([120]);
+    expect(fit).toHaveLength(15);
+    expect(local(fit).slice(0, 2)).toEqual(['09:00–11:00', '09:30–11:30']);
+    expect(local(fit).at(-1)).toBe('16:00–18:00');
+    expect(fit[0]).toEqual({
       startsAt: '2026-11-03T08:00:00.000Z',
       endsAt: '2026-11-03T10:00:00.000Z',
       providerId: FITTER_ID,
@@ -145,7 +145,7 @@ describe('availability for the lengths production books (30-minute grid, Mon–F
   });
 
   it('Saturday 09:00–13:00: the last 2-hour fit starts at 11:00, with a second bike (+30 min) at 10:30', () => {
-    expect(local(slots(LENGTHS.package, SATURDAY))).toEqual([
+    expect(local(slots(LENGTHS.newBike, SATURDAY))).toEqual([
       '09:00–11:00',
       '09:30–11:30',
       '10:00–12:00',
@@ -153,12 +153,12 @@ describe('availability for the lengths production books (30-minute grid, Mon–F
       '11:00–13:00',
     ]);
     // What `getAvailability({ extraMinutes })` asks the engine for "Zelfde type fiets".
-    const withSecondBike = { ...LENGTHS.package, durationMinutes: 120 + 30 };
+    const withSecondBike = { ...LENGTHS.newBike, durationMinutes: 120 + 30 };
     expect(local(slots(withSecondBike, SATURDAY)).at(-1)).toBe('10:30–13:00');
     expect(local(slots(withSecondBike)).at(-1)).toBe('15:30–18:00');
   });
 
-  it('a booked package (10:00–12:00, then its 15-minute buffer) blocks per length', () => {
+  it('a booked new-bike fit (10:00–12:00, then its 15-minute buffer) blocks per length', () => {
     const booked: ExistingBooking[] = [
       {
         startsAt: '2026-11-03T09:00:00.000Z',
@@ -170,37 +170,38 @@ describe('availability for the lengths production books (30-minute grid, Mon–F
     const around = (service: SlotService) =>
       starts(slots(service, TUESDAY, booked)).filter((time) => time < '13:00');
     // Each new fit needs its own length plus buffer free before 10:00, and starts after 12:15.
-    expect(around(LENGTHS.package)).toEqual(['12:30']);
+    expect(around(LENGTHS.newBike)).toEqual(['12:30']);
     expect(around(LENGTHS.zadelanalyse)).toEqual(['12:30']);
     expect(around(LENGTHS.voetanalyse)).toEqual(['09:00', '12:30']);
     expect(around(LENGTHS.schoenplaatjes)).toEqual(['09:00', '09:30', '12:30']);
     // A cancelled booking blocks nothing.
-    expect(slots(LENGTHS.package, TUESDAY, [{ ...booked[0], status: 'cancelled' }])).toHaveLength(
+    expect(slots(LENGTHS.newBike, TUESDAY, [{ ...booked[0], status: 'cancelled' }])).toHaveLength(
       15,
     );
   });
 });
 
 // ---------------------------------------------------------------------------
-// The package service needs a parent or guardian
+// A Jeugd booking needs no parent or guardian (Toshoni, 29 Oct 2026)
 // ---------------------------------------------------------------------------
 
 const CREATED = new Date('2026-10-27T12:00:00.000Z');
-const PACKAGE_ROW: CmsService = {
-  id: 'svc-bikefit-nieuwe-fiets-jeugd-pakket',
+/** The new-bike Jeugd service as production holds it before the patch: it still says `requiresGuardian`. */
+const YOUTH_ROW: CmsService = {
+  id: 'svc-bikefit-nieuwe-fiets-jeugd',
   locale: 'nl',
-  slug: 'bikefit-nieuwe-fiets-jeugd-pakket',
-  name: 'Bikefit – aankoop nieuwe fiets – Jeugd – volledig pakket',
-  choiceLabel: 'Jeugd – volledig pakket',
+  slug: 'bikefit-nieuwe-fiets-jeugd',
+  name: 'Bikefit – aankoop nieuwe fiets – Jeugd',
+  choiceLabel: 'Jeugd',
   description: '',
   durationMinutes: 120,
   bufferAfterMinutes: 15,
-  priceCents: 27500,
-  showPrice: true,
+  priceCents: null,
+  showPrice: false,
   locationId: null,
   requiresGuardian: true,
   isActive: true,
-  sortOrder: 32,
+  sortOrder: 31,
   color: null,
   createdBy: null,
   createdAt: CREATED,
@@ -243,9 +244,9 @@ const STUDIO_ROW: CmsLocation = {
   updatedAt: CREATED,
 };
 
-/** The Jeugd form as the widget sends it (`toBookInput`): the child is fitted, the parent is the contact. */
-const PACKAGE_INPUT = {
-  serviceId: PACKAGE_ROW.id,
+/** The form as the widget sends it (`toBookInput`): one person's details, no guardian fields. */
+const YOUTH_INPUT = {
+  serviceId: YOUTH_ROW.id,
   providerId: FITTER_ID,
   locationId: STUDIO_ID,
   startsAt: '2026-11-03T09:00:00.000Z',
@@ -254,27 +255,18 @@ const PACKAGE_INPUT = {
   customerEmail: 'Ann.Peeters@Example.test',
   customerPhone: '0470 12 34 56',
   customerAge: 13,
-  guardianName: 'Ann Peeters',
-  guardianEmail: 'Ann.Peeters@Example.test',
-  guardianPhone: '0470 12 34 56',
   customerAddress: '',
   bikeDetails: 'Type: Koersfiets',
   notes: '',
   website: '',
   locale: 'nl',
 };
-const WITHOUT_GUARDIAN = { ...PACKAGE_INPUT, guardianName: '' };
-const GUARDIAN_MESSAGE = 'Vul de naam van een ouder of voogd in.';
 
-describe('a package booking needs a parent or guardian', () => {
-  it('the field rules refuse it without a guardian’s name and accept it with one; the rule is the service’s', () => {
+describe('a Jeugd booking needs no parent or guardian', () => {
+  it('the field rules ask for no guardian, whatever the service', () => {
     const parse = (input: unknown) => publicBookingInputSchema.parse(input);
-    expect(validateBookingFields(parse(WITHOUT_GUARDIAN), { requiresGuardian: true })).toEqual({
-      guardianName: GUARDIAN_MESSAGE,
-    });
-    expect(validateBookingFields(parse(PACKAGE_INPUT), { requiresGuardian: true })).toEqual({});
-    // The same form for a service without the rule (Volwassene) passes as it is.
-    expect(validateBookingFields(parse(WITHOUT_GUARDIAN), { requiresGuardian: false })).toEqual({});
+    expect(validateBookingFields(parse(YOUTH_INPUT))).toEqual({});
+    expect(validateBookingFields(parse({ ...YOUTH_INPUT, guardianName: '' }))).toEqual({});
   });
 
   describe('through createPublicBooking()', () => {
@@ -287,35 +279,21 @@ describe('a package booking needs a parent or guardian', () => {
         timezone: 'Europe/Brussels',
         fromYmd: TUESDAY,
         toYmd: TUESDAY,
-        slots: slots(LENGTHS.package),
+        slots: slots(LENGTHS.newBike),
       });
     });
     afterEach(() => {
       vi.clearAllMocks();
     });
 
-    /** Prune, the one e-mail key (the parent is customer and guardian), then the service row. */
-    const throughTheService = () => [[], [{ scope: 'booking:email:…' }], [PACKAGE_ROW]];
-
-    it('refuses it once the package row says `requiresGuardian`: no slot is looked at, nothing is stored', async () => {
-      fake.state.results = throughTheService();
-      const result = await createPublicBooking(WITHOUT_GUARDIAN, { ipAddress: null, now: NOW });
-      expect(result).toEqual({
-        ok: false,
-        code: 'invalid',
-        message: 'Controleer de gemarkeerde velden.',
-        fieldErrors: { guardianName: GUARDIAN_MESSAGE },
-      });
-      expect(fake.state.awaited).toBe(3);
-      expect(getAvailability).not.toHaveBeenCalled();
-      expect(fake.state.inserted.some((row) => 'serviceId' in (row as object))).toBe(false);
-    });
+    /** Prune, the one e-mail key, then the service row. */
+    const throughTheService = () => [[], [{ scope: 'booking:email:…' }], [YOUTH_ROW]];
 
     /** The rest of a booking: the provider and location rows, then the inserted booking. */
     function bookingRow(values: Partial<CmsBooking> = {}): CmsBooking {
       return {
         id: '6f1c7a52-2a43-4d5e-9a57-2f1d3c4b5a60',
-        serviceId: PACKAGE_ROW.id,
+        serviceId: YOUTH_ROW.id,
         providerId: FITTER_ID,
         locationId: STUDIO_ID,
         startsAt: new Date('2026-11-03T09:00:00.000Z'),
@@ -326,9 +304,9 @@ describe('a package booking needs a parent or guardian', () => {
         customerEmail: 'ann.peeters@example.test',
         customerPhone: '+32 470 12 34 56',
         customerAge: 13,
-        guardianName: 'Ann Peeters',
-        guardianEmail: 'ann.peeters@example.test',
-        guardianPhone: '+32 470 12 34 56',
+        guardianName: null,
+        guardianEmail: null,
+        guardianPhone: null,
         bikeDetails: 'Type: Koersfiets',
         notes: null,
         customerAddress: null,
@@ -351,12 +329,13 @@ describe('a package booking needs a parent or guardian', () => {
     const insertedBooking = () =>
       fake.state.inserted.find((row) => 'serviceId' in (row as object)) as Record<string, unknown>;
 
-    it('books it with the guardian: 2 hours on the slot the engine offers, the parent as contact, assigned to the fitter', async () => {
+    it('books it without a guardian, even while the row still says `requiresGuardian`: 2 hours on the slot the engine offers, assigned to the fitter', async () => {
       fake.state.results = [...throughTheService(), [FITTER_ROW], [STUDIO_ROW], [bookingRow()]];
-      const result = await createPublicBooking(PACKAGE_INPUT, { ipAddress: null, now: NOW });
-      if (!result.ok) throw new Error(`refused: ${result.code}`);
+      const result = await createPublicBooking(YOUTH_INPUT, { ipAddress: null, now: NOW });
+      if (!result.ok)
+        throw new Error(`refused: ${result.code} ${JSON.stringify(result.fieldErrors)}`);
       expect(insertedBooking()).toMatchObject({
-        serviceId: PACKAGE_ROW.id,
+        serviceId: YOUTH_ROW.id,
         providerId: FITTER_ID,
         locationId: STUDIO_ID,
         startsAt: new Date('2026-11-03T09:00:00.000Z'),
@@ -367,16 +346,16 @@ describe('a package booking needs a parent or guardian', () => {
         customerEmail: 'ann.peeters@example.test',
         customerPhone: '+32 470 12 34 56',
         customerAge: 13,
-        guardianName: 'Ann Peeters',
-        guardianEmail: 'ann.peeters@example.test',
-        guardianPhone: '+32 470 12 34 56',
+        guardianName: null,
+        guardianEmail: null,
+        guardianPhone: null,
         customerAddress: null,
         assignment: 'assigned',
       });
       expect(insertedBooking().cancelTokenHash).toBe(hashCancelToken(result.cancelToken));
       expect(result.booking).toEqual({
         bookingId: '6f1c7a52-2a43-4d5e-9a57-2f1d3c4b5a60',
-        serviceName: 'Bikefit – aankoop nieuwe fiets – Jeugd – volledig pakket',
+        serviceName: 'Bikefit – aankoop nieuwe fiets – Jeugd',
         providerName: 'Fitter Twee',
         assignmentPending: false,
         startsAt: '2026-11-03T09:00:00.000Z',
@@ -387,15 +366,15 @@ describe('a package booking needs a parent or guardian', () => {
         addons: [],
       });
       expect(getAvailability).toHaveBeenCalledWith(
-        expect.objectContaining({ serviceId: PACKAGE_ROW.id, fromYmd: TUESDAY, extraMinutes: 0 }),
+        expect.objectContaining({ serviceId: YOUTH_ROW.id, fromYmd: TUESDAY, extraMinutes: 0 }),
       );
       expect(createProviderEvent).toHaveBeenCalledWith(FITTER_ROW, expect.anything(), {
         tentative: false,
       });
     });
 
-    it('"Iedereen" waits for the beheerder only while more than one fitter offers the package', async () => {
-      const everyone = { ...PACKAGE_INPUT, providerId: null };
+    it('"Iedereen" waits for the beheerder only while more than one fitter offers it', async () => {
+      const everyone = { ...YOUTH_INPUT, providerId: null };
       // Production after the patch: Toshoni offers nothing, one fitter is eligible.
       fake.state.results = [...throughTheService(), [FITTER_ROW], [STUDIO_ROW], [bookingRow()]];
       expect((await createPublicBooking(everyone, { ipAddress: null, now: NOW })).ok).toBe(true);

@@ -38,8 +38,9 @@ import { PHONE_HREF, PHONE_LABEL } from './shared';
  * What changes, and where it is written down:
  *
  *   terms (art. 3)     the services are described generically, "as on the website
- *                      when you book"; the version line says 27 oktober 2026
- *                      (`legal.ts`, `TERMS_HTML`)
+ *                      when you book"; the version line says 29 oktober 2026
+ *                      (`legal.ts`, `TERMS_HTML`; art. 8 and the privacy statement
+ *                      lose the parent or guardian on 29 Oct 2026, copy half)
  *   one term           "inspanningstest" instead of "lactaattest" in the meta
  *                      descriptions of the home page and `/aanbod`, in the copy of
  *                      the offering `lactaattest` (title, meta description) and in
@@ -443,10 +444,13 @@ export function correctionProblems(slug: string, blocks: readonly CleanupBlock[]
       .join('');
     if (!html.includes(TERMS_ART_3_SERVICES_HTML)) problems.push('art. 3 is not the generic text');
     if (!html.includes(TERMS_VERSION_HTML))
-      problems.push('the version line is not 27 oktober 2026');
+      problems.push('the version line is not 29 oktober 2026');
     if (/gezinspakket/i.test(html)) problems.push('still lists the exact services (gezinspakket)');
     if (/fit aan huis/i.test(html)) problems.push('art. 8 still mentions the retired fit aan huis');
   }
+  // Toshoni, 29 Oct 2026: no booking asks for a parent or guardian, and the youth package is gone.
+  if (/ouder of voogd/i.test(text)) problems.push('still asks for a parent or guardian');
+  if (/volledig pakket/i.test(text)) problems.push('still names the withdrawn youth package');
   if (slug === 'privacy' && !(text.includes('Google Maps') && text.includes('Kaart tonen'))) {
     problems.push('the privacy statement does not name Google Maps and its "Kaart tonen" click');
   }

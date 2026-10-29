@@ -63,7 +63,7 @@
  *  14b. public booking rate limit under concurrency (R-2): migration 0008,
  *      the reservation helper (parallel, release, window, prune), parallel
  *      `createPublicBooking()` bursts from one IP, for one e-mail, without a
- *      usable IP and for one guardian e-mail (exactly 5 pass each), hashed
+ *      usable IP; stale guardian input is ignored, hashed
  *      keys, partial reservations given back, fail closed without the table
  *      (`scripts/selftest/booking-rate-limit.mts`)
  *  14c. the service catalogue is admin-only: a provider (also one whose old
@@ -102,8 +102,9 @@
  *      edit in Beheer and the state of 20 Oct 2026 (`scripts/selftest/aanbod-extras.mts`)
  * 17d. aanbod correcties (27 Oct 2026): from the state of staging and production,
  *      the dry run writes nothing, apply changes settings, location, pages, menu,
- *      offerings, services, the youth package and Toshoni's offerings, verified,
- *      idempotent, restore returns every table, what must block does; staging's
+ *      offerings, services (no guardian on Jeugdfit, no youth package: 29 Oct
+ *      2026) and Toshoni's offerings, verified, idempotent, restore returns every
+ *      table, what must block does (a database with the youth package too); staging's
  *      state (first-seed /afspraak text; Toshoni Van Craen alone blocks before any
  *      write, applies with a replacement, or stays with --staging-retain-toshoni,
  *      which two providers refuse); all put back (`scripts/selftest/aanbod-correcties.mts`)
@@ -619,7 +620,7 @@ async function main() {
     admin: user,
   });
 
-  // 17d: the corrections of 27 Oct 2026 — settings, pages, copy, youth package, Toshoni.
+  // 17d: the corrections of 27 Oct 2026 — settings, pages, copy, no guardian, Toshoni.
   const { aanbodCorrectiesSection } = await import('./selftest/aanbod-correcties.mjs');
   await aanbodCorrectiesSection({
     db,
@@ -1380,18 +1381,24 @@ async function bookingSections(
       invalid.fieldErrors.customerName === 'Vul je naam in.' &&
       invalid.fieldErrors.customerEmail === 'Vul een geldig e-mailadres in.',
   );
+  // No guardian since 29 Oct 2026 (Toshoni), even while the service still says so: the attempt
+  // gets past the service and stops only at its unknown extra, so nothing is booked.
   const noGuardian = await publicBooking.createPublicBooking(
     {
       serviceId: youthFit.data.id,
       startsAt: slot.startsAt,
       customerName: 'Tom',
       customerEmail: 'tom@example.com',
+      addonIds: ['geen-extra'],
     },
     { ipAddress: '198.51.100.1' },
   );
   check(
-    'public: jeugdfit needs a guardian',
-    !noGuardian.ok && Boolean(noGuardian.fieldErrors.guardianName),
+    'public: jeugdfit needs no guardian, also on a service that still says requiresGuardian',
+    !noGuardian.ok &&
+      !noGuardian.fieldErrors.guardianName &&
+      Boolean(noGuardian.fieldErrors.addonIds),
+    JSON.stringify(noGuardian.ok ? {} : noGuardian.fieldErrors),
   );
   const honeypot = await publicBooking.createPublicBooking(
     {
@@ -1413,6 +1420,10 @@ async function bookingSections(
     customerName: 'Anna Peeters',
     customerEmail: 'Anna@Example.com',
     customerPhone: '0470 12 34 56',
+    // A stale client may still send these; no new booking may store them.
+    guardianName: 'Oude voogd',
+    guardianEmail: 'oude.voogd@example.com',
+    guardianPhone: '+32 499 98 76 54',
     bikeDetails: 'Racefiets',
     notes: 'Last van mijn onderrug.',
   };
@@ -1445,6 +1456,10 @@ async function bookingSections(
     'db: a local phone number is stored with one +32 prefix',
     row?.customerPhone === '+32 470 12 34 56',
     row?.customerPhone ?? '',
+  );
+  check(
+    'db: guardian details from a stale client are discarded for a new booking',
+    row?.guardianName === null && row.guardianEmail === null && row.guardianPhone === null,
   );
   check(
     'db: only the SHA-256 of the token is stored',

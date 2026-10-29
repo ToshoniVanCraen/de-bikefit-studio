@@ -7,11 +7,11 @@
  *    defaults;
  *  - the default studio location without a street; the main menu without
  *    "Cadeaubon";
- *  - the nine offerings with the text they had (`from` of the corrections), no
- *    third variant, the current-bike fit booked online as Volwassene and Jeugd –
- *    eenmalig, the voetanalyse booked online with a 60-minute service (the
- *    Beheer prefill);
- *  - the two booking services with the old name, label and description;
+ *  - the nine offerings with the text they had (`from` of the corrections), the
+ *    current-bike fit booked online as Volwassene and Jeugd, the voetanalyse
+ *    booked online with a 60-minute service (the Beheer prefill);
+ *  - the two booking services with the old name, label and description, Jeugdfit
+ *    still asking for a parent or guardian (until 29 Oct 2026);
  *  - two providers, Toshoni and Winston, who both offer the three services;
  *  - every page the patch needs, published, with the old texts and the old
  *    phone number, a retired contact page (draft, old number) and a retired
@@ -125,7 +125,7 @@ export async function seedBefore(
 
   // --- the booking services ---------------------------------------------------------------
   await db.delete(offeringSchema.cmsOfferings);
-  for (const service of DEFAULT_SERVICES.filter((entry) => entry.slug !== 'jeugdfit-pakket')) {
+  for (const service of DEFAULT_SERVICES) {
     const [existing] = await db
       .select({ id: schema.cmsServices.id })
       .from(schema.cmsServices)
@@ -135,7 +135,8 @@ export async function seedBefore(
       showPrice: service.showPrice,
       durationMinutes: 120,
       bufferAfterMinutes: 15,
-      requiresGuardian: service.requiresGuardian,
+      // As staging and production hold it: Jeugdfit asked for a guardian until 29 Oct 2026.
+      requiresGuardian: service.slug === 'jeugdfit',
       isActive: true,
       sortOrder: service.sortOrder,
     };
@@ -156,11 +157,6 @@ export async function seedBefore(
         .values({ locale, slug: service.slug, ...values, ...text });
     }
   }
-  await db
-    .delete(schema.cmsServices)
-    .where(
-      and(eq(schema.cmsServices.locale, locale), eq(schema.cmsServices.slug, 'jeugdfit-pakket')),
-    );
   const [voetanalyseService] = await db
     .insert(schema.cmsServices)
     .values({
@@ -197,9 +193,6 @@ export async function seedBefore(
         ),
       );
   }
-  await db
-    .delete(offeringSchema.cmsOfferingVariants)
-    .where(eq(offeringSchema.cmsOfferingVariants.audience, 'youth-package'));
   const [foot] = await db
     .select({ id: offeringSchema.cmsOfferings.id })
     .from(offeringSchema.cmsOfferings)
@@ -246,7 +239,7 @@ export async function seedBefore(
       await db.insert(schema.cmsProviderServices).values({
         providerId,
         serviceId: service.id,
-        // Winston offers the youth fit from the studio: the package copies that.
+        // Winston offers the youth fit from the studio.
         locationId: name === 'Winston' && service.slug === 'jeugdfit' ? studioId : null,
       });
     }

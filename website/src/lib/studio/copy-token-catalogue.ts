@@ -38,7 +38,7 @@ export const COPY_TOKEN_HELP: readonly CopyTokenHelpEntry[] = [
   {
     token: '{{prijs:<aanbod>:<voor wie>}}',
     description:
-      'één bedrag, bv. “€ 275”; voor wie is all, adult, youth of youth-package (de prijs van die variant)',
+      'één bedrag, bv. “€ 275”; voor wie is all, adult of youth (de prijs van die variant)',
     example: '{{prijs:bikefit-huidige-fiets:adult}}',
   },
   {
@@ -64,10 +64,6 @@ export const COPY_TOKEN_HELP: readonly CopyTokenHelpEntry[] = [
   fact(
     'opvolging:volwassene',
     'hoe lang probleemopvolging bij een volwassene inbegrepen is: “zes maanden” (Instellingen → Regels)',
-  ),
-  fact(
-    'opvolging:jeugd-pakket',
-    'hoe lang opvolging bij het volledige jeugdpakket inbegrepen is: “een jaar” (Instellingen → Regels)',
   ),
   fact(
     'tweede-bezoek-gratis',

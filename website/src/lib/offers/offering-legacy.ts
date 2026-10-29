@@ -69,9 +69,7 @@ function isPricePlaceholder(label: string): boolean {
  *    not exact);
  *  - one linked service → `direct`, one option booked as that service;
  *  - two linked services, one with a guardian rule (Jeugdfit) and one without
- *    (Volwassenenfit) → `direct`, Volwassene and Jeugd — the legacy pair, which
- *    `isAcceptedAudienceSet()` still accepts; a legacy page has no "Jeugd –
- *    volledig pakket" (27 Oct 2026), that variant reads as empty;
+ *    (Volwassenenfit) → `direct`, Volwassene and Jeugd;
  *  - anything else (unknown slug, more services, no guardian split) → the
  *    closest setting, not exact.
  *

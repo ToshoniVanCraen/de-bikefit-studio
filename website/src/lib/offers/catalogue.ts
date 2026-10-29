@@ -290,7 +290,7 @@ export function resolveBookingSelection(input: {
  *  - `offer`: an offer linked to bookable services ("Bikefit – huidige fiets"),
  *    shown ONCE, with its services as a sub-selection ("Volwassene", "Jeugd").
  *    The chosen service, never the offer, is what is booked: its id, duration,
- *    guardian rule, availability and price (`cms_services`) apply.
+ *    availability and price (`cms_services`) apply.
  */
 export type BookingChoice =
   | { kind: 'service'; serviceId: string }

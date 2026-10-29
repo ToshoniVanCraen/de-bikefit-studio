@@ -1,8 +1,8 @@
 /**
  * The default offerings (`src/lib/offers/defaults.ts`) on a database: one
- * `cms_offerings` row per slug that is missing, with its variants (Volwassene,
- * Jeugd – eenmalig, Jeugd – volledig pakket where an offering splits by
- * audience) linked to the bootstrap services by slug. Shared by
+ * `cms_offerings` row per slug that is missing, with its variants (Volwassene
+ * and Jeugd – eenmalig where an offering splits by audience) linked to the
+ * bootstrap services by slug. Shared by
  * `cms-bootstrap.mts` and the self-test. Create-only and idempotent: an
  * existing offering (by locale and
  * slug) is never touched, whatever it holds. Direct database writes, like the

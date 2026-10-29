@@ -3,21 +3,18 @@
  * the apply touched and removes what it created. The backup is read by zod
  * (`aanbod-correcties-backup.mts`). Order, the reverse of the apply where it
  * matters: the pages (row, draft blocks and with them the published snapshot,
- * through the rollout restore), the menu, Toshoni's offerings, the variant
- * row and the package service, the services' columns, the offerings' columns,
- * the location, the settings.
+ * through the rollout restore), the menu, Toshoni's offerings, the services'
+ * columns (the guardian rule among them), the offerings' columns, the location,
+ * the settings.
  *
  * Direct writes where a repo function would add its own rules: a created row is
- * deleted, a changed column is put back. A package service that bookings
- * already point at is not deleted (the bookings keep their service): it is
- * switched off, its subscriptions are removed, and the variant stops pointing at it.
+ * deleted, a changed column is put back.
  *
  * Takes no mode: it reverses what the backup lists. The backup of a run with
  * `--staging-retain-toshoni` removed none of Toshoni's offerings, so his set is
- * not written here; his package row goes with the package service (or with the
- * subscriptions the run added), the rest of what he offers stays as it is.
+ * not written here; what he offers stays as it is.
  */
-import { cmsOfferingVariants, cmsOfferings } from '@/db/cms-offering-schema';
+import { cmsOfferings } from '@/db/cms-offering-schema';
 import type { SiteSettingKey } from '@/lib/cms/blocks';
 import type { AanbodCorrectiesBackup } from './aanbod-correcties-backup.mjs';
 import { must, OFFERING_CACHE_TAGS, type CorrectiesDeps } from './aanbod-correcties-apply.mjs';
@@ -42,9 +39,9 @@ function rolloutBackupOf(backup: AanbodCorrectiesBackup): RolloutBackup {
 }
 
 async function restoreSubscriptions(deps: CorrectiesDeps, backup: AanbodCorrectiesBackup) {
-  const { and, eq } = deps.orm;
+  const { eq } = deps.orm;
   const table = deps.schema.cmsProviderServices;
-  const { providerId, removed, created } = backup.subscriptions;
+  const { providerId, removed } = backup.subscriptions;
   // Only when the apply removed his offerings (never with `staging-retain`); never a partial set.
   if (providerId && removed.length > 0) {
     // What he offers now (normally nothing) plus what was removed.
@@ -63,72 +60,10 @@ async function restoreSubscriptions(deps: CorrectiesDeps, backup: AanbodCorrecti
     );
     deps.log('~', `provider ${providerId} — ${removed.length} offering(s) back`);
   }
-  for (const row of created) {
-    await deps.db
-      .delete(table)
-      .where(and(eq(table.providerId, row.providerId), eq(table.serviceId, row.serviceId)));
-  }
 }
 
-async function restoreVariantsAndServices(deps: CorrectiesDeps, backup: AanbodCorrectiesBackup) {
-  const { and, eq, inArray } = deps.orm;
-  const services = deps.schema.cmsServices;
-  const createdSlugs = backup.services.created.map((entry) => entry.slug);
-  const created =
-    createdSlugs.length > 0
-      ? await deps.db
-          .select({ id: services.id, slug: services.slug })
-          .from(services)
-          .where(and(eq(services.locale, deps.locale), inArray(services.slug, createdSlugs)))
-      : [];
-
-  // The variant row first: it points at the service.
-  for (const variant of backup.variants) {
-    const where = and(
-      eq(cmsOfferingVariants.offeringId, variant.offeringId),
-      eq(cmsOfferingVariants.audience, variant.audience),
-    );
-    if (variant.existed) {
-      await deps.db
-        .update(cmsOfferingVariants)
-        .set({ serviceId: variant.serviceId, priceCents: variant.priceCents })
-        .where(where);
-    } else {
-      await deps.db.delete(cmsOfferingVariants).where(where);
-    }
-    deps.log(
-      '~',
-      `variant ${variant.audience} of ${variant.offeringId} — ${variant.existed ? 'as it was' : 'removed'}`,
-    );
-  }
-
-  // The created service, with its subscriptions (cascade), unless a booking uses it.
-  // A booked service stays for booking history, but its post-apply subscriptions do not.
-  for (const service of created) {
-    const used = await deps.db
-      .select({ id: deps.schema.cmsBookings.id })
-      .from(deps.schema.cmsBookings)
-      .where(eq(deps.schema.cmsBookings.serviceId, service.id))
-      .limit(1);
-    if (used.length > 0) {
-      await deps.db
-        .update(services)
-        .set({ isActive: false, updatedAt: new Date() })
-        .where(eq(services.id, service.id));
-      await deps.db
-        .delete(deps.schema.cmsProviderServices)
-        .where(eq(deps.schema.cmsProviderServices.serviceId, service.id));
-      deps.log(
-        '!',
-        `service ${service.slug} has bookings: switched off and unsubscribed, not deleted`,
-      );
-    } else {
-      await deps.db.delete(services).where(eq(services.id, service.id));
-      deps.log('-', `service ${service.slug} — removed (created by the apply)`);
-    }
-  }
-
-  // The changed columns of the services that existed.
+/** The changed columns of the services. */
+async function restoreServices(deps: CorrectiesDeps, backup: AanbodCorrectiesBackup) {
   for (const entry of backup.services.updated) {
     const values: Dict = {};
     for (const field of entry.fields) values[field] = entry.row[field];
@@ -158,7 +93,7 @@ export async function restoreCorrecties(
     await restoreAanbodRollout(deps, rolloutBackupOf(backup));
 
   await restoreSubscriptions(deps, backup);
-  await restoreVariantsAndServices(deps, backup);
+  await restoreServices(deps, backup);
 
   for (const entry of backup.offerings) {
     const values: Dict = {};
@@ -211,7 +146,6 @@ export async function restoreCorrecties(
       pages: backup.pages.length,
       offerings: backup.offerings.map((entry) => entry.slug),
       services: backup.services.updated.map((entry) => entry.slug),
-      createdServices: backup.services.created.map((entry) => entry.slug),
     },
   });
   deps.repo.revalidateContent({ tags: OFFERING_CACHE_TAGS });

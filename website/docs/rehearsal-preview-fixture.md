@@ -1,4 +1,4 @@
-# Isolated synthetic rehearsal preview (27 October 2026)
+# Isolated synthetic rehearsal preview (27 October 2026; 29 October 2026 without the youth package)
 
 This is **not** a production-data copy. The fixture is derived from the repository's
 pre-correction self-test fixture, plus the exact public `/aanbod` subtitle supplied for
@@ -64,7 +64,10 @@ would re-subscribe Toshoni).
 
 The fixture includes all nine offerings, the old pre-27-Oct page/settings/menu copy,
 two providers, current-bike adult/youth direct booking, new-bike adult/youth direct
-booking, and direct 60-minute foot/saddle/cleats services. Original public prices are held on offering variants
+booking, and direct 60-minute foot/saddle/cleats services. Both youth services
+(`jeugdfit`, `bikefit-nieuwe-fiets-jeugd`) still have `requires_guardian = true`, as
+production does before the patch, and there is no youth package anywhere (the
+`--apply` run checks both before it marks the fixture installed). Original public prices are held on offering variants
 in cents: adult €275, youth €150, foot €85, saddle €60, cleats €15.
 The synthetic direct services have `price_cents = NULL`, `show_price = false`,
 matching the production-shaped service/variant split. The new-bike
@@ -85,20 +88,23 @@ npm run cms:patch-aanbod-correcties -- --apply --expect-host '<Neon endpoint hos
 npm run cms:patch-aanbod-correcties -- --expect-host '<Neon endpoint host>'
 ```
 
-First dry run must have no `!` and plan two €275/120-minute guardian-required youth
-package services (one per directly booked bikefit), `60 → 120 min` on the new bike, `60 → 30 min` on foot, and `60 → 15 min`
-on cleats. Saddle remains 60. Post-apply dry run must say `nothing to do`. Check:
+First dry run must have no `!` and no package line (no `variant` line, no service
+ending in `-pakket`), plan `~ service bikefit-nieuwe-fiets-jeugd — requiresGuardian:
+true → false` and `~ service jeugdfit — requiresGuardian: true → false`, `60 → 120 min`
+on the new bike, `60 → 30 min` on foot, and `60 → 15 min` on cleats. Saddle remains 60.
+The `→ after the apply:` line names only blocks (+2) and subscriptions (Toshoni's, fewer);
+no variant or service is added. Post-apply dry run must say `nothing to do`. Check:
 
 ```sql
 SELECT s.slug, s.price_cents, s.duration_minutes, s.requires_guardian
 FROM cms_services s WHERE s.slug IN
-  ('bikefit-nieuwe-fiets-volwassene','bikefit-nieuwe-fiets-jeugd','voetanalyse',
-   'zadelanalyse','afstellen-schoenplaatjes','jeugdfit-pakket',
-   'bikefit-nieuwe-fiets-jeugd-pakket')
+  ('bikefit-nieuwe-fiets-volwassene','bikefit-nieuwe-fiets-jeugd','jeugdfit',
+   'voetanalyse','zadelanalyse','afstellen-schoenplaatjes')
+   OR s.slug LIKE '%-pakket'
 ORDER BY s.slug;
--- both packages 27500/120/true; new-bike 120 (adult/youth), foot 30,
--- saddle 60, cleats 15. Synthetic direct-service prices are null by design;
--- the public prices live on cms_offering_variants.
+-- new-bike 120 (adult/youth), foot 30, saddle 60, cleats 15; requires_guardian
+-- false on every row; no row ending in -pakket. Synthetic direct-service prices
+-- are null by design; the public prices live on cms_offering_variants.
 
 SELECT o.slug, v.audience, v.price_cents, s.slug AS service_slug
 FROM cms_offerings o JOIN cms_offering_variants v ON v.offering_id = o.id
@@ -106,13 +112,13 @@ LEFT JOIN cms_services s ON s.id = v.service_id
 WHERE o.slug IN ('bikefit-nieuwe-fiets','bikefit-huidige-fiets',
                  'voetanalyse','zadelanalyse','afstellen-schoenplaatjes')
 ORDER BY o.slug, v.audience;
--- adult 27500, youth 15000, youth-package 27500 on both fits;
+-- adult 27500 and youth 15000 on both fits, nothing else;
 -- foot 8500, saddle 6000, cleats 1500; direct variants have a service.
 
 SELECT p.display_name, count(ps.service_id) AS subscriptions
 FROM cms_providers p LEFT JOIN cms_provider_services ps ON ps.provider_id = p.id
 GROUP BY p.id, p.display_name ORDER BY p.display_name;
--- Fitter still offers services and the youth package; Toshoni has zero.
+-- Fitter still offers every service; Toshoni has zero.
 
 SELECT b.data->>'subtitle' AS subtitle
 FROM cms_blocks b JOIN cms_pages p ON p.id = b.page_id
@@ -123,7 +129,8 @@ SELECT count(*) FROM cms_bookings; -- 0
 ```
 
 Preview click-through: `/aanbod` keeps the supplied hero subtitle;
-`/afspraak` offers the two adult/youth current-bike variants plus the package;
-new-bike and the three analyses show direct-booking paths and corrected durations;
-Toshoni is not a bookable provider, Fitter is. No production/staging deployment or
+`/afspraak` offers the two adult/youth variants of both bikefits and nothing more,
+and booking Jeugd asks for no parent or guardian; new-bike and the three analyses
+show direct-booking paths and corrected durations; Toshoni is not a bookable
+provider, Fitter is; `/privacy` and `/algemene-voorwaarden` mention no guardian. No production/staging deployment or
 production data is part of this rehearsal.

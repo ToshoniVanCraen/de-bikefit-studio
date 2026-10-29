@@ -49,7 +49,6 @@ function toService(service: PublicService): BookingServiceOption {
     choiceLabel: service.choiceLabel,
     description: service.description,
     durationMinutes: service.durationMinutes,
-    requiresGuardian: service.requiresGuardian,
     location: toLocation(service.location),
     priceLabel: service.priceLabel,
     priceCents: service.priceCents,

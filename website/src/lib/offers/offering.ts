@@ -11,7 +11,7 @@ import {
 
 // The audiences and the Kostprijs / Duur lines live in two small siblings (this file is past
 // the size limit). What callers imported from here stays here; the newer helpers
-// (`baseAudienceOf`, `isSplitAudience`, …) come from `./offering-audience`. Named, not
+// (`isSplitAudience`, `audienceRank`, …) come from `./offering-audience`. Named, not
 // `export *`: the CLIs (tsx, CommonJS output) only see names that are spelled out.
 export {
   AUDIENCE_LABELS,
@@ -40,9 +40,9 @@ export {
  * `src/db/cms-offering-schema.ts`):
  *
  *  - `isListed`: shown on the website (overviews, its own page, `/afspraak`);
- *  - `variantMode`: `single` (one option) or `audience` (Volwassene, Jeugd –
- *    eenmalig and Jeugd – volledig pakket apart, each its own booking service,
- *    duration and price; `./offering-audience.ts`);
+ *  - `variantMode`: `single` (one option) or `audience` (Volwassene and Jeugd –
+ *    eenmalig apart, each its own booking service, duration and price;
+ *    `./offering-audience.ts`);
  *  - `bookingMode`: `direct` (online booking through `/afspraak?dienst=<slug>`)
  *    or `enquiry` (the enquiry form on the offer page);
  *  - per variant: the booking service (`cms_services`) it is booked as, and its
@@ -94,7 +94,7 @@ export type OfferingSettings = {
   isListed: boolean;
   bookingMode: OfferingBookingMode;
   variantMode: OfferingVariantMode;
-  /** Exactly the audiences of `variantMode`, in that order (a saved legacy pair excepted, `isAcceptedAudienceSet`). */
+  /** Exactly the audiences of `variantMode`, in that order (`isAcceptedAudienceSet`). */
   variants: OfferingVariant[];
   /** Can be ticked as an extra when booking an offering that lists it (20 Oct 2026). */
   isAddon: boolean;
@@ -136,7 +136,6 @@ export const variantServiceInputSchema = z.object({
     .default(null),
   /** `null` → the provider's default location. */
   locationId: z.string().trim().min(1).max(64, 'Ongeldige locatie.').nullable().default(null),
-  requiresGuardian: z.boolean().default(false),
 });
 
 export type VariantServiceInput = z.infer<typeof variantServiceInputSchema>;
@@ -394,7 +393,7 @@ export type OfferingServiceInfo = {
 
 export type ResolvedVariant = {
   audience: OfferingAudience;
-  /** "Volwassene", "Jeugd – eenmalig", "Jeugd – volledig pakket"; '' for the single option. */
+  /** "Volwassene", "Jeugd – eenmalig"; '' for the single option. */
   label: string;
   serviceId: string | null;
   serviceSlug: string | null;

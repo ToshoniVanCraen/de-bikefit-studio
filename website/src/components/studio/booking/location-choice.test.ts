@@ -40,7 +40,6 @@ function service(partial: Partial<BookingServiceOption> & { id: string }): Booki
     choiceLabel: '',
     description: '',
     durationMinutes: 120,
-    requiresGuardian: false,
     location: null,
     priceLabel: '',
     priceCents: null,

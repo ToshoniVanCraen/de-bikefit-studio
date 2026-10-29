@@ -146,8 +146,8 @@ describe('the copy tokens typed in the code are real', () => {
       '{{telefoon}}',
       'mailto:{{e-mail}}',
       '{{duur:volwassenenfit}}',
-      '{{duur:jeugdfit-pakket}}',
-      '{{prijs:bikefit-huidige-fiets:youth-package}}',
+      '{{duur:jeugdfit}}',
+      '{{prijs:bikefit-huidige-fiets:youth}}',
       '{{ adres }}',
       'Geen token, wel {accolades} en een { enkele }.',
     ]) {

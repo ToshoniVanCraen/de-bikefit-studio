@@ -1,15 +1,14 @@
 /**
  * Self-test section 17d, part 7 (`aanbod-correcties.mts` calls it after part 6):
  * `--staging-retain-toshoni`, Toshoni's decision for staging of 27 Oct 2026, 15:12:
- * Toshoni Van Craen stays a provider, keeps every offering and is also offered the
- * youth package. On staging's state (`seedStaging`) with every other provider row
- * taken out, so that he is the only one, as on staging:
+ * Toshoni Van Craen stays a provider and keeps every offering. On staging's state
+ * (`seedStaging`) with every other provider row taken out, so that he is the only
+ * one, as on staging:
  *
- *  - the dry run in that mode is clean: the package is offered by 1 provider, his
- *    line says he is kept, one subscription more after the apply; without the flag
- *    the same database still stops;
- *  - the apply keeps every offering he had and adds the package; the verify finds
- *    him in the public provider list; the backup and the audit entry record the
+ *  - the dry run in that mode is clean: no youth package, his line says he is
+ *    kept, no subscription moves; without the flag the same database still stops;
+ *  - the apply keeps every offering he had and asks no guardian on Jeugdfit; the
+ *    verify finds him in the public provider list; the backup and the audit entry record the
  *    mode; then a dry run finds nothing, a second apply writes nothing, and a dry
  *    run without the flag would take him off again (it stops);
  *  - the restore of that backup gives the state before back, his offerings intact;
@@ -41,7 +40,7 @@ type Schema = typeof import('@/db/cms-schema');
 
 const RETAIN = 'staging-retain';
 const MODE_LINE =
-  '→ provider mode: staging retain — Toshoni stays a provider and gets the youth package (staging only)';
+  '→ provider mode: staging retain — Toshoni stays a provider with every offering (staging only)';
 const BLOCKED = '→ dry run: blocked — fix the items marked ! first';
 /** The stop on a database with a second provider, as production has. */
 const TWO_PROVIDERS =
@@ -182,16 +181,13 @@ export async function retainChecks(env: {
     await run({ apply: false, restore: null, providerMode: RETAIN });
     const planned = [...lines];
     check(
-      `staging, ${STAGING_NAME} the only provider row (${shelf.count} others set aside): with --staging-retain-toshoni the dry run is clean; the package is offered by 1 provider, he is kept with his ${his.length} offerings, one subscription more after the apply; his login is never printed`,
+      `staging, ${STAGING_NAME} the only provider row (${shelf.count} others set aside): with --staging-retain-toshoni the dry run is clean; no youth package, Jeugdfit asks no guardian, he is kept with his ${his.length} offerings, no subscription moves; his login is never printed`,
       providerCount === 1 &&
         his.length === 3 &&
         planned[0] === MODE_LINE &&
         blockers().length === 0 &&
-        has(
-          '~ variant bikefit-huidige-fiets — ',
-          'new service jeugdfit-pakket',
-          'offered by 1 provider(s)',
-        ) &&
+        has('~ service jeugdfit — requiresGuardian: true → false') &&
+        !planLines(planned).some((line) => /-pakket|volledig pakket|^. variant /.test(line)) &&
         planned.includes(
           `= provider ${STAGING_NAME} — kept as provider (--staging-retain-toshoni): ${his.length} offering(s) stay`,
         ) &&
@@ -204,14 +200,13 @@ export async function retainChecks(env: {
         ) &&
         planned.some(
           (line) =>
-            line.startsWith('→ after the apply: ') &&
-            /variants \d+ \(\+2\), services \d+ \(\+1\), /.test(line) &&
-            line.endsWith(`, subscriptions ${his.length + 1} (+1)`),
+            line.startsWith('→ after the apply: blocks ') &&
+            !/variants|services|subscriptions/.test(line),
         ) &&
         !planned.some((line) => line.includes(STAGING_LOGIN)) &&
         planned.at(-1) === '→ dry run: run again with --apply to write',
       planLines(planned)
-        .filter((line) => /^!|provider|variant bikefit-huidige/.test(line))
+        .filter((line) => /^!|provider|service jeugdfit/.test(line))
         .concat(planned.filter((line) => line.startsWith('→ after')))
         .join(' | '),
     );
@@ -219,10 +214,9 @@ export async function retainChecks(env: {
     // Without the flag the same database still stops (part 6 has the rest).
     await run({ apply: false, restore: null });
     check(
-      'without the flag the same database still stops: every fit he alone offers, and a package nobody would offer',
+      'without the flag the same database still stops: every fit he alone offers',
       lines[0] !== MODE_LINE &&
         has(`! provider ${STAGING_NAME}: service jeugdfit would be left without a provider`) &&
-        has('! offering bikefit-huidige-fiets: ', 'would be offered by no provider') &&
         lines.at(-1) === BLOCKED,
       blockers().join(' | '),
     );
@@ -234,7 +228,7 @@ export async function retainChecks(env: {
     );
     const applied = [...lines];
     const backupPath = backupPathOf();
-    const pack = await serviceRow('jeugdfit-pakket');
+    const youth = await serviceRow('jeugdfit');
     const after = await subscriptions(fx.toshoniId);
     const keptAll = his.every((row) =>
       after.some(
@@ -242,29 +236,24 @@ export async function retainChecks(env: {
       ),
     );
     const listed = (await listPublicProviders()).map((provider) => provider.displayName);
-    const packOffered = pack
-      ? (await listPublicProviders(pack.id)).map((provider) => provider.id)
-      : [];
     check(
-      `retain apply: verified; ${STAGING_NAME} keeps every offering he had, also offers the package, and stays in the public provider list`,
+      `retain apply: verified; ${STAGING_NAME} keeps every offering he had, and nothing more, and stays in the public provider list; Jeugdfit asks no guardian; no package service`,
       applyError === '' &&
         applied.includes('✓ apply complete') &&
         applied.some(
-          (line) =>
-            line.startsWith('✓ row counts as planned (') &&
-            line.includes(`subscriptions ${his.length + 1} (+1)`),
+          (line) => line.startsWith('✓ row counts as planned (') && !line.includes('subscriptions'),
         ) &&
         applied.includes(
           `✓ provider ${STAGING_NAME} kept (--staging-retain-toshoni): in the public provider list, with every offering he had`,
         ) &&
         !applied.some((line) => line.startsWith(`~ provider ${STAGING_NAME}`)) &&
         keptAll &&
-        after.length === his.length + 1 &&
-        after.some((entry) => entry.serviceId === pack?.id) &&
+        after.length === his.length &&
         listed.join() === STAGING_NAME &&
-        packOffered.join() === fx.toshoniId,
+        youth?.requiresGuardian === false &&
+        (await serviceRow('jeugdfit-pakket')) === null,
       applyError ||
-        `${after.length} offerings, listed: ${listed.join()}, package: ${packOffered.length}`,
+        `${after.length} offerings, listed: ${listed.join()}, guardian ${youth?.requiresGuardian}`,
     );
     const backup = backupPath ? await readCorrectiesBackup(backupPath) : null;
     const audits = await db
@@ -272,11 +261,13 @@ export async function retainChecks(env: {
       .from(schema.cmsAuditLog)
       .where(eq(schema.cmsAuditLog.action, 'patch.aanbod-correcties.apply'));
     check(
-      'retain apply: the backup and the audit entry record the mode; the backup removes none of his offerings, the package service it made goes on a restore',
+      'retain apply: the backup and the audit entry record the mode; the backup removes none of his offerings and holds the guardian rule of Jeugdfit for a restore',
       backup?.providerMode === RETAIN &&
         backup.subscriptions.providerId === fx.toshoniId &&
         backup.subscriptions.removed.length === 0 &&
-        backup.services.created.map((entry) => entry.slug).join() === 'jeugdfit-pakket' &&
+        backup.services.updated.some(
+          (entry) => entry.slug === 'jeugdfit' && entry.fields.includes('requiresGuardian'),
+        ) &&
         audits.length === applyAudits + 1 &&
         audits.filter((entry) => entry.metadata?.providerMode === RETAIN).length === 1,
       `backup ${backup?.providerMode}, removed ${backup?.subscriptions.removed.length}`,
@@ -285,11 +276,11 @@ export async function retainChecks(env: {
     // --- idempotent ---------------------------------------------------------------------------------
     await run({ apply: false, restore: null, providerMode: RETAIN });
     check(
-      'retain: a dry run after the apply finds nothing to do; he is still kept, with the package',
+      'retain: a dry run after the apply finds nothing to do; he is still kept',
       lines.at(-1) === '= dry run: nothing to do' &&
         planLines(lines).every((line) => line.startsWith('=')) &&
         lines.includes(
-          `= provider ${STAGING_NAME} — kept as provider (--staging-retain-toshoni): ${his.length + 1} offering(s) stay`,
+          `= provider ${STAGING_NAME} — kept as provider (--staging-retain-toshoni): ${his.length} offering(s) stay`,
         ),
       planLines(lines)
         .filter((line) => !line.startsWith('='))
@@ -307,10 +298,8 @@ export async function retainChecks(env: {
     await run({ apply: false, restore: null });
     check(
       'after a retain apply a dry run WITHOUT the flag would take him off again, and stops (so every staging run carries the flag)',
-      has(`~ provider ${STAGING_NAME} — ${his.length + 1} offering(s) removed: `) &&
-        has(
-          `! provider ${STAGING_NAME}: service jeugdfit-pakket would be left without a provider`,
-        ) &&
+      has(`~ provider ${STAGING_NAME} — ${his.length} offering(s) removed: `) &&
+        has(`! provider ${STAGING_NAME}: service jeugdfit would be left without a provider`) &&
         // Nothing else is pending, so the verdict carries `=`, as it always has.
         lines.at(-1) === '= dry run: blocked — fix the items marked ! first',
       `${blockers().join(' | ')} | ${lines.at(-1)}`,
@@ -332,58 +321,13 @@ export async function retainChecks(env: {
     const restored = await fingerprint(db, schema);
     const back = await subscriptions(fx.toshoniId);
     check(
-      `retain restore: every table as before the apply; ${STAGING_NAME} offers exactly what he did, the package service is gone`,
+      `retain restore: every table as before the apply; ${STAGING_NAME} offers exactly what he did, Jeugdfit asks for a guardian again`,
       restoreError === '' &&
         restored === staging &&
-        (await serviceRow('jeugdfit-pakket')) === null &&
+        (await serviceRow('jeugdfit'))?.requiresGuardian === true &&
         canonicalJson(back) === canonicalJson(his),
       restoreError || diffPrints(staging, restored),
     );
-
-    // A booked package service cannot be deleted on restore. Its booking and
-    // inactive service remain, but the subscription made by the patch must go.
-    await run({ apply: true, restore: null, providerMode: RETAIN });
-    const bookedBackupPath = backupPathOf();
-    const bookedPackage = await serviceRow('jeugdfit-pakket');
-    if (!bookedBackupPath || !bookedPackage) {
-      throw new Error('17d: retain apply did not create a package service and backup');
-    }
-    const [booking] = await db
-      .insert(schema.cmsBookings)
-      .values({
-        serviceId: bookedPackage.id,
-        providerId: fx.toshoniId,
-        startsAt: new Date('2026-10-30T08:00:00.000Z'),
-        endsAt: new Date('2026-10-30T10:00:00.000Z'),
-        customerName: 'Selftest package rollback',
-        customerEmail: 'package-rollback@example.invalid',
-        source: 'selftest',
-      })
-      .returning({ id: schema.cmsBookings.id });
-    try {
-      const bookedRestoreError = await attempt(() =>
-        run({ apply: false, restore: bookedBackupPath }),
-      );
-      const retainedService = await serviceRow('jeugdfit-pakket');
-      const retainedBooking = await db
-        .select({ id: schema.cmsBookings.id })
-        .from(schema.cmsBookings)
-        .where(eq(schema.cmsBookings.id, booking.id));
-      const retainedSubscriptions = await subscriptions(fx.toshoniId);
-      check(
-        'retain restore with package booking: booking and inactive service stay, package subscription is removed and prior offerings stay',
-        bookedRestoreError === '' &&
-          retainedService?.id === bookedPackage.id &&
-          retainedService.isActive === false &&
-          retainedBooking.length === 1 &&
-          canonicalJson(retainedSubscriptions) === canonicalJson(his),
-        bookedRestoreError ||
-          `active ${retainedService?.isActive}, bookings ${retainedBooking.length}, offerings ${retainedSubscriptions.length}`,
-      );
-    } finally {
-      await db.delete(schema.cmsBookings).where(eq(schema.cmsBookings.id, booking.id));
-      await db.delete(schema.cmsServices).where(eq(schema.cmsServices.id, bookedPackage.id));
-    }
 
     // --- production's shape: a second provider ------------------------------------------------------
     const [second] = await db

@@ -1479,6 +1479,10 @@ are there.
 
 ## 24. Correcties van 27 oktober (settings, pages, copy, youth package, Toshoni; migration 0017, 27 Oct 2026)
 
+> **Historical procedure only. Do not run the package-creating plan or use the expected output below.**
+> Toshoni withdrew the €275 youth package and guardian requirement on 29 Oct. The current
+> staging/production procedure is §25. The 27 Oct production GO is void.
+
 Toshoni's corrections of 27 Oct 2026 live in the code, where a new database picks them up
 (`cms:bootstrap`, `cms:seed`), and reach an existing database (staging, production) through **one
 guarded command**, `npm run cms:patch-aanbod-correcties` (self-test section 17d). It is the handover
@@ -1858,3 +1862,68 @@ Backups written before the mode existed read as `remove`.
   until then (§22).
 - **The 5-minute cache** applies to the pages, the catalogue and the provider list; an admin sees
   the draft at once.
+
+
+## 25. Revised correction after rejected review (29 Oct 2026)
+
+Toshoni's accepted scope for a **second staging review**: only the €150 *Jeugd – eenmalig*
+choice remains on each bikefit; no €275 youth package is created or advertised; no guardian
+contact is asked or required for a new booking. The booking order is new-bike fit, current-bike
+fit, cleat adjustment, saddle analysis, foot analysis. Adult €275 prices and the general €275
+gift-voucher amount are unchanged. This section supersedes §24's package instructions and sample
+output; they document the superseded 27 Oct release only.
+
+**Staging baseline:** Arend snapshotted Staging as
+`staging-pre-package-restore-2026-10-29` (`br-small-recipe-a2a94urg`) and restored the *first*
+27 Oct correction backup using the `ef1ef63` code on 29 Oct at 11:11 UTC. The package variants
+and `jeugdfit-pakket` service are gone. Counts after restore: pages 12, blocks 41, offerings 9,
+variants 11, services 5, subscriptions 5, bookings 2, providers 1, settings 6; 0017 remains
+applied (journal 19). The two bookings were unchanged. A retain-mode dry run of the old patch
+reported 31 changes and no blocker; **do not apply that old patch**. Staging temporarily shows
+pre-correction address, phone and page copy until the revised patch below runs.
+
+**Arend's staging sequence** (from the reviewed PR #44 commit, after the six-code-gate release
+check; never with a production database URL):
+
+1. Confirm the Staging Neon branch ID and pooled endpoint host against the deployment; keep the
+   29 Oct snapshot and record the exact PR commit. Migration 0017 is already present; no new
+   migration or extras patch is needed. Deploy the reviewed build to staging and pass health
+   checks. Do not save a bikefit in Beheer between deploy and patch apply.
+2. In `website/`, run the **read-only** dry run with the same staging URL and host to be used for
+   apply. Check every planned change, especially `requiresGuardian: true → false` on the youth
+   services, preserved Toshoni subscriptions, unchanged variant/service/subscription counts,
+   and no `!` line:
+
+   ```bash
+   DATABASE_URL='<staging pooled URL>' npm run cms:patch-aanbod-correcties -- --staging-retain-toshoni --expect-host '<staging host>'
+   ```
+
+3. Only if the dry run matches, apply with a fresh private backup directory, record its backup
+   filename and exit code, then repeat the read-only dry run with **identical flags**. Expect
+   `dry run: nothing to do`; the package guard must find no `youth-package` variant or package
+   service. The apply must leave bookings 2, variants 11, services 5 and subscriptions 5. Stop on
+   any blocker, unexpected counts or verification failure; do not force a second write.
+
+   ```bash
+   DATABASE_URL='<staging pooled URL>' npm run cms:patch-aanbod-correcties -- --apply --staging-retain-toshoni --expect-host '<staging host>' --backup-dir '<private backup directory>'
+   DATABASE_URL='<staging pooled URL>' npm run cms:patch-aanbod-correcties -- --staging-retain-toshoni --expect-host '<staging host>'
+   ```
+
+4. After the 5-minute cache window, check the protected staging site and Beheer: both bikefits
+   show only Volwassene and Jeugd – eenmalig, never the withdrawn package; `/afspraak` has the
+   five choices in the order above, no guardian fields or wording, and the youth fit can be
+   booked without guardian data. The corrected address, phone, menu, terms/privacy, FAQ, voucher
+   promotion and unrelated 27 Oct corrections are present. Confirm a general €275 voucher still
+   exists without implying a youth package. Toshoni/Max must accept this second staging review.
+
+**Rollback of this revised apply:** use the private backup written by step 3 with the revised
+code and `--restore <backup.json> --expect-host '<staging host>'` (no retain flag), following the
+backup's own guards. Preserve the 29 Oct Neon snapshot. The 27 Oct backup was already consumed
+for the staging rollback; it is not the backup for this new apply. Revised backups are version 2;
+this build refuses a version-1 backup rather than silently omitting its package rows. Use the
+`ef1ef63` code for any historical version-1 restore. Do not delete historical
+bookings.
+
+**Production:** the old 27 Oct GO does not cover this revision. Arend writes a new production
+plan after Toshoni's second staging acceptance. No production apply, merge or deployment from
+this section without Toshoni's explicit GO for that deployment.

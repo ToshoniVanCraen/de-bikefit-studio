@@ -31,12 +31,10 @@ import type { OfferingContent } from './offering-content';
  * (offer pages and cards) and, for the fit that is booked online, through
  * the services' price in `src/lib/booking/defaults.ts` (the widget).
  *
- * Jeugd (under 16, Toshoni 27 Oct 2026) is two variants of both bikefits, so the
- * offer page, the widget, the booking, the mails and Beheer all say the same:
- * *Jeugd – eenmalig* (`youth`) € 150, one fit without follow-up, or *Jeugd –
- * volledig pakket* (`youth-package`) € 275 with a year of free follow-up, which
- * the studio recommends because young riders grow fast. The one booked online
- * has a service for each (`jeugdfit`, `jeugdfit-pakket`).
+ * Jeugd (under 16, Toshoni 27 and 29 Oct 2026) is one variant of both bikefits,
+ * so the offer page, the widget, the booking, the mails and Beheer all say the
+ * same: *Jeugd – eenmalig* (`youth`) € 150, one fit without follow-up. The one
+ * booked online has its service (`jeugdfit`).
  *
  * Extra's (Toshoni, 20 Oct 2026, corrected 27 Oct 2026): *Bikefit – tweede
  * fiets* is the only extra of a bikefit. It is an extra only, never booked
@@ -48,11 +46,11 @@ import type { OfferingContent } from './offering-content';
  * `npm run cms:patch-aanbod-extras`.
  *
  * Booking: *Bikefit – huidige fiets* is booked directly as Volwassenenfit
- * (Volwassene), Jeugdfit – eenmalig and Jeugdfit – volledig pakket; the eight
- * others are asked for through the enquiry form until Toshoni confirms a
- * provider for them. An existing database got the values of 20 Oct 2026 with
- * `npm run cms:patch-aanbod-prijzen` (`src/lib/offers/aanbod-prices.ts` freezes
- * what it wrote); the Jeugd variants of 27 Oct 2026 come with their own patch.
+ * (Volwassene) and Jeugdfit – eenmalig; the eight others are asked for through
+ * the enquiry form until Toshoni confirms a provider for them. An existing
+ * database got the values of 20 Oct 2026 with `npm run cms:patch-aanbod-prijzen`
+ * (`src/lib/offers/aanbod-prices.ts` freezes what it wrote); the texts of
+ * 27 Oct 2026 come with their own patch.
  *
  * Every field stays editable in Beheer → Aanbod. Every placeholder is listed in
  * `docs/content-placeholders.md` (P-, D-, E-rows).
@@ -139,13 +137,11 @@ function enquiry(
   };
 }
 
-/** Prices in cents (20 Oct 2026; the Jeugd package 27 Oct 2026). */
+/** Prices in cents (20 Oct 2026). */
 export const PRICES = {
   bikefit: 27500,
   /** Jeugd – eenmalig: one fit, no follow-up. */
   bikefitUnder16: 15000,
-  /** Jeugd – volledig pakket: the full fit with a year of free follow-up. */
-  bikefitYouthPackage: 27500,
   secondVisit: 7500,
   secondBikeSameType: 7500,
   secondBikeOtherType: 15000,
@@ -159,17 +155,16 @@ export const PRICES = {
 const INCLUDED_ANALYSES =
   'Zadelanalyse, voetanalyse en het afstellen van je schoenplaatjes zitten erin.';
 /**
- * The follow-up lines of a bikefit, as two bullets (one line would pass the 300
- * characters a bullet may hold once the tokens are typed). Nothing here is a
- * number: the adult window, the youth window and the three prices are copy
- * tokens that the public site resolves from the master (`{{opvolging:…}}`, the
- * variants' prices), so a changed price or window never leaves this text behind.
- * Toshoni, 27 Oct 2026: under 16, a one-off fit or the package, which we recommend.
+ * The follow-up lines of a bikefit, as two bullets. Nothing here is a number:
+ * the adult window and the youth price are copy tokens that the public site
+ * resolves from the master (`{{opvolging:…}}`, the variants' prices), so a
+ * changed price or window never leaves this text behind. Toshoni, 27 and 29 Oct
+ * 2026: under 16, a one-off fit without follow-up.
  */
 function followUpIncluded(slug: string): string[] {
   return [
     'Probleemopvolging tot {{opvolging:volwassene}} na je fit is inbegrepen.',
-    `Jeugd (onder 16): {{prijs:${slug}:youth}} voor een eenmalige fit zonder opvolging, of {{prijs:${slug}:youth-package}} voor het volledige pakket met {{opvolging:jeugd-pakket}} gratis opvolging. Dat raden we aan, want jonge renners groeien snel.`,
+    `Jeugd (onder 16): {{prijs:${slug}:youth}} voor een eenmalige fit zonder opvolging.`,
   ];
 }
 /** The adjustment of the new bike after the purchase belongs to the follow-up, so it is in the adult price (Toshoni, 27 Oct 2026). */
@@ -213,7 +208,7 @@ export const DEFAULT_OFFERS: DefaultOffering[] = [
       duration: '{{duur:volwassenenfit}}',
       extras: [SECOND_VISIT_EXTRA, SECOND_BIKE_EXTRA],
       metaDescription:
-        'Bikefit vóór je een nieuwe fiets koopt: gesprek, blik op je houding en beweeglijkheid, en advies over maat, geometrie en afstelling. {{prijs:bikefit-nieuwe-fiets:adult}}; onder 16 {{prijs:bikefit-nieuwe-fiets:youth}} eenmalig of {{prijs:bikefit-nieuwe-fiets:youth-package}} met {{opvolging:jeugd-pakket}} opvolging.',
+        'Bikefit vóór je een nieuwe fiets koopt: gesprek, blik op je houding en beweeglijkheid, en advies over maat, geometrie en afstelling. {{prijs:bikefit-nieuwe-fiets:adult}}; onder 16 {{prijs:bikefit-nieuwe-fiets:youth}} eenmalig.',
     },
     {
       bookingMode: 'enquiry',
@@ -221,7 +216,6 @@ export const DEFAULT_OFFERS: DefaultOffering[] = [
       variants: [
         { audience: 'adult', serviceSlug: null, priceCents: PRICES.bikefit },
         { audience: 'youth', serviceSlug: null, priceCents: PRICES.bikefitUnder16 },
-        { audience: 'youth-package', serviceSlug: null, priceCents: PRICES.bikefitYouthPackage },
       ],
     },
     { addonSlugs: [...BIKEFIT_ADDON_SLUGS] },
@@ -250,7 +244,7 @@ export const DEFAULT_OFFERS: DefaultOffering[] = [
         'Nieuwe onderdelen, altijd apart en vooraf besproken.',
       ],
       metaDescription:
-        'Bikefit op je huidige fiets: intake, 3D-bewegingsanalyse, zadel, stuur en schoenplaatjes, en aanpassingen die we samen uittesten. {{prijs:bikefit-huidige-fiets:adult}}; onder 16 {{prijs:bikefit-huidige-fiets:youth}} eenmalig of {{prijs:bikefit-huidige-fiets:youth-package}} met {{opvolging:jeugd-pakket}} opvolging.',
+        'Bikefit op je huidige fiets: intake, 3D-bewegingsanalyse, zadel, stuur en schoenplaatjes, en aanpassingen die we samen uittesten. {{prijs:bikefit-huidige-fiets:adult}}; onder 16 {{prijs:bikefit-huidige-fiets:youth}} eenmalig.',
     },
     {
       bookingMode: 'direct',
@@ -258,11 +252,6 @@ export const DEFAULT_OFFERS: DefaultOffering[] = [
       variants: [
         { audience: 'adult', serviceSlug: 'volwassenenfit', priceCents: PRICES.bikefit },
         { audience: 'youth', serviceSlug: 'jeugdfit', priceCents: PRICES.bikefitUnder16 },
-        {
-          audience: 'youth-package',
-          serviceSlug: 'jeugdfit-pakket',
-          priceCents: PRICES.bikefitYouthPackage,
-        },
       ],
     },
     { addonSlugs: [...BIKEFIT_ADDON_SLUGS] },

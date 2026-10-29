@@ -148,8 +148,9 @@ function form(fields: Record<string, string>): FormData {
 }
 
 /**
- * A new offering: Volwassene, Jeugd – eenmalig and Jeugd – volledig pakket,
- * booked directly, no price for Jeugd – eenmalig.
+ * A new offering: Volwassene and Jeugd – eenmalig, booked directly, no price for
+ * Jeugd – eenmalig. `guardian:youth` is what the form of before 29 Oct 2026 sent:
+ * it is ignored now.
  */
 const DIRECT = {
   offeringId: '',
@@ -169,10 +170,6 @@ const DIRECT = {
   'buffer:youth': '10',
   'guardian:youth': 'on',
   'price:youth': '',
-  'duration:youth-package': '120',
-  'buffer:youth-package': '',
-  'guardian:youth-package': 'on',
-  'price:youth-package': '275',
 };
 
 const writesTo = (table: unknown) => fake.writes.filter((write) => write.table === table);
@@ -242,31 +239,23 @@ describe('saveOfferingAction: who may change the offer', () => {
         choiceLabel: 'Jeugd – eenmalig',
         durationMinutes: 60,
         bufferAfterMinutes: 10,
-        requiresGuardian: true,
-      }),
-      expect.objectContaining({
-        slug: 'bikefit-huidige-fiets-jeugd-pakket',
-        name: 'Bikefit – huidige fiets – Jeugd – volledig pakket',
-        choiceLabel: 'Jeugd – volledig pakket',
-        durationMinutes: 120,
-        bufferAfterMinutes: null,
-        requiresGuardian: true,
+        // No guardian rule since 29 Oct 2026 (Toshoni), whatever the form sends.
+        requiresGuardian: false,
       }),
     ]);
     // The services follow the audiences: one block per offering, three places in it.
     const orders = writesTo(cmsServices).map(
       (write) => (write.values as { sortOrder: number }).sortOrder,
     );
-    expect(orders).toEqual([60, 61, 62]);
+    expect(orders).toEqual([60, 61]);
     expect(writesTo(cmsOfferingVariants).map((write) => write.values ?? write.kind)).toEqual([
       expect.objectContaining({ audience: 'adult', priceCents: 14950 }),
       expect.objectContaining({ audience: 'youth', priceCents: null }),
-      expect.objectContaining({ audience: 'youth-package', priceCents: 27500 }),
       'delete',
     ]);
     expect(
       writesTo(cmsAuditLog).map((write) => (write.values as { action: string }).action),
-    ).toEqual(['service.create', 'service.create', 'service.create', 'offering.create']);
+    ).toEqual(['service.create', 'service.create', 'offering.create']);
   });
 });
 
@@ -278,14 +267,6 @@ describe('saveOfferingAction: what it refuses (admin)', () => {
     expect(result).toEqual({
       ok: false,
       message: 'Vul voor Jeugd – eenmalig de duur in om het online te boeken.',
-    });
-    const noPackage = await saveOfferingAction(
-      IDLE,
-      form({ ...DIRECT, 'duration:youth-package': '' }),
-    );
-    expect(noPackage).toEqual({
-      ok: false,
-      message: 'Vul voor Jeugd – volledig pakket de duur in om het online te boeken.',
     });
     expect(fake.writes).toEqual([]);
   });

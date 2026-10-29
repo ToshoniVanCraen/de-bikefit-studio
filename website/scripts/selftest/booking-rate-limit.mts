@@ -20,7 +20,7 @@
  *     hits, every refused attempt gave its IP hit back;
  *  E. no usable IP (missing or malformed), one e-mail → exactly 5 pass, no
  *     IP key written;
- *  F. one guardian e-mail, 20 customers and IPs → exactly 5 pass;
+ *  F. stale guardian e-mail is ignored; 20 distinct customers and IPs pass;
  *  G. the stored keys hold no address; bookings no longer write
  *     `cms_booking_rate_limit`;
  *  H. without the table (0008 not applied) an attempt fails closed: `error`
@@ -303,7 +303,7 @@ export async function bookingRateLimitSection(ctx: {
       `${ipKeysBefore.length} → ${ipKeysAfter.length} IP keys`,
     );
 
-    // --- F. one guardian e-mail, many customers and IPs ---------------------------------
+    // --- F. stale guardian field is ignored ---------------------------------------------
     const GUARDIAN_F = 'parallel-voogd@selftest.local';
     const guardianKeyF = emailKey(GUARDIAN_F);
     const kidsF = Array.from({ length: BURST }, (_, i) => `parallel-kind-${i}@selftest.local`);
@@ -317,16 +317,12 @@ export async function bookingRateLimitSection(ctx: {
     const kidHitsF = await Promise.all(kidsF.map((kid) => hitsIn(emailKey(kid))));
     const ipHitsF = await Promise.all(ipsF.map((ip) => hitsIn(ipKey(ip))));
     check(
-      `one guardian e-mail, ${BURST} customers and IPs in parallel → exactly ${LIMIT} reach the slot check`,
-      passedOnly(answersF) && guardianHitsF === LIMIT,
+      `stale guardian e-mail, ${BURST} distinct customers and IPs → all reach the slot check`,
+      answersF.every((answer) => answer === 'slot_taken') &&
+        guardianHitsF === 0 &&
+        kidHitsF.every((hits) => hits === 1) &&
+        ipHitsF.every((hits) => hits === 1),
       `${tally(answersF)}; guardian ${guardianHitsF} hits`,
-    );
-    check(
-      'guardian burst: a refused attempt gave back both earlier hits (its IP and its customer e-mail)',
-      answersF.every(
-        (a, i) => kidHitsF[i] === (a === 'rate_limited' ? 0 : 1) && ipHitsF[i] === kidHitsF[i],
-      ),
-      `customers ${sum(kidHitsF)}, IPs ${sum(ipHitsF)} hits`,
     );
 
     // --- G. what is stored ----------------------------------------------------------------

@@ -8,17 +8,18 @@
  *
  *  1. the dry run plans every section (`~`), writes nothing (no write call, no
  *     session, no audit entry) and blocks nothing;
- *  2. apply writes the backup first, then settings, location, the youth package
- *     with its service and providers, the copy and durations of the services,
- *     the offerings' copy, Toshoni's offerings, the menu and the pages, and
- *     verifies on the public readers; what visitors get is checked here again;
+ *  2. apply writes the backup first, then settings, location, the copy, the
+ *     guardian rule (off on Jeugdfit) and durations of the services, the
+ *     offerings' copy, Toshoni's offerings, the menu and the pages, and verifies
+ *     on the public readers; no youth package is made (withdrawn 29 Oct 2026);
+ *     what visitors get is checked here again;
  *  3. a second dry run finds nothing to do;
  *  4. restore returns exactly the state before (the fingerprint of every table
  *     the patch touches), apply once more reaches the same end state;
  *  5. what must block does: an edited offering text, a service left without a
- *     provider, an editor's unpublished draft, a service text of neither state;
- *     a service text the repo left (20 Oct 2026) and a package service the
- *     bootstrap made are accepted (`aanbod-correcties-guards.mts`);
+ *     provider, an editor's unpublished draft, a service text of neither state, a
+ *     database that holds the withdrawn youth package; a service text the repo
+ *     left (20 Oct 2026) is accepted (`aanbod-correcties-guards.mts`);
  *  6. the state staging held on 27 Oct 2026: the first seed's meta description
  *     on `/afspraak` is accepted; "Toshoni Van Craen" (the login of
  *     `cms:seed-booking`) as the only provider of the fits blocks the dry run,
@@ -29,15 +30,14 @@
  *     a third value blocks before a write (`aanbod-correcties-production-copy.mts`);
  *  8. staging with `--staging-retain-toshoni` (Toshoni, 27 Oct 2026, 15:12):
  *     him the only provider row, the dry run is clean, the apply keeps his
- *     offerings and adds the package, idempotent, restores; a second provider
- *     makes the flag stop (`aanbod-correcties-retain.mts`);
+ *     offerings, idempotent, restores; a second provider makes the flag stop
+ *     (`aanbod-correcties-retain.mts`);
  *  9. clean-up: every table is put back, and checked.
  *
  * Imported lazily by `cms-selftest.mts` after its request-context stubs.
  */
 import * as orm from 'drizzle-orm';
 import { cmsOfferings, cmsOfferingVariants } from '@/db/cms-offering-schema';
-import { DEFAULT_SERVICES } from '@/lib/booking/defaults';
 import { defaultSiteSettings } from '@/lib/cms/site-settings';
 import {
   OFFERING_TEXT_CORRECTIONS,
@@ -72,7 +72,9 @@ const { eq } = orm;
 
 export async function aanbodCorrectiesSection(ctx: CorrectiesSectionContext) {
   const { db, check, section, cookieJar } = ctx;
-  section('17d. aanbod correcties: settings, pages, copy, youth package, Toshoni (27 Oct 2026)');
+  section(
+    '17d. aanbod correcties: settings, pages, copy, no guardian, no youth package, Toshoni (27 and 29 Oct 2026)',
+  );
 
   const kit = await createCorrectiesKit(ctx);
   const { schema, locale, lines, run, backupPathOf, auditCount, serviceRow, pageRow } = kit;
@@ -94,7 +96,7 @@ export async function aanbodCorrectiesSection(ctx: CorrectiesSectionContext) {
       (slug) => !['contact', 'over-ons'].includes(slug),
     );
     check(
-      'fixture: the old address, phone number and SEO texts; no business/rules settings; the fits without a package variant; Toshoni and Winston offer three services',
+      'fixture: the old address, phone number and SEO texts; no business/rules settings; the fits without a package variant, Jeugdfit asking for a guardian; Toshoni and Winston offer three services',
       (await getSiteSettings(locale)).contact.city === 'Ninove' &&
         (
           await db
@@ -108,6 +110,7 @@ export async function aanbodCorrectiesSection(ctx: CorrectiesSectionContext) {
             .from(cmsOfferingVariants)
             .where(eq(cmsOfferingVariants.audience, 'youth-package'))
         ).length === 0 &&
+        (await serviceRow('jeugdfit'))?.requiresGuardian === true &&
         (await subscriptions(fx.toshoniId)).length === 3 &&
         (await subscriptions(fx.winstonId)).length === 3 &&
         published.length >= 8,
@@ -164,18 +167,13 @@ export async function aanbodCorrectiesSection(ctx: CorrectiesSectionContext) {
       planLines(planned).slice(0, 6).join(' | '),
     );
     check(
-      'dry run: the youth package on both fits (a service and a provider only where the fit is booked online), the service copy, the durations, Toshoni, the menu',
-      has(
-        '~ variant bikefit-huidige-fiets — Jeugd – volledig pakket: add variant',
-        'new service jeugdfit-pakket',
-        'offered by 1 provider(s)',
+      'dry run: no youth package anywhere; the service copy, the guardian rule off on Jeugdfit, the durations, Toshoni, the menu',
+      !planLines(planned).some((line) =>
+        /volledig pakket|-pakket|youth.package|^. variant /i.test(line),
       ) &&
-        planned.some(
-          (line) =>
-            line.startsWith('~ variant bikefit-nieuwe-fiets — ') && !line.includes('new service'),
-        ) &&
         has('~ service volwassenenfit — ') &&
-        has('~ service jeugdfit — ') &&
+        has('~ service jeugdfit — name: ') &&
+        has('~ service jeugdfit — requiresGuardian: true → false') &&
         has('~ duration voetanalyse — 60 → 30 min') &&
         has('= duration bikefit-nieuwe-fiets — no booking service (asked for): nothing to set') &&
         has(
@@ -263,14 +261,14 @@ export async function aanbodCorrectiesSection(ctx: CorrectiesSectionContext) {
     // The lookup the site builds per request reads the patched settings, location and catalogue.
     const lookup = await loadCopyTokenLookup(locale);
     const resolved = resolveCopyTokens(
-      '{{adres}} | {{adres-studio}} | {{telefoon}} | {{telefoon-href}} | {{tweede-bezoek-gratis}} | {{prijs:bikefit-huidige-fiets:youth-package}}',
+      '{{adres}} | {{adres-studio}} | {{telefoon}} | {{telefoon-href}} | {{tweede-bezoek-gratis}} | {{prijs:bikefit-huidige-fiets:youth}}',
       lookup,
     ).replace(/\u00a0/g, ' ');
     const studioAddress = await getDefaultStudioLocation();
     check(
-      'copy tokens: the address of both masters, the international phone number, the length of the free second visit and the price of the package resolve from the patched database; the default studio location has the new address',
+      'copy tokens: the address of both masters, the international phone number, the length of the free second visit and the youth price resolve from the patched database; the default studio location has the new address',
       resolved ===
-        `Halsesteenweg 406 a, 9403 Neigem | Halsesteenweg 406 a, 9403 Neigem | ${PHONE_LABEL_AFTER} | ${PHONE_HREF_AFTER} | zes maanden | € 275` &&
+        `Halsesteenweg 406 a, 9403 Neigem | Halsesteenweg 406 a, 9403 Neigem | ${PHONE_LABEL_AFTER} | ${PHONE_HREF_AFTER} | zes maanden | € 150` &&
         studioAddress?.addressLines.join() === 'Halsesteenweg 406 a' &&
         studioAddress.postalCode === '9403' &&
         studioAddress.city === 'Neigem',
@@ -290,39 +288,37 @@ export async function aanbodCorrectiesSection(ctx: CorrectiesSectionContext) {
     const catalogue = await loadOfferCatalogue(locale);
     const labels = (slug: string) =>
       catalogue.bySlug[slug]?.offering.variants.map((v) => v.label).join(' / ');
-    const pack = await serviceRow('jeugdfit-pakket');
     const youth = await serviceRow('jeugdfit');
-    const defaults = DEFAULT_SERVICES.find((entry) => entry.slug === 'jeugdfit-pakket');
+    const packages = await db
+      .select()
+      .from(cmsOfferingVariants)
+      .where(eq(cmsOfferingVariants.audience, 'youth-package'));
+    const packageServices = (await db.select().from(schema.cmsServices)).filter((row) =>
+      /pakket/.test(row.slug),
+    );
     check(
-      'youth package: both fits show Volwassene / Jeugd – eenmalig / Jeugd – volledig pakket; the current-bike fit books it as the new service jeugdfit-pakket (2 u, € 275 shown, a guardian asked for, next to Jeugd – eenmalig), the new-bike fit is asked for',
-      labels('bikefit-huidige-fiets') ===
-        'Volwassene / Jeugd – eenmalig / Jeugd – volledig pakket' &&
-        labels('bikefit-nieuwe-fiets') ===
-          'Volwassene / Jeugd – eenmalig / Jeugd – volledig pakket' &&
-        pack?.name === defaults?.name &&
-        pack?.choiceLabel === 'Jeugd – volledig pakket' &&
-        pack?.durationMinutes === 120 &&
-        pack.priceCents === 27500 &&
-        pack.showPrice === true &&
-        pack.requiresGuardian === true &&
-        pack.isActive === true &&
-        pack.sortOrder === (youth?.sortOrder ?? 0) + 1 &&
+      'no youth package: both fits show Volwassene / Jeugd – eenmalig, no package variant or service exists; Jeugdfit asks for no guardian; the current-bike fit books Jeugd through jeugdfit, the new-bike fit is asked for',
+      labels('bikefit-huidige-fiets') === 'Volwassene / Jeugd – eenmalig' &&
+        labels('bikefit-nieuwe-fiets') === 'Volwassene / Jeugd – eenmalig' &&
+        packages.length === 0 &&
+        packageServices.length === 0 &&
+        youth?.requiresGuardian === false &&
         catalogue.bySlug['bikefit-huidige-fiets'].offering.variants.at(-1)?.serviceSlug ===
-          'jeugdfit-pakket' &&
+          'jeugdfit' &&
         catalogue.bySlug['bikefit-nieuwe-fiets'].offering.variants.at(-1)?.serviceId === null &&
         catalogue.bySlug['bikefit-tweede-bezoek'].offer.priceLabel ===
           OFFERING_TEXT_CORRECTIONS.find(
             (entry) => entry.slug === 'bikefit-tweede-bezoek',
           )?.to.priceText?.trim(),
-      `${labels('bikefit-huidige-fiets')} | ${pack?.name}`,
+      `${labels('bikefit-huidige-fiets')} | ${packages.length} package variant(s), ${packageServices.length} package service(s) | guardian ${youth?.requiresGuardian}`,
     );
     const winston = await subscriptions(fx.winstonId);
     const toshoni = await subscriptions(fx.toshoniId);
     const providers = (await listPublicProviders()).map((provider) => provider.displayName);
     check(
-      'providers: Winston offers the package (from the studio, like the youth fit); Toshoni offers nothing and is gone from the public list, his profile stays',
-      winston.some((row) => row.serviceId === pack?.id && row.locationId === fx.studioId) &&
-        winston.length === 4 &&
+      'providers: Winston keeps his three offerings (the youth fit from the studio); Toshoni offers nothing and is gone from the public list, his profile stays',
+      winston.some((row) => row.serviceId === youth?.id && row.locationId === fx.studioId) &&
+        winston.length === 3 &&
         toshoni.length === 0 &&
         providers.join() === 'Winston' &&
         (
@@ -377,15 +373,19 @@ export async function aanbodCorrectiesSection(ctx: CorrectiesSectionContext) {
     const backup = backupPath ? await readCorrectiesBackup(backupPath) : null;
     const updatedPages = planned.filter((line) => line.startsWith('~ page ')).length;
     check(
-      'backup: every touched page with its blocks, the menu, the settings, the location, the offerings, the services, Toshoni’s three offerings, the two variant rows and the service the run made',
+      'backup: every touched page with its blocks, the menu, the settings, the location, the offerings, the services (Jeugdfit with its guardian rule), Toshoni’s three offerings',
       backup?.pages.length === updatedPages &&
         backup.menu !== null &&
         backup.settings.length >= 4 &&
         backup.location?.id === fx.studioId &&
         backup.offerings.length >= 1 &&
         backup.services.updated.some((entry) => entry.slug === 'voetanalyse') &&
-        backup.services.created.map((entry) => entry.slug).join() === 'jeugdfit-pakket' &&
-        backup.variants.length === 2 &&
+        backup.services.updated.some(
+          (entry) =>
+            entry.slug === 'jeugdfit' &&
+            entry.fields.includes('requiresGuardian') &&
+            entry.row.requiresGuardian === true,
+        ) &&
         backup.subscriptions.removed.length === 3 &&
         backup.subscriptions.providerId === fx.toshoniId,
       `${backup?.pages.length}/${updatedPages} pages`,
@@ -413,9 +413,9 @@ export async function aanbodCorrectiesSection(ctx: CorrectiesSectionContext) {
     // --- 4: restore, and apply again -------------------------------------------------------------
     if (backupPath) await run({ apply: false, restore: backupPath });
     check(
-      'restore: every table is as before — pages and their published snapshots, menu, settings, location, offerings, services, subscriptions; the package service is gone, Toshoni is public again',
+      'restore: every table is as before — pages and their published snapshots, menu, settings, location, offerings, services, subscriptions; Jeugdfit asks for a guardian again, Toshoni is public again',
       (await fingerprint(db, schema)) === before &&
-        (await serviceRow('jeugdfit-pakket')) === null &&
+        (await serviceRow('jeugdfit'))?.requiresGuardian === true &&
         (await listPublicProviders())
           .map((provider) => provider.displayName)
           .sort()

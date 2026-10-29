@@ -116,7 +116,6 @@ const RULES = {
   key: 'rules',
   locale: 'nl',
   followUpMonthsAdult: '6',
-  followUpMonthsYouthPackage: '12',
   secondVisitFreeMonths: '6',
   voucherValidityMonths: '12',
 };
@@ -214,7 +213,7 @@ describe('updateSettingAction: Bedrijfsgegevens', () => {
 describe('updateSettingAction: Regels', () => {
   beforeEach(() => signIn(cmsUser('admin')));
 
-  it('saves the four lengths in months', async () => {
+  it('saves the three lengths in months', async () => {
     const result = await updateSettingAction(
       IDLE,
       form({ ...RULES, followUpMonthsAdult: '9', voucherValidityMonths: '24' }),
@@ -224,7 +223,6 @@ describe('updateSettingAction: Regels', () => {
       key: 'rules',
       value: {
         followUpMonthsAdult: 9,
-        followUpMonthsYouthPackage: 12,
         secondVisitFreeMonths: 6,
         voucherValidityMonths: 24,
       },

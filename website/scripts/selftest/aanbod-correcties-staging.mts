@@ -8,12 +8,11 @@
  *    it moves to the new text, and a second run finds nothing;
  *  - one provider, "Toshoni Van Craen", who logs in as the first provider of
  *    `cms:seed-booking` and alone offers the fits: the dry run names him and blocks
- *    (`!`, with the replacement to add), the youth package would be offered by
- *    nobody, which blocks too, and `--apply` refuses before any write (no write
- *    call, so no session; no backup, no audit entry, no row);
+ *    (`!`, with the replacement to add), and `--apply` refuses before any write (no
+ *    write call, so no session; no backup, no audit entry, no row);
  *  - a replacement provider who offers the fits: the dry run is clean, the apply
- *    takes Toshoni Van Craen off and gives the package to the replacement only, a
- *    second dry run finds nothing, the restore puts every table back;
+ *    takes Toshoni Van Craen off, makes no youth package and asks no guardian on
+ *    Jeugdfit, a second dry run finds nothing, the restore puts every table back;
  *  - his profile renamed "Toshoni V." on another login matches nobody: the dry
  *    run stops (`!`) instead of treating him as anybody else, and `--apply`
  *    refuses before any write;
@@ -118,16 +117,18 @@ export async function stagingChecks(env: StagingEnv): Promise<void> {
     planned.filter((line) => line.includes('afspraak')).join(' | '),
   );
   check(
-    'staging: Toshoni Van Craen is found; the dry run stops on every fit he alone offers and on a package nobody would offer, saying what to add; his login is never printed',
+    'staging: Toshoni Van Craen is found; the dry run stops on every fit he alone offers, saying what to add, and on nothing else; his login is never printed',
     has('~ provider Toshoni Van Craen — 3 offering(s) removed: ') &&
-      FITS.every((slug) =>
-        planned.includes(
-          `! provider Toshoni Van Craen: service ${slug} would be left without a provider — add a replacement provider for it in Beheer → Aanbieders first`,
-        ),
-      ) &&
-      planned.includes(
-        '! offering bikefit-huidige-fiets: Jeugd – volledig pakket would be offered by no provider — add a replacement provider for jeugdfit in Beheer → Aanbieders first',
-      ) &&
+      planned
+        .filter((line) => line.startsWith('!'))
+        .sort()
+        .join(' | ') ===
+        FITS.map(
+          (slug) =>
+            `! provider Toshoni Van Craen: service ${slug} would be left without a provider — add a replacement provider for it in Beheer → Aanbieders first`,
+        )
+          .sort()
+          .join(' | ') &&
       !planned.some((line) => /offered by \d|^= provider|provider list: cached/.test(line)) &&
       !planned.some((line) => line.includes(STAGING_LOGIN)) &&
       planned.at(-1) === '→ dry run: blocked — fix the items marked ! first',
@@ -137,7 +138,7 @@ export async function stagingChecks(env: StagingEnv): Promise<void> {
   // --- the apply refuses before any write ---------------------------------------------------------
   const refused = await applyWatched();
   check(
-    'staging: --apply refuses with the same list before any write: no write call (not even a session), no backup, no audit entry, no cookie, no row; no package service, so none for Toshoni Van Craen',
+    'staging: --apply refuses with the same list before any write: no write call (not even a session), no backup, no audit entry, no cookie, no row; Jeugdfit still asks for a guardian',
     refused.refusal.startsWith('patch refused:') &&
       refused.refusal.includes(
         'provider Toshoni Van Craen: service jeugdfit would be left without a provider',
@@ -145,7 +146,7 @@ export async function stagingChecks(env: StagingEnv): Promise<void> {
       !refused.refusal.includes(STAGING_LOGIN) &&
       refused.untouched &&
       (await fingerprint(db, schema)) === staging &&
-      (await serviceRow('jeugdfit-pakket')) === null,
+      (await serviceRow('jeugdfit'))?.requiresGuardian === true,
     refused.detail,
   );
 
@@ -153,14 +154,11 @@ export async function stagingChecks(env: StagingEnv): Promise<void> {
   for (const row of replacement) await db.insert(schema.cmsProviderServices).values(row);
   await run({ apply: false, restore: null });
   check(
-    'staging with a replacement provider: the dry run is clean; Toshoni Van Craen’s offerings go, the package goes to the replacement',
+    'staging with a replacement provider: the dry run is clean; Toshoni Van Craen’s offerings go, Jeugdfit asks no guardian, no package is planned',
     !lines.some((line) => line.startsWith('!')) &&
       has('~ provider Toshoni Van Craen — 3 offering(s) removed: ') &&
-      has(
-        '~ variant bikefit-huidige-fiets — ',
-        'new service jeugdfit-pakket',
-        'offered by 1 provider(s)',
-      ) &&
+      has('~ service jeugdfit — requiresGuardian: true → false') &&
+      !planLines(lines).some((line) => /-pakket|volledig pakket|^. variant /.test(line)) &&
       has('→ provider list: cached for up to 5 minutes, so Toshoni Van Craen leaves') &&
       lines.at(-1) === '→ dry run: run again with --apply to write',
     planLines(lines)
@@ -170,29 +168,23 @@ export async function stagingChecks(env: StagingEnv): Promise<void> {
   const beforeApply = await fingerprint(db, schema);
   const applyError = await attempt(() => run({ apply: true, restore: null }));
   const backupPath = backupPathOf();
-  const pack = await serviceRow('jeugdfit-pakket');
-  const packOffered = pack
-    ? (
-        await db
-          .select({ providerId: schema.cmsProviderServices.providerId })
-          .from(schema.cmsProviderServices)
-          .where(eq(schema.cmsProviderServices.serviceId, pack.id))
-      ).map((row) => row.providerId)
-    : [];
+  const youth = await serviceRow('jeugdfit');
   const afspraak = await pageRow('afspraak');
   const live = afspraak?.publishedSnapshot as { seo?: { metaDescription?: unknown } } | null;
   const target = AFSPRAAK_PAGE.metaDescription;
   check(
-    'staging apply: Toshoni Van Craen offers nothing and leaves the public list (his profile stays); the package is offered by the replacement only; /afspraak has the new meta description, also live',
+    'staging apply: Toshoni Van Craen offers nothing and leaves the public list (his profile stays); the replacement keeps the fits; Jeugdfit asks no guardian; no package service; /afspraak has the new meta description, also live',
     applyError === '' &&
       lines.includes('✓ apply complete') &&
       Boolean(backupPath) &&
       (await subscriptions(fx.toshoniId)).length === 0 &&
-      packOffered.join() === fx.winstonId &&
+      (await subscriptions(fx.winstonId)).length === replacement.length &&
       (await listPublicProviders()).map((entry) => entry.displayName).join() === 'Winston' &&
+      youth?.requiresGuardian === false &&
+      (await serviceRow('jeugdfit-pakket')) === null &&
       afspraak?.metaDescription === target &&
       live?.seo?.metaDescription === target,
-    applyError || `package offered by ${packOffered.length}`,
+    applyError || `guardian ${youth?.requiresGuardian}`,
   );
   await run({ apply: false, restore: null });
   check(
@@ -208,10 +200,10 @@ export async function stagingChecks(env: StagingEnv): Promise<void> {
     : 'no backup';
   const restored = await fingerprint(db, schema);
   check(
-    'staging restore: every table as before the apply; Toshoni Van Craen offers the fits again, the package service is gone, /afspraak has the seeded text again',
+    'staging restore: every table as before the apply; Toshoni Van Craen offers the fits again, Jeugdfit asks for a guardian again, /afspraak has the seeded text again',
     restoreError === '' &&
       restored === beforeApply &&
-      (await serviceRow('jeugdfit-pakket')) === null &&
+      (await serviceRow('jeugdfit'))?.requiresGuardian === true &&
       (await subscriptions(fx.toshoniId)).length === 3 &&
       (await pageRow('afspraak'))?.metaDescription === SEEDED_AFSPRAAK_META,
     restoreError || diffPrints(beforeApply, restored),

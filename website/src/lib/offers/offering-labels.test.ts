@@ -2,12 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { DEFAULT_SERVICES } from '@/lib/booking/defaults';
 import { formatPrice } from '@/lib/booking/format';
 import { DEFAULT_OFFERS } from './defaults';
-import {
-  resolveOffering,
-  settingsFromRows,
-  type OfferingServiceInfo,
-  type OfferingSettings,
-} from './offering';
+import { resolveOffering, type OfferingServiceInfo, type OfferingSettings } from './offering';
 import {
   offeringDurationLabel,
   offeringPriceLabel,
@@ -16,9 +11,9 @@ import {
 } from './offering-labels';
 
 /**
- * The Kostprijs and Duur lines of an offering, with the three-variant fits of
- * 27 Oct 2026 (Jeugd – eenmalig, Jeugd – volledig pakket) and the free-text
- * Kostprijs of an offering that is asked for.
+ * The Kostprijs and Duur lines of an offering, with the two-variant fits
+ * (Volwassene, Jeugd – eenmalig; 29 Oct 2026) and the free-text Kostprijs of an
+ * offering that is asked for.
  */
 
 const SERVICES: OfferingServiceInfo[] = DEFAULT_SERVICES.map((service) => ({
@@ -63,52 +58,24 @@ const resolved = (settings: OfferingSettings) =>
     bookableServiceIds: ALL_OFFERED,
   });
 
-const THREE_PRICES = [
+const TWO_PRICES = [
   `Volwassene ${formatPrice(27500)}`,
   `Jeugd – eenmalig ${formatPrice(15000)}`,
-  `Jeugd – volledig pakket ${formatPrice(27500)}`,
 ].join(' · ');
 
-describe('the fits name their three variants (27 Oct 2026)', () => {
-  it('Bikefit – huidige fiets: Kostprijs and Duur list Volwassene, Jeugd – eenmalig and Jeugd – volledig pakket', () => {
+describe('the fits name their two variants (29 Oct 2026)', () => {
+  it('Bikefit – huidige fiets: Kostprijs and Duur list Volwassene and Jeugd – eenmalig', () => {
     const fit = resolved(settingsOf('bikefit-huidige-fiets'));
     expect(fit.status).toBe('bookable');
-    expect(offeringPriceLabel(fit)).toBe(THREE_PRICES);
-    expect(offeringDurationLabel(fit, '')).toBe(
-      'Volwassene: 2 uur · Jeugd – eenmalig: 2 uur · Jeugd – volledig pakket: 2 uur',
-    );
+    expect(offeringPriceLabel(fit)).toBe(TWO_PRICES);
+    expect(offeringDurationLabel(fit, '')).toBe('Volwassene: 2 uur · Jeugd – eenmalig: 2 uur');
   });
 
   it('Bikefit – aankoop nieuwe fiets (asked for): the same prices, its own duration text', () => {
     const fit = resolved(settingsOf('bikefit-nieuwe-fiets'));
     expect(fit.status).toBe('enquiry');
-    expect(offeringPriceLabel(fit)).toBe(THREE_PRICES);
+    expect(offeringPriceLabel(fit)).toBe(TWO_PRICES);
     expect(offeringDurationLabel(fit, '2 uur')).toBe('2 uur');
-  });
-
-  it('older data without the third row reads it as a variant without service and price', () => {
-    const older = settingsFromRows(
-      { isListed: true, bookingMode: 'direct', variantMode: 'audience' },
-      [
-        { audience: 'adult', serviceId: 'svc-volwassenenfit', priceCents: 27500 },
-        { audience: 'youth', serviceId: 'svc-jeugdfit', priceCents: 15000 },
-      ],
-    );
-    const fit = resolved(older);
-    expect(fit.variants[2]).toMatchObject({
-      audience: 'youth-package',
-      label: 'Jeugd – volledig pakket',
-      serviceId: null,
-      serviceSlug: null,
-      durationMinutes: null,
-      priceCents: null,
-      bookable: false,
-    });
-    expect(fit.status).toBe('bookable');
-    expect(offeringPriceLabel(fit)).toBe(
-      `Volwassene ${formatPrice(27500)} · Jeugd – eenmalig ${formatPrice(15000)} · Jeugd – volledig pakket op aanvraag`,
-    );
-    expect(offeringDurationLabel(fit, '')).toBe('Volwassene: 2 uur · Jeugd – eenmalig: 2 uur');
   });
 
   it('one variant: its amount, or "Prijs op aanvraag"', () => {
@@ -140,7 +107,7 @@ describe('a free-text Kostprijs (27 Oct 2026)', () => {
   it('is ignored for an offering booked online: its services carry the prices', () => {
     const fit = resolved(settingsOf('bikefit-huidige-fiets'));
     expect(offeringPriceText(fit, text)).toBe('');
-    expect(offeringPriceLabel(fit, text)).toBe(THREE_PRICES);
+    expect(offeringPriceLabel(fit, text)).toBe(TWO_PRICES);
   });
 
   it('beats the choices of an extra that is asked for', () => {

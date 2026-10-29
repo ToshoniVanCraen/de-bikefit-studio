@@ -160,7 +160,6 @@ async function settingsFor(deps: PlanDeps, stored: StoredOffering, slug: string)
       durationMinutes: number;
       bufferAfterMinutes: number;
       locationId: string | null;
-      requiresGuardian: boolean;
     } | null = null;
     if (direct && serviceId) {
       const { eq } = deps.orm;
@@ -176,7 +175,6 @@ async function settingsFor(deps: PlanDeps, stored: StoredOffering, slug: string)
         durationMinutes: planned ? planned.to.durationMinutes : row.durationMinutes,
         bufferAfterMinutes: row.bufferAfterMinutes ?? 15,
         locationId: row.locationId,
-        requiresGuardian: row.requiresGuardian,
       };
     }
     variants.push({

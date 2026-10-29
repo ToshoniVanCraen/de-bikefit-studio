@@ -4,6 +4,7 @@ import { DEFAULT_OFFERS } from '@/lib/offers/defaults';
 import { LEGAL_IDENTITY } from '@/lib/studio/legal';
 import { AANBOD_PAGES } from './aanbod';
 import { AANBOD_INTRO } from './copy';
+import { PRIVACY_MINORS_HTML } from './legal';
 import {
   pageHead,
   set,
@@ -40,7 +41,9 @@ import {
  *   - the /aanbod intro without "gediplomeerde" (where it still has the rollout
  *     text: production keeps Toshoni's own subtitle, `KEPT_AANBOD_INTRO`), the
  *     terms without "fit aan huis", the privacy statement naming Google Maps, the
- *     home contact block with the address.
+ *     home contact block with the address;
+ *   - (29 Oct 2026) the terms and the privacy statement without a parent or
+ *     guardian for a jeugdfit.
  *
  * What a text on a page is worth in an edit:
  *
@@ -196,8 +199,19 @@ const NEW_TERMS_META =
 
 // ----------------------------------------------------------- legal pages ----
 
-export const PRIVACY_DATE_HTML = '<p><em>Laatst bijgewerkt: 27 oktober 2026</em></p>';
+export const PRIVACY_DATE_HTML = '<p><em>Laatst bijgewerkt: 29 oktober 2026</em></p>';
 const OLD_PRIVACY_DATE_HTML = '<p><em>Laatst bijgewerkt: 20 oktober 2026</em></p>';
+
+/**
+ * No parent or guardian is asked for a jeugdfit any more (Toshoni, 29 Oct 2026): §2 loses the
+ * sentence on a parent's details, guarded with the sentences around it, and §8 says what a
+ * jeugdfit needs (`legal.ts`).
+ */
+const OLD_PRIVACY_GUARDIAN_HTML =
+  'doelen. Bij een jeugdfit vragen wij de contactgegevens van een ouder of voogd en de naam en leeftijd van het kind. Bij een fit aan huis';
+const PRIVACY_GUARDIAN_HTML = 'doelen. Bij een fit aan huis';
+const OLD_PRIVACY_MINORS_HTML =
+  '<p>Voor een jeugdfit verwerken wij gegevens van kinderen. Dat doen wij enkel met de betrokkenheid van een ouder of voogd, die de afspraak maakt en de contactpersoon is.</p>';
 
 /** The paragraph on the map of `/afspraak` (Google Maps loads after a click), before "3. Hoe lang ...". */
 export const PRIVACY_MAPS_HTML =
@@ -225,13 +239,14 @@ const PRIVACY_LIST_SWAPS: ReadonlyArray<readonly [from: string, to: string]> = [
 ];
 
 /**
- * Art. 8 loses its last bullet, "Bij een fit aan huis ..." (Toshoni, 27 Oct 2026: the
- * service is retired). Guarded with the end of the bullet before it, so the edit only
- * applies to the bullet that closes the list.
+ * Art. 8 loses its last two bullets: "Minderjarigen worden vergezeld door een ouder of voogd
+ * ..." (Toshoni, 29 Oct 2026: no guardian rule) and "Bij een fit aan huis ..." (27 Oct 2026:
+ * the service is retired). Guarded with the end of the bullet before them and the end of the
+ * list, so the edit only applies to the two bullets that close it.
  */
-export const TERMS_HOME_FIT_BULLET_FROM_HTML =
-  'die de afspraak maakt en aanwezig is.</li>\n<li>Bij een fit aan huis zorg je voor een geschikte, veilige ruimte en eventueel een fietstrainer, in overleg met ons.</li>';
-export const TERMS_HOME_FIT_BULLET_TO_HTML = 'die de afspraak maakt en aanwezig is.</li>';
+export const TERMS_ART_8_TAIL_FROM_HTML =
+  'verantwoordelijk voor je fiets en materiaal.</li>\n<li>Minderjarigen worden vergezeld door een ouder of voogd, die de afspraak maakt en aanwezig is.</li>\n<li>Bij een fit aan huis zorg je voor een geschikte, veilige ruimte en eventueel een fietstrainer, in overleg met ons.</li>\n</ul>';
+export const TERMS_ART_8_TAIL_TO_HTML = 'verantwoordelijk voor je fiets en materiaal.</li>\n</ul>';
 
 /** The titles of the fourteen articles: "Artikel 3 – Onze diensten" becomes "Artikel 3: Onze diensten". */
 const ARTICLE_TITLES = [
@@ -345,6 +360,9 @@ export const COPY_PAGE_SPECS: PageCleanupSpec[] = [
         `</p>\n\n${NEXT_PRIVACY_SECTION_HTML}`,
         `</p>\n${PRIVACY_MAPS_HTML}\n\n${NEXT_PRIVACY_SECTION_HTML}`,
       ),
+      // 29 Oct 2026: no parent or guardian for a jeugdfit (§2 and §8).
+      replace(privacyText, OLD_PRIVACY_GUARDIAN_HTML, PRIVACY_GUARDIAN_HTML),
+      replace(privacyText, OLD_PRIVACY_MINORS_HTML, PRIVACY_MINORS_HTML),
     ],
     metaDescription: { from: OLD_PRIVACY_META, to: NEW_PRIVACY_META },
   },
@@ -352,8 +370,8 @@ export const COPY_PAGE_SPECS: PageCleanupSpec[] = [
     slug: 'algemene-voorwaarden',
     edits: [
       ...ARTICLE_HEADINGS,
-      // Art. 8: "fit aan huis" is a retired service.
-      replace(termsText, TERMS_HOME_FIT_BULLET_FROM_HTML, TERMS_HOME_FIT_BULLET_TO_HTML),
+      // Art. 8: no guardian rule (29 Oct 2026); "fit aan huis" is a retired service.
+      replace(termsText, TERMS_ART_8_TAIL_FROM_HTML, TERMS_ART_8_TAIL_TO_HTML),
     ],
     metaDescription: { from: OLD_TERMS_META, to: NEW_TERMS_META },
   },

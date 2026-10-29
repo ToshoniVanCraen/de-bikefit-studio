@@ -2,23 +2,21 @@ import { describe, expect, it } from 'vitest';
 import { FIRST_PROVIDER } from './first-provider.mjs';
 import {
   decideProviderRemoval,
-  decideYouthPackage,
   isToshoni,
   normalizedName,
   TOSHONI,
   type ProviderRow,
-  type ServiceRow,
+  type ServiceRef,
   type SubscriptionRow,
-  type VariantRow,
 } from './aanbod-correcties-youth.mjs';
 
 /**
  * Who Toshoni is for `cms:patch-aanbod-correcties`, and the state staging held at
  * the dry run of 27 Oct 2026: one provider, "Toshoni Van Craen", who logs in as the
  * first provider of `cms:seed-booking` and alone offers the fits. The rule knew only
- * the name "Toshoni" then: the dry run did not find him ("no such provider"),
- * planned the youth package for him and blocked nothing. Not finding him among
- * providers now stops the patch (fail closed), and so does finding him twice.
+ * the name "Toshoni" then: the dry run did not find him ("no such provider") and
+ * blocked nothing. Not finding him among providers now stops the patch (fail
+ * closed), and so does finding him twice.
  */
 
 /** The login staging's profile has: the default of `cms:seed-booking`. */
@@ -35,28 +33,12 @@ const sub = (
   serviceId: string,
   locationId: string | null = null,
 ): SubscriptionRow => ({ providerId, serviceId, locationId });
-const service = (id: string, slug: string, over: Partial<ServiceRow> = {}): ServiceRow => ({
+const service = (id: string, slug: string): ServiceRef => ({
   id,
   slug,
   name: slug,
   isActive: true,
-  choiceLabel: '',
-  description: '',
-  durationMinutes: 120,
-  bufferAfterMinutes: 15,
-  priceCents: null,
-  showPrice: false,
-  locationId: null,
-  requiresGuardian: false,
-  sortOrder: 0,
-  ...over,
 });
-const variant = (
-  offeringId: string,
-  audience: string,
-  serviceId: string | null,
-  priceCents: number | null,
-): VariantRow => ({ offeringId, audience, serviceId, priceCents });
 
 describe('who Toshoni is', () => {
   const nobody = 'iemand@example.com';
@@ -114,36 +96,11 @@ describe('who Toshoni is', () => {
 describe('staging on 27 Oct 2026: Toshoni Van Craen is the only provider of the fits', () => {
   const toshoni = provider('p1', 'Toshoni Van Craen', SEED_LOGIN);
   const winston = provider('p2', 'Winston', 'winston@example.com');
-  const adult = service('s-adult', 'volwassenenfit', { sortOrder: 60 });
-  const youth = service('s-youth', 'jeugdfit', { sortOrder: 61 });
+  const adult = service('s-adult', 'volwassenenfit');
+  const youth = service('s-youth', 'jeugdfit');
   const foot = service('s-foot', 'voetanalyse');
   const services = [adult, youth, foot];
   const his = [sub('p1', 's-adult'), sub('p1', 's-youth'), sub('p1', 's-foot')];
-  const huidige = {
-    id: 'o-huidige',
-    slug: 'bikefit-huidige-fiets',
-    title: 'Bikefit – huidige fiets',
-    bookingMode: 'direct',
-    variantMode: 'audience',
-  };
-  const fits = [
-    variant(huidige.id, 'adult', 's-adult', 27500),
-    variant(huidige.id, 'youth', 's-youth', 15000),
-  ];
-  const packageOf = (
-    providers: ProviderRow[],
-    subscriptions: SubscriptionRow[],
-    extra: ServiceRow[] = [],
-  ) =>
-    decideYouthPackage({
-      offering: huidige,
-      variants: fits,
-      services: [...services, ...extra],
-      subscriptions,
-      providers,
-      targetPriceCents: 27500,
-      defaultYouthServiceSlug: 'jeugdfit',
-    });
 
   it('finds him, and refuses to take him off a service nobody else offers, naming the fix', () => {
     const decision = decideProviderRemoval({
@@ -171,20 +128,6 @@ describe('staging on 27 Oct 2026: Toshoni Van Craen is the only provider of the 
       planned: [],
     });
     expect(idle.blockers).toHaveLength(3);
-  });
-
-  it('does not offer him the package, and refuses a package nobody would offer', () => {
-    const decision = packageOf([toshoni], his);
-    expect(decision.subscribe).toEqual([]);
-    expect(decision.action).toBe('blocked');
-    expect(decision.blockers).toEqual([
-      'offering bikefit-huidige-fiets: Jeugd – volledig pakket would be offered by no provider — add a replacement provider for jeugdfit in Beheer → Aanbieders first',
-    ]);
-    // What it would do is still told, without a provider.
-    expect(decision.changes).toEqual([
-      expect.stringContaining('add variant'),
-      expect.stringContaining('new service jeugdfit-pakket'),
-    ]);
   });
 
   it('never puts his login in a decision', () => {
@@ -218,7 +161,7 @@ describe('staging on 27 Oct 2026: Toshoni Van Craen is the only provider of the 
       services,
       planned: [],
     });
-    for (const decision of [removal, twice, packageOf([toshoni], his)]) {
+    for (const decision of [removal, twice]) {
       expect(JSON.stringify(decision)).not.toContain('gmail');
     }
   });
@@ -241,47 +184,27 @@ describe('staging on 27 Oct 2026: Toshoni Van Craen is the only provider of the 
       ],
     });
     expect(JSON.stringify(removal)).not.toContain('example.com');
-    // What the stop prevents: without it he would be offered the package like anybody else.
-    expect(
-      packageOf([renamed, winston], subscriptions).subscribe.map((target) => target.providerId),
-    ).toEqual(['p1', 'p2']);
-    // A database without any provider has nothing to remove (the package stops on its own).
+    // A database without any provider has nothing to remove.
     expect(
       decideProviderRemoval({ providers: [], subscriptions: [], services, planned: [] }).blockers,
     ).toEqual([]);
   });
 
-  it('with a replacement who offers the fits: his offerings go, the package goes to the replacement only', () => {
+  it('with a replacement who offers the fits: his offerings go', () => {
     const subscriptions = [
       ...his,
       sub('p2', 's-adult'),
       sub('p2', 's-youth', 'l-studio'),
       sub('p2', 's-foot'),
     ];
-    const pack = packageOf([toshoni, winston], subscriptions);
-    expect(pack.action).toBe('update');
-    expect(pack.subscribe).toEqual([{ providerId: 'p2', locationId: 'l-studio' }]);
-    expect(pack.changes.at(-1)).toBe('offered by 1 provider(s)');
     const removal = decideProviderRemoval({
       providers: [toshoni, winston],
       subscriptions,
       services,
-      planned: pack.subscribe.map((target) => ({ ...target, serviceId: 'new:package' })),
+      planned: [],
     });
     expect(removal.provider).toEqual({ id: 'p1', displayName: 'Toshoni Van Craen' });
     expect(removal.rows).toEqual(his);
     expect(removal.blockers).toEqual([]);
-  });
-
-  it('a package service the bootstrap made that only he offers is refused too; one another provider offers is not', () => {
-    const made = service('s-pack', 'jeugdfit-pakket', { priceCents: 27500, showPrice: true });
-    const onlyHim = [sub('p1', 's-youth'), sub('p1', 's-pack')];
-    expect(packageOf([toshoni], onlyHim, [made]).blockers).toEqual([
-      expect.stringContaining('would be offered by no provider'),
-    ]);
-    const shared = packageOf([toshoni, winston], [...onlyHim, sub('p2', 's-pack')], [made]);
-    expect(shared.blockers).toEqual([]);
-    expect(shared.subscribe).toEqual([]);
-    expect(shared.action).toBe('update');
   });
 });

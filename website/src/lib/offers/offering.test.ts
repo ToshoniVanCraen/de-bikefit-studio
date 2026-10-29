@@ -65,7 +65,6 @@ const FACTS = {
   durationMinutes: 90,
   bufferAfterMinutes: null,
   locationId: null,
-  requiresGuardian: false,
 };
 
 const audienceDirect: OfferingSettings = {
@@ -85,7 +84,7 @@ const audienceDirect: OfferingSettings = {
 
 describe('validateOfferingInput (Beheer → Aanbod)', () => {
   it('accepts Volwassene/Jeugd booked directly, each its own service facts and price', () => {
-    const youthFacts = { ...FACTS, durationMinutes: 60, requiresGuardian: true };
+    const youthFacts = { ...FACTS, durationMinutes: 60 };
     const result = validateOfferingInput({
       ...audienceDirect,
       variants: [
@@ -201,7 +200,6 @@ describe('settingsFromRows (stored rows, read defensively)', () => {
       variants: [
         { audience: 'adult', serviceId: null, priceCents: null },
         { audience: 'youth', serviceId: YOUTH, priceCents: 9500 },
-        { audience: 'youth-package', serviceId: null, priceCents: null },
       ],
     });
   });

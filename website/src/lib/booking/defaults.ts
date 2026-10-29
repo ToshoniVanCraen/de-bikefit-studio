@@ -4,15 +4,14 @@
  *
  * Decided by Toshoni (24 Sep 2026): five services, prices hidden. Since 17 Oct
  * 2026 only the fits remain; since 20 Oct 2026 (Toshoni) they take 2 hours and
- * show their price. Since 27 Oct 2026 (Toshoni) there are three, so the youth
- * price is explicit everywhere: Volwassenenfit € 275 with six months of problem
- * follow-up; Jeugdfit – eenmalig € 150, under 16, one fit without follow-up;
- * Jeugdfit – volledig pakket € 275, under 16, with a year of free follow-up,
- * which the studio recommends because young riders grow fast. An existing
+ * show their price. Since 27 Oct 2026 (Toshoni) the youth price is explicit
+ * everywhere: Volwassenenfit € 275 with six months of problem follow-up;
+ * Jeugdfit – eenmalig € 150, under 16, one fit without follow-up, the only youth
+ * option (Toshoni, 29 Oct 2026), without a parent or guardian rule. An existing
  * database got the values of 20 Oct with `npm run cms:patch-aanbod-prijzen`;
- * the third service and the new names reach it with the data patch of 27 Oct
- * (`cms:bootstrap` also creates a missing service, never renames one). Nothing is
- * invented beyond what Toshoni gave.
+ * the new names reach it with the data patch of 27 Oct (`cms:bootstrap` also
+ * creates a missing service, never renames one). Nothing is invented beyond
+ * what Toshoni gave.
  */
 
 export const DEFAULT_STUDIO_LOCATION = {
@@ -81,26 +80,13 @@ export const DEFAULT_SERVICES: DefaultService[] = [
     name: 'Jeugdfit – eenmalig',
     choiceLabel: 'Jeugd – eenmalig',
     description:
-      'Voor fietsers onder 16: één fit, zonder opvolging. Met het volledige pakket ({{prijs:bikefit-huidige-fiets:youth-package}}) krijg je {{opvolging:jeugd-pakket}} gratis opvolging; dat raden we aan, want jonge renners groeien snel.',
+      'Voor fietsers onder 16: één fit, afgestemd op een lichaam in groei, zonder opvolging.',
     durationMinutes: 120,
     priceCents: 15000,
     showPrice: true,
-    requiresGuardian: true,
+    requiresGuardian: false,
     location: null,
     sortOrder: 1,
-  },
-  {
-    slug: 'jeugdfit-pakket',
-    name: 'Jeugdfit – volledig pakket',
-    choiceLabel: 'Jeugd – volledig pakket',
-    description:
-      'Voor fietsers onder 16: de volledige fit met {{opvolging:jeugd-pakket}} gratis opvolging. Aangeraden: jonge renners groeien snel, en hun fiets groeit niet vanzelf mee.',
-    durationMinutes: 120,
-    priceCents: 27500,
-    showPrice: true,
-    requiresGuardian: true,
-    location: null,
-    sortOrder: 2,
   },
 ];
 

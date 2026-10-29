@@ -88,7 +88,8 @@ function parseServiceForm(
       priceCents,
       showPrice: boolField(form, 'showPrice'),
       locationId: field(form, 'locationId') || null,
-      requiresGuardian: boolField(form, 'requiresGuardian'),
+      // No service asks for a guardian since 29 Oct 2026 (Toshoni): every save writes the default.
+      requiresGuardian: false,
       isActive: boolField(form, 'isActive'),
       sortOrder,
       color: color ? color.toLowerCase() : null,

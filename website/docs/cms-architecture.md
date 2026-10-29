@@ -157,7 +157,7 @@ URL prefix (`publicPathFor()` in `repo.ts` encodes that rule).
 | `drizzle/0014_cms_booking_followups.sql` | Reminder and review mails (`booking-architecture.md` §17): `cms_bookings.reminder_sent_at` / `review_requested_at` and the table `cms_reviews`. Guarded, additive. |
 | `drizzle/0015_cms_offering_addons.sql` | Extra's (§14, 20 Oct 2026): `cms_offerings.is_addon` / `sold_alone` / `addon_minutes`, `cms_offering_addons` (the extras an offering allows, in order) and `cms_booking_addons` (a snapshot per booking). Guarded; `cms:patch-aanbod-extras` fills in the set. |
 | `drizzle/0016_cms_offering_addon_options.sql` | `cms_offerings.addon_options` (jsonb, default `[]`): the choices within an extra. Guarded. |
-| `drizzle/0017_cms_offering_price_text.sql` | `cms_offerings.price_text` (text, default `''`): the free-text Kostprijs of an offering that is asked for (27 Oct 2026). Guarded; the audience `youth-package` needs no migration (`cms_offering_variants.audience` is plain text). |
+| `drizzle/0017_cms_offering_price_text.sql` | `cms_offerings.price_text` (text, default `''`): the free-text Kostprijs of an offering that is asked for (27 Oct 2026). Guarded. |
 
 Migrate **before** deploying a build that reads the new columns (every offering read selects them
 all): 0015–0017 with the build of 27 Oct 2026 (`staging-runbook.md` §23, §24).
@@ -999,7 +999,7 @@ page, e-mail and meta tag follows. The admin and the stored data keep the token 
 | --- | --- | --- | --- |
 | `{{duur:<service-slug>}}` | the planning duration of that bookable service as the widget shows it: "2 uur", "1 u 30 min" | Beheer → Aanbod, the variant's duration (the service behind it, `listPublicServices()`) | `in overleg` (unknown, inactive or unoffered service) |
 | `{{prijs:<offering-slug>}}` | the price line of the offering as `/aanbod` shows it (`CatalogueOffer.priceLabel`): the variants joined ("Volwassene € 275,00 · Jeugd – eenmalig € 150,00"), or the free-text price of an offering that is asked for, itself resolved, or "Prijs op aanvraag" | Beheer → Aanbod, prices per variant (and "Prijs (tekst)") | `op aanvraag` |
-| `{{prijs:<offering-slug>:<audience>}}` | one variant's amount in prose: "€ 275", "€ 75,50"; audience `all`, `adult`, `youth` or `youth-package`. Reads the variant's cents only, never the price text | Beheer → Aanbod, price per variant | `op aanvraag` |
+| `{{prijs:<offering-slug>:<audience>}}` | one variant's amount in prose: "€ 275", "€ 75,50"; audience `all`, `adult` or `youth`. Reads the variant's cents only, never the price text | Beheer → Aanbod, price per variant | `op aanvraag` |
 | `{{extra:<offering-slug>}}` | an extra without choices: "€ 85 en 30 minuten extra" (price, then time; no label, no total) | Beheer → Aanbod, the extra's time and price | `in overleg` (not an extra, hidden, no time or price; an extra with choices needs the choice) |
 | `{{extra:<offering-slug>:<choice-key>}}` | one choice of an extra, same shape: "€ 75 en 30 minuten extra" | Beheer → Aanbod → Extra's → Keuzes (the choice's `key`) | `in overleg` |
 | `{{telefoon}}`, `{{telefoon-href}}` | the phone label "+32 473 95 26 33" and the link "tel:+32473952633" (only a plain `tel:` link passes: it lands in `href`s of already sanitised text) | Instellingen → Contact | the pair `LEGAL_IDENTITY.phoneLabel`/`phoneHref` (`legal.ts`), as the offer page and the gift voucher already do |
@@ -1007,7 +1007,7 @@ page, e-mail and meta tag follows. The admin and the stored data keep the token 
 | `{{adres}}` | the studio's address on one line: "Halsesteenweg 406 a, 9403 Neigem" (`formatPostalAddress()`) | Instellingen → Contact | the address of the studio location, else empty |
 | `{{adres-studio}}` | the default studio booking location on one line (no name) | Beheer → Locaties: the active studio location marked "Standaard", else the first one (`getDefaultStudioLocation()`) | the contact address, else empty |
 | `{{bedrijf}}`, `{{zetel}}`, `{{kbo}}`, `{{btw}}` | the legal name, the registered office on one line ("Weversstraat 7, 1730 Asse"), the enterprise number and the VAT number, verbatim | Instellingen → Bedrijfsgegevens (`business`) | the schema defaults (`LEGAL_IDENTITY`) while the row is missing; a field the admin emptied prints empty |
-| `{{opvolging:volwassene}}`, `{{opvolging:jeugd-pakket}}`, `{{tweede-bezoek-gratis}}`, `{{cadeaubon-geldigheid}}` | a number of months in words: 6 → "zes maanden", 12 → "een jaar", 24 → "twee jaar", 1 → "1 maand", any other → "<n> maanden" (`monthsInWords()`) | Instellingen → Regels (`rules`: 6, 12, 6, 12 months) | the schema defaults while the row is missing |
+| `{{opvolging:volwassene}}`, `{{tweede-bezoek-gratis}}`, `{{cadeaubon-geldigheid}}` | a number of months in words: 6 → "zes maanden", 12 → "een jaar", 24 → "twee jaar", 1 → "1 maand", any other → "<n> maanden" (`monthsInWords()`) | Instellingen → Regels (`rules`: 6, 6, 12 months) | the schema defaults while the row is missing |
 
 **Grammar and rules.** A token is `{{name}}` or `{{name:part}}` or `{{name:part:part}}` in lower-case letters,
 digits and hyphens; spaces inside the braces are fine. Resolution is **a single pass** and never scans what
@@ -1145,7 +1145,7 @@ re-exported by `blocks.ts`; split out on 27 Oct 2026):
 | `seo` | `defaultMetaTitle`, `titleTemplate`, `defaultMetaDescription`, `defaultOgImageMediaId`, `allowIndexing` |
 | `organization` | `type`, `sameAs`, `priceRange`, `areaServed`, `latitude`, `longitude` — the Organization / LocalBusiness JSON-LD source. `legalName` and `vatNumber` moved to `business` on 27 Oct 2026 (a stored value is ignored) |
 | `business` | (27 Oct 2026) `legalName` ("Qarakter BV"), `seatAddressLines` (["Weversstraat 7"]), `seatPostalCode` ("1730"), `seatCity` ("Asse"), `seatCountry` ("BE"), `enterpriseNumber` and `vatNumber` ("BE 1036.912.281" both) — the legal identity: the master of `{{bedrijf}}`, `{{zetel}}`, `{{kbo}}` and `{{btw}}`, and of the JSON-LD Organization's `legalName` and `vatID` (written without spaces and dots). The defaults are `LEGAL_IDENTITY` (`src/lib/studio/legal.ts`), which is nothing but those defaults (and the phone fallback of the error pages) |
-| `rules` | (27 Oct 2026) whole months, 1 to 60: `followUpMonthsAdult` (6), `followUpMonthsYouthPackage` (12), `secondVisitFreeMonths` (6), `voucherValidityMonths` (12) — printed in words by `{{opvolging:volwassene}}`, `{{opvolging:jeugd-pakket}}`, `{{tweede-bezoek-gratis}}` and `{{cadeaubon-geldigheid}}`; the studio's decisions as text, nothing is computed from them |
+| `rules` | (27 Oct 2026) whole months, 1 to 60: `followUpMonthsAdult` (6), `secondVisitFreeMonths` (6), `voucherValidityMonths` (12) — printed in words by `{{opvolging:volwassene}}`, `{{tweede-bezoek-gratis}}` and `{{cadeaubon-geldigheid}}`; the studio's decisions as text, nothing is computed from them |
 | `analytics` | `ga4PropertyId` (numeric GA4 property for the admin panel; env `GA4_PROPERTY_ID` wins), `enabled` (default **false**; the tag and banner load only when true). The measurement id is the env var `NEXT_PUBLIC_GA4_MEASUREMENT_ID` only (`ga4MeasurementId` removed from the admin on 19 Oct 2026: it was never read) |
 | `booking` | `slotStepMinutes` (30), `minNoticeHours` (24), `horizonDays` (56), `defaultBufferAfterMinutes` (15), `cancelUntilHours` (48), `timezone` (`Europe/Brussels`), `introTitle`, `introText`, `confirmationText`, `showProviderChoice` (true) — the booking rules, see `booking-architecture.md` §4 |
 
@@ -1430,8 +1430,8 @@ npm run dev
 `cms:bootstrap` is idempotent — it creates the admin `contact@toshoni.be`
 (role `admin`, `must_change_password = true`), the six default `nl` site
 settings (`site`, `contact`, `seo`, `organization`, `analytics`, `booking`),
-empty `main` + `footer` menus, the two locations and the three services (Volwassenenfit,
-Jeugdfit – eenmalig, Jeugdfit – volledig pakket). Running it twice changes nothing.
+empty `main` + `footer` menus, the two locations and the two services (Volwassenenfit,
+Jeugdfit – eenmalig). Running it twice changes nothing.
 
 `cms:seed` writes as an admin who has chosen their own password and enrolled
 two-step verification (§4), so the bootstrap password is replaced and the
@@ -1852,15 +1852,14 @@ Beheer → Diensten held the booking services; that split is gone.
 0011) holds, per offering: the copy a visitor reads (slug, category, order, title, summary,
 intro, Doel, Inhoud, Mogelijke extra's and their note, the free-text Duur and Kostprijs
 (`price_text`, migration 0017) of an offering that is asked for, the button label, image, meta
-description) and the decisions (shown on the website, one option or Volwassene / Jeugd – eenmalig
-/ Jeugd – volledig pakket, booked directly online or asked for). `cms_offering_variants`
-holds per variant the booking service it is booked as and its public price. The booking service
-(`cms_services`: duration, buffer, location, guardian rule) is written by the same admin form;
-bookings keep referencing it by id.
+description) and the decisions (shown on the website, one option or Volwassene / Jeugd – eenmalig,
+booked directly online or asked for). `cms_offering_variants` holds per variant the booking
+service it is booked as and its public price. The booking service (`cms_services`: duration,
+buffer, location) is written by the same admin form; bookings keep referencing it by id.
 
 | Decision | Where | Who |
 | --- | --- | --- |
-| Everything about an offering: text, image, shown or not, variants, duration/buffer/location/guardian per variant, price per variant, direct booking or enquiry | **Beheer → Aanbod** (`/admin/aanbod`, one screen per offering, "Nieuw aanbod"). Takes effect at once (no publish step) | `offering.manage`: admin |
+| Everything about an offering: text, image, shown or not, variants, duration/buffer/location per variant, price per variant, direct booking or enquiry | **Beheer → Aanbod** (`/admin/aanbod`, one screen per offering, "Nieuw aanbod"). Takes effect at once (no publish step) | `offering.manage`: admin |
 | Who offers a variant | *Mijn agenda → Mijn aanbod* (the provider for their own profile), grouped per offering; an admin can do it under Aanbieders | `service.subscribe.own` / `provider.manage` |
 | The overview page itself (intro, group titles, the voucher card) | the CMS page `/aanbod` (`offerCatalogue` block) in Pagina's, like any page | editor, admin publishes |
 
@@ -1882,38 +1881,28 @@ nobody offers it: card greyed, button disabled, phone as the way to ask), **Op a
 the button scrolls to the form on the page). *Shown* off → left out of every overview, `/aanbod/<slug>`
 answers 404, out of the sitemap, its services held back from `/afspraak`. Kostprijs: "Prijs op
 aanvraag" until a variant has a price; one amount for one option; "Volwassene € 275,00 · Jeugd –
-eenmalig € 150,00 · Jeugd – volledig pakket € 275,00" per variant (a variant without a price reads
-"op aanvraag"); for an offering that is asked for, its free text instead when it has one (see
+eenmalig € 150,00" per variant (a variant without a price reads "op aanvraag"); for an offering that is asked for, its free text instead when it has one (see
 *Free-text Kostprijs* below); prices only on `/aanbod` and the offer pages (`showsOfferPrices`).
 Duur: direct → from the variants' services; enquiry → the offering's own text. JSON-LD `offers`
 mirror the prices. Booking links: `/afspraak?dienst=<slug>#boeken`, resolved on the server
 (`resolveBookingSelection`); the booking side is `booking-architecture.md` §14.
 
-**Jeugd in two variants (Toshoni, 27 Oct 2026).** Under 16 you pay € 150 for one fit without
-follow-up, or € 275 for the full package with a year of free follow-up, which the studio
-recommends because young riders grow fast; adults keep € 275 with six months of problem follow-up.
-Before this a Jeugd variant was priced at € 150 and its service text said "met opvolging kies je
-Volwassene (€ 275)", which sent a 15-year-old to the wrong choice. An offering split by audience
-(`variantMode = audience`) therefore has **three** variants, in this order and with these labels
-everywhere (offer page, widget, booking, mails, Beheer, enquiry): `adult` **Volwassene**, `youth`
-**Jeugd – eenmalig**, `youth-package` **Jeugd – volledig pakket**
+**Jeugd is the one-off fit (Toshoni, 27 and 29 Oct 2026).** Under 16 you pay € 150 for one fit
+without follow-up; adults keep € 275 with six months of problem follow-up. Before 27 Oct a Jeugd
+variant was priced at € 150 and its service text said "met opvolging kies je Volwassene (€ 275)",
+which sent a 15-year-old to the wrong choice. An offering split by audience (`variantMode =
+audience`) has **two** variants, in this order and with these labels everywhere (offer page,
+widget, booking, mails, Beheer, enquiry): `adult` **Volwassene**, `youth` **Jeugd – eenmalig**
 (`src/lib/offers/offering-audience.ts`; `OfferingAudience`, `AUDIENCE_LABELS`, `audiencesFor()`).
-The fits that are booked online have a service for each: `volwassenenfit`, `jeugdfit` (*Jeugdfit –
-eenmalig*), `jeugdfit-pakket` (*Jeugdfit – volledig pakket*, € 275, 2 hours, guardian required),
-created by `cms:bootstrap` from `DEFAULT_SERVICES` and subscribed to the first provider by
-`cms:seed-booking`. Both Jeugd variants default to "Ouder of voogd verplicht" in Beheer.
+The fit that is booked online has a service for each: `volwassenenfit` and `jeugdfit` (*Jeugdfit
+– eenmalig*), created by `cms:bootstrap` from `DEFAULT_SERVICES` and subscribed to the first
+provider by `cms:seed-booking`. No booking asks for a parent or guardian since 29 Oct 2026:
+Beheer has no such toggle any more and every save writes `requires_guardian` false (the column
+stays, as do the guardian columns of `cms_bookings` for the bookings of before).
 `cms_offering_variants.audience` is plain text with PK (offering, audience) and no CHECK
-(`drizzle/0010_cms_offerings.sql`), so the new value needs no migration. Older data: an offering
-saved before holds only the pair Volwassene + Jeugd; `settingsFromRows()` reads the missing row
-as a variant without service and price (it shows "Jeugd – volledig pakket op aanvraag" and, on a
-direct offering, "tijdelijk niet online te boeken" until a data patch adds it), and
-`isAcceptedAudienceSet()` still accepts that pair on save so the 20 Oct patch (frozen at its 20
-Oct values in `aanbod-prices.ts`) keeps working; remove that tolerance when the data move of 27
-Oct has reached every database. An extra priced per audience resolves its price for
-`youth-package` as: its own price → `baseAudienceOf()` (`youth`) → the single option → the first
-variant (`addonPriceFor`). A new service made by Beheer gets the slug `<offering>-jeugd-pakket`
-and the order `category × 10 000 + sort order × 3 + audience rank`
-(`src/lib/offers/repo-variant-services.ts`).
+(`drizzle/0010_cms_offerings.sql`). A new service made by Beheer gets the slug
+`<offering>-volwassene` / `<offering>-jeugd` and the order `category × 10 000 + sort order × 3 +
+audience rank` (`src/lib/offers/repo-variant-services.ts`).
 
 **Free-text Kostprijs (Toshoni, 27 Oct 2026; migration 0017).** *Bikefit – tweede bezoek* is free
 within six months of the fit and € 75 after that, so its price line reads "Gratis binnen 6 maanden
@@ -1933,7 +1922,7 @@ existing offering keeps what it has and gets the text in Beheer.
 **Modules.** `src/lib/offers/offering-content.ts` (pure: the copy, validation, `contentFromRow`),
 `offering.ts` (pure: modes, settings validation incl. the per-variant service facts,
 `resolveOffering`, `withheldServiceIds`; it re-exports the next two), `offering-audience.ts`
-(pure: the audiences, `AUDIENCE_LABELS`, `audiencesFor`, `baseAudienceOf`, `isAcceptedAudienceSet`),
+(pure: the audiences, `AUDIENCE_LABELS`, `audiencesFor`, `isAcceptedAudienceSet`),
 `offering-labels.ts` (pure: the Kostprijs and Duur lines, `offeringPriceLabel`, `offeringPriceText`),
 `offer-catalogue.ts` (pure: offerings + services
 + who offers what → cards, `bySlug`, `hiddenSlugs`, `withheldServiceIds`, `variantDisplay`),
@@ -1952,7 +1941,7 @@ written by `cms:bootstrap`; the older services are retired, `RETIRED_SERVICE_SLU
 
 **Enquiry form** (`src/lib/offer-enquiry/`, `src/components/studio/offer-enquiry-form.tsx`):
 name, e-mail, optional phone, "Voor wie?" with the offering's own variants (Volwassene, Jeugd –
-eenmalig, Jeugd – volledig pakket; the mail to the studio names the choice), the question;
+eenmalig; the mail to the studio names the choice), the question;
 honeypot; rate limit on `cms_rate_limits`; mailed to the order inbox (env `GIFT_VOUCHER_RECIPIENT`,
 else Beheer → E-mail), visitor as Reply-To; nothing stored; the server re-checks that the offering
 is shown and set to enquiry (`findEnquiryOffer`) and that the choice is one of its variants.
@@ -1989,8 +1978,8 @@ price text agree everywhere), `offer-catalogue.test.ts`, `catalogue.test.ts`, `a
 `aanbod-prices.test.ts`, `jsonld.test.ts`, `actions/offerings.test.ts`, `offer-enquiry/*.test.ts`,
 the seed-content tests (the register `content-placeholders.md` is checked against the defaults); on
 PGlite self-test section 14d (`scripts/selftest/offerings.mts`: migrations, bootstrap with the
-three fit services, the migration CLI, permissions, the admin write with its three services and
-the price text, provider self-service, the booking gate, the enquiry form, the provider profile)
+fit services, the migration CLI, permissions, the admin write with its two services (no guardian)
+and the price text, provider self-service, the booking gate, the enquiry form, the provider profile)
 and 17b (the 20 Oct price patch on the pair Volwassene + Jeugd).
 
 **Decisions (Toshoni, 17 Oct 2026).** `offering.manage` is admin-only (it writes the booking

@@ -153,16 +153,13 @@ export const siteSettingSchemas = {
   }),
   /**
    * The lengths that copy states in words (27 Oct 2026): `{{opvolging:volwassene}}`,
-   * `{{opvolging:jeugd-pakket}}`, `{{tweede-bezoek-gratis}}` and
-   * `{{cadeaubon-geldigheid}}` print them through `monthsInWords()`
+   * `{{tweede-bezoek-gratis}}` and `{{cadeaubon-geldigheid}}` print them through `monthsInWords()`
    * (`src/lib/studio/months-in-words.ts`: 6 → "zes maanden", 12 → "een jaar").
    * They are the studio's decisions as text; nothing computes with them.
    */
   rules: z.object({
     /** Problem follow-up included with an adult fit. */
     followUpMonthsAdult: rulesMonths(6),
-    /** Follow-up included with the full Jeugd package. */
-    followUpMonthsYouthPackage: rulesMonths(12),
     /** A second visit within this long after the fit is free. */
     secondVisitFreeMonths: rulesMonths(6),
     /** How long a gift voucher is valid after purchase. */

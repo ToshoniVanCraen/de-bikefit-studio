@@ -4,9 +4,8 @@
  * One month reads "1 maand". Plain module: no I/O, no Next, no `server-only`;
  * unit-tested in `months-in-words.test.ts`.
  *
- * It renders the four rule tokens (`{{opvolging:volwassene}}`,
- * `{{opvolging:jeugd-pakket}}`, `{{tweede-bezoek-gratis}}`,
- * `{{cadeaubon-geldigheid}}`) from the `rules` settings
+ * It renders the three rule tokens (`{{opvolging:volwassene}}`,
+ * `{{tweede-bezoek-gratis}}`, `{{cadeaubon-geldigheid}}`) from the `rules` settings
  * (`src/lib/cms/site-settings.ts`), so a sentence like "Een cadeaubon is
  * {{cadeaubon-geldigheid}} geldig na aankoop." follows Instellingen → Regels.
  */

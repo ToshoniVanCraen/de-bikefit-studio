@@ -66,7 +66,7 @@ export default async function AdminOfferingsPage() {
     <>
       <PageHeading
         title="Aanbod"
-        description="Alles wat de studio aanbiedt, in één lijst: tekst, tonen of niet, Volwassene en Jeugd (eenmalig of volledig pakket) apart of één optie, duur en prijs per variant, en rechtstreeks online boeken of enkel op aanvraag. De website en de afspraakpagina volgen meteen. Aanbieders kiezen zelf wat ze aanbieden (Mijn agenda)."
+        description="Alles wat de studio aanbiedt, in één lijst: tekst, tonen of niet, Volwassene en Jeugd apart of één optie, duur en prijs per variant, en rechtstreeks online boeken of enkel op aanvraag. De website en de afspraakpagina volgen meteen. Aanbieders kiezen zelf wat ze aanbieden (Mijn agenda)."
         actions={
           <Button size="sm" render={<Link href="/admin/aanbod/nieuw" />}>
             Nieuw aanbod

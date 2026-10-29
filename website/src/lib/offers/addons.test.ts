@@ -98,25 +98,6 @@ describe('addonPriceFor', () => {
       ),
     ).toBeNull();
   });
-
-  it('prices Jeugd – volledig pakket like Jeugd unless the extra has a price of its own for it', () => {
-    const variants = (youth: number | null, pack: number | null) => [
-      { audience: 'adult' as const, serviceId: null, priceCents: 9000 },
-      { audience: 'youth' as const, serviceId: null, priceCents: youth },
-      { audience: 'youth-package' as const, serviceId: null, priceCents: pack },
-    ];
-    const priced = (youth: number | null, pack: number | null) =>
-      source({ id: 'x', settings: { ...perAudience.settings, variants: variants(youth, pack) } });
-    // Own price first, then the base audience (Jeugd), never the other way round.
-    expect(addonPriceFor(priced(6000, 5000), 'youth-package')).toBe(5000);
-    expect(addonPriceFor(priced(6000, null), 'youth-package')).toBe(6000);
-    expect(addonPriceFor(priced(6000, 5000), 'youth')).toBe(6000);
-    // No Jeugd price at all: the first priced variant, and the package's price is not lent to Jeugd.
-    expect(addonPriceFor(priced(null, 5000), 'youth')).toBe(9000);
-    expect(addonPriceFor(priced(null, null), 'youth-package')).toBe(9000);
-    // One price for everyone applies to the package too.
-    expect(addonPriceFor(foot, 'youth-package')).toBe(8500);
-  });
 });
 
 describe('addonOptionsFor', () => {
@@ -155,7 +136,7 @@ describe('addonOptionsFor', () => {
     });
   });
 
-  it('prices an option for the audience of the variant it is added to, Jeugd – volledig pakket included', () => {
+  it('prices an option for the audience of the variant it is added to', () => {
     const youthPriced = source({
       id: 'jeugd-extra',
       settings: {
@@ -163,19 +144,14 @@ describe('addonOptionsFor', () => {
         variants: [
           { audience: 'adult', serviceId: null, priceCents: 7500 },
           { audience: 'youth', serviceId: null, priceCents: 6500 },
-          { audience: 'youth-package', serviceId: null, priceCents: null },
         ],
       },
     });
-    const prices = (audience: 'adult' | 'youth' | 'youth-package') =>
+    const prices = (audience: 'adult' | 'youth') =>
       addonOptionsFor({ id: 'h', settings: { addonIds: ['jeugd-extra'] } }, audience, [
         youthPriced,
       ]).map((option) => option.priceCents);
-    expect([prices('adult'), prices('youth'), prices('youth-package')]).toEqual([
-      [7500],
-      [6500],
-      [6500],
-    ]);
+    expect([prices('adult'), prices('youth')]).toEqual([[7500], [6500]]);
   });
 
   it('leaves out what cannot be booked as an extra: hidden, not an extra, no minutes, no price, itself, unknown, twice', () => {

@@ -101,19 +101,18 @@ describe('OfferingForm: copy tokens', () => {
 });
 
 describe('OfferingForm: the variants', () => {
-  it('the audience choice names the three variants it creates', () => {
+  it('the audience choice names the two variants it creates', () => {
     const html = render();
     expect(html).toContain('Volwassene en Jeugd apart');
-    expect(html).toContain(
-      'Per variant (Volwassene, Jeugd – eenmalig, Jeugd – volledig pakket) een eigen duur, ouderregel en prijs.',
-    );
+    expect(html).toContain('Per variant (Volwassene, Jeugd – eenmalig) een eigen duur en prijs.');
   });
 
-  it('an offering split by audience shows the card with the three variants', () => {
+  it('an offering split by audience shows the card with the two variants', () => {
     const html = render({ variantMode: 'audience' });
-    for (const label of ['Volwassene', 'Jeugd – eenmalig', 'Jeugd – volledig pakket']) {
+    for (const label of ['Volwassene', 'Jeugd – eenmalig']) {
       expect(html).toContain(`>${label}</legend>`);
     }
-    expect(input(html, 'price:youth-package')).not.toBe('');
+    expect(input(html, 'price:youth')).not.toBe('');
+    expect(html).not.toMatch(/volledig pakket|youth-package/);
   });
 });

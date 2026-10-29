@@ -84,7 +84,6 @@ export type PublicService = {
   priceCents: number | null;
   /** "€ 45,00" or '' when hidden. */
   priceLabel: string;
-  requiresGuardian: boolean;
   color: string | null;
   /** The service's own location, `null` = depends on the provider. */
   location: PublicLocation | null;
@@ -234,7 +233,6 @@ export async function listPublicServices(
           durationLabel: formatDuration(service.durationMinutes),
           priceCents: service.showPrice ? service.priceCents : null,
           priceLabel: service.showPrice ? formatPrice(service.priceCents) : '',
-          requiresGuardian: service.requiresGuardian,
           color: service.color,
           location: toPublicLocation(service.locationId ? byId.get(service.locationId) : null),
           providerCount: counts.get(service.id) ?? 0,

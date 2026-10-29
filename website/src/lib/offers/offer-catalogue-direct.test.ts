@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_SERVICES } from '@/lib/booking/defaults';
 import { formatDuration, formatPrice } from '@/lib/booking/format';
 import { defaultSiteSettings } from '@/lib/cms/site-settings';
 import { buildCopyTokenLookup } from '@/lib/studio/copy-token-values';
@@ -15,8 +14,8 @@ import {
   FOOT,
   SADDLE,
   CLEATS,
-  PACKAGE_DECISION,
-  NB_PACKAGE,
+  BEFORE_SERVICES,
+  GUARDIANS,
   REMOVAL,
   AFTER_MINUTES,
   SERVICES,
@@ -34,7 +33,7 @@ import {
   variant,
 } from './direct-production-fixture';
 
-describe('cms:patch-aanbod-correcties on production (synthetic): the package of the new-bike fit', () => {
+describe('cms:patch-aanbod-correcties on production (synthetic): the new-bike fit, no youth package', () => {
   it('starts from the reported Beheer production rows, then changes only targeted durations', () => {
     expect(
       [NB_ADULT, NB_YOUTH, FOOT, SADDLE, CLEATS].map((s) => [s.slug, s.durationMinutes]),
@@ -57,32 +56,24 @@ describe('cms:patch-aanbod-correcties on production (synthetic): the package of 
     expect(SERVICES.find((s) => s.id === NB_YOUTH.id)).toMatchObject({
       name: 'Bikefit – aankoop nieuwe fiets – Jeugd',
       choiceLabel: 'Jeugd',
-      requiresGuardian: true,
+      requiresGuardian: false,
     });
   });
-  it('copies the Beheer-made Jeugd service: € 275 shown, 2 hours, a guardian, offered by the other fitter only', () => {
-    expect(PACKAGE_DECISION).toMatchObject({ action: 'update', variant: 'create', blockers: [] });
-    expect(NB_PACKAGE).toEqual({
-      id: 'svc-bikefit-nieuwe-fiets-jeugd-pakket',
-      slug: 'bikefit-nieuwe-fiets-jeugd-pakket',
-      name: 'Bikefit – aankoop nieuwe fiets – Jeugd – volledig pakket',
-      choiceLabel: 'Jeugd – volledig pakket',
-      description: DEFAULT_SERVICES.find((s) => s.slug === 'jeugdfit-pakket')?.description,
-      durationMinutes: 120,
-      bufferAfterMinutes: NB_YOUTH.bufferAfterMinutes,
-      priceCents: 27500,
-      showPrice: true,
-      locationId: NB_YOUTH.locationId,
-      requiresGuardian: true,
-      isActive: true,
-      sortOrder: NB_YOUTH.sortOrder + 1,
-    });
+  it('turns the guardian rule off on both Jeugd services and makes no service: the other fitter keeps everything', () => {
+    // Before the patch both Jeugd services asked for a parent or guardian (Toshoni, 29 Oct 2026: no more).
+    expect(NB_YOUTH.requiresGuardian).toBe(true);
+    expect(GUARDIANS.map((entry) => [entry.row.slug, entry.changes])).toEqual([
+      ['bikefit-nieuwe-fiets-jeugd', ['requiresGuardian: true → false']],
+      ['jeugdfit', ['requiresGuardian: true → false']],
+    ]);
+    expect(SERVICES.filter((s) => s.requiresGuardian)).toEqual([]);
+    expect(SERVICES.map((s) => s.id)).toEqual(BEFORE_SERVICES.map((s) => s.id));
+    expect(SERVICES.map((s) => s.slug).filter((slug) => /pakket/.test(slug))).toEqual([]);
     // Toshoni goes from every offering; each service keeps the other fitter.
-    expect(PACKAGE_DECISION.subscribe).toEqual([{ providerId: FITTER.id, locationId: null }]);
     expect(REMOVAL).toMatchObject({ provider: { id: TOSHONI.id }, blockers: [] });
     expect(new Set(SUBSCRIPTIONS.map((row) => row.providerId))).toEqual(new Set([FITTER.id]));
     expect(BOOKABLE).toEqual(new Set(SERVICES.map((service) => service.id)));
-    // The two Beheer-made siblings keep no price of their own; only the package shows one.
+    // The two Beheer-made siblings keep no price of their own.
     expect([NB_ADULT, NB_YOUTH].map((s) => [s.priceCents, s.showPrice])).toEqual([
       [null, false],
       [null, false],
@@ -91,22 +82,19 @@ describe('cms:patch-aanbod-correcties on production (synthetic): the package of 
 });
 
 describe('/aanbod and the offer pages on the production shape', () => {
-  it('the new-bike fit is bookable with three variants, priced and timed per variant', () => {
+  it('the new-bike fit is bookable with two variants, priced and timed per variant', () => {
     const offer = card(build(), 'bikefit-nieuwe-fiets');
     expect(offer).toMatchObject({
       status: 'bookable',
       bookingServiceSlugs: NB_IDS.map((id) => id.replace(/^svc-/, '')),
-      durationLabel: 'Volwassene: 2 uur · Jeugd – eenmalig: 2 uur · Jeugd – volledig pakket: 2 uur',
+      durationLabel: 'Volwassene: 2 uur · Jeugd – eenmalig: 2 uur',
     });
-    expect(plain(offer.priceLabel)).toBe(
-      'Volwassene € 275,00 · Jeugd – eenmalig € 150,00 · Jeugd – volledig pakket € 275,00',
-    );
+    expect(plain(offer.priceLabel)).toBe('Volwassene € 275,00 · Jeugd – eenmalig € 150,00');
     expect(
       offer.variants.map((v) => [v.label, v.durationMinutes, v.requiresGuardian, v.bookable]),
     ).toEqual([
       ['Volwassene', 120, false, true],
-      ['Jeugd – eenmalig', 120, true, true],
-      ['Jeugd – volledig pakket', 120, true, true],
+      ['Jeugd – eenmalig', 120, false, true],
     ]);
     expect(offerBookingHref(offer.slug)).toBe('/afspraak?dienst=bikefit-nieuwe-fiets#boeken');
   });
@@ -149,8 +137,8 @@ describe('/afspraak on the production shape: the choices of the widget', () => {
   });
 
   it('keeps audience order whatever the sort order of the services', () => {
-    // The package sorted first (e.g. created with a lower number): still the third choice.
-    const reordered = SERVICES.map((s) => (s.id === NB_PACKAGE.id ? { ...s, sortOrder: 1 } : s));
+    // Jeugd sorted first (e.g. created with a lower number): still the second choice.
+    const reordered = SERVICES.map((s) => (s.id === NB_YOUTH.id ? { ...s, sortOrder: 1 } : s));
     const catalogue = build(PRODUCTION, reordered);
     const [first] = groupBookingChoices({
       offers: catalogue.offers,
@@ -168,39 +156,37 @@ describe('/afspraak on the production shape: the choices of the widget', () => {
     expect([...NB_IDS, FOOT.id, SADDLE.id, CLEATS.id].map((id) => variantDisplay[id])).toEqual([
       { label: 'Volwassene', priceLabel: formatPrice(27500), priceCents: 27500 },
       { label: 'Jeugd – eenmalig', priceLabel: formatPrice(15000), priceCents: 15000 },
-      { label: 'Jeugd – volledig pakket', priceLabel: formatPrice(27500), priceCents: 27500 },
       { label: '', priceLabel: formatPrice(8500), priceCents: 8500 },
       { label: '', priceLabel: formatPrice(6000), priceCents: 6000 },
       { label: '', priceLabel: formatPrice(1500), priceCents: 1500 },
     ]);
   });
 
-  it('only an empty variant price reads "op aanvraag": the package service’s own € 275 never stands in', () => {
+  it('only an empty variant price reads "op aanvraag"', () => {
     const unpriced = PRODUCTION.map((entry) =>
       entry.content.slug === 'bikefit-nieuwe-fiets'
         ? record('bikefit-nieuwe-fiets', {
             ...NEW_BIKE_DIRECT,
             variants: [
               variant('adult', NB_ADULT, PRICES.bikefit),
-              variant('youth', NB_YOUTH, PRICES.bikefitUnder16),
-              { ...variant('youth-package', NB_PACKAGE, 0), priceCents: null },
+              { ...variant('youth', NB_YOUTH, 0), priceCents: null },
             ],
           })
         : entry,
     );
     const catalogue = build(unpriced);
     // '' is what the widget prints as "Prijs op aanvraag" (`serviceMeta`).
-    expect(catalogue.variantDisplay[NB_PACKAGE.id]).toEqual({
-      label: 'Jeugd – volledig pakket',
+    expect(catalogue.variantDisplay[NB_YOUTH.id]).toEqual({
+      label: 'Jeugd – eenmalig',
       priceLabel: '',
       priceCents: null,
     });
     expect(plain(card(catalogue, 'bikefit-nieuwe-fiets').priceLabel)).toBe(
-      'Volwassene € 275,00 · Jeugd – eenmalig € 150,00 · Jeugd – volledig pakket op aanvraag',
+      'Volwassene € 275,00 · Jeugd – eenmalig op aanvraag',
     );
   });
 
-  it('?dienst=: the offer narrows to its three services, an analysis is preselected, the package service opens under its offer', () => {
+  it('?dienst=: the offer narrows to its two services, an analysis is preselected, the Jeugd service opens under its offer', () => {
     const catalogue = build();
     const services = servicesOnAfspraak(catalogue);
     const select = (requested: string) =>
@@ -217,23 +203,22 @@ describe('/afspraak on the production shape: the choices of the widget', () => {
       serviceIds: [FOOT.id],
       initialServiceId: FOOT.id,
     });
-    // A link to the package service itself preselects it, but the widget still shows it
-    // under the new-bike fit as "Jeugd – volledig pakket", never as a choice of its own.
-    expect(select('bikefit-nieuwe-fiets-jeugd-pakket')).toEqual({
+    // A link to the Jeugd service itself preselects it, but the widget still shows it
+    // under the new-bike fit as "Jeugd – eenmalig", never as a choice of its own.
+    expect(select('bikefit-nieuwe-fiets-jeugd')).toEqual({
       kind: 'service',
-      serviceId: NB_PACKAGE.id,
+      serviceId: NB_YOUTH.id,
     });
     const choices = groupBookingChoices({ offers: catalogue.offers, services });
     expect(choices.filter((choice) => choice.kind === 'service')).toEqual([]);
-    expect(
-      choices.filter((c) => c.kind === 'offer' && c.serviceIds.includes(NB_PACKAGE.id)),
-    ).toEqual([{ kind: 'offer', offer: offerOf('bikefit-nieuwe-fiets'), serviceIds: NB_IDS }]);
+    expect(choices.filter((c) => c.kind === 'offer' && c.serviceIds.includes(NB_YOUTH.id))).toEqual(
+      [{ kind: 'offer', offer: offerOf('bikefit-nieuwe-fiets'), serviceIds: NB_IDS }],
+    );
   });
 });
 
-describe('an offering that is asked for never offers the package', () => {
-  it('staging: the new-bike fit asked for, its package a variant without a service', () => {
-    // What the patch does there (`service: none`): only the third variant row is added.
+describe('an offering that is asked for offers no booking service', () => {
+  it('staging: the new-bike fit asked for, its variants without a service', () => {
     const staging = PRODUCTION.map((entry) =>
       entry.content.slug === 'bikefit-nieuwe-fiets' ? record('bikefit-nieuwe-fiets') : entry,
     );
@@ -251,7 +236,7 @@ describe('an offering that is asked for never offers the package', () => {
     ).toMatchObject({ kind: 'offer', serviceIds: [], offer: { status: 'enquiry' } });
   });
 
-  it('production switched to "op aanvraag" in Beheer: its three services, the package too, are held back', () => {
+  it('production switched to "op aanvraag" in Beheer: its two services are held back', () => {
     const asked = PRODUCTION.map((entry) =>
       entry.content.slug === 'bikefit-nieuwe-fiets'
         ? record('bikefit-nieuwe-fiets', { ...NEW_BIKE_DIRECT, bookingMode: 'enquiry' })
@@ -260,19 +245,20 @@ describe('an offering that is asked for never offers the package', () => {
     const catalogue = build(asked);
     expect(new Set(catalogue.withheldServiceIds)).toEqual(new Set(NB_IDS));
     const services = servicesOnAfspraak(catalogue);
-    expect(services.map((service) => service.id)).not.toContain(NB_PACKAGE.id);
+    expect(services.map((service) => service.id)).not.toContain(NB_YOUTH.id);
     expect(NB_IDS.some((id) => id in catalogue.variantDisplay)).toBe(false);
     const select = (requested: string) =>
       resolveBookingSelection({ requested, offers: catalogue.offers, services });
     expect(select('bikefit-nieuwe-fiets')).toMatchObject({ kind: 'offer', serviceIds: [] });
-    expect(select('bikefit-nieuwe-fiets-jeugd-pakket')).toEqual({
+    expect(select('bikefit-nieuwe-fiets-jeugd')).toEqual({
       kind: 'unknown',
-      requested: 'bikefit-nieuwe-fiets-jeugd-pakket',
+      requested: 'bikefit-nieuwe-fiets-jeugd',
     });
-    // The current-bike fit keeps its own package.
-    expect(card(catalogue, 'bikefit-huidige-fiets').bookingServiceSlugs).toContain(
-      'jeugdfit-pakket',
-    );
+    // The current-bike fit keeps its own Jeugd service.
+    expect(card(catalogue, 'bikefit-huidige-fiets').bookingServiceSlugs).toEqual([
+      'volwassenenfit',
+      'jeugdfit',
+    ]);
   });
 });
 
@@ -292,23 +278,20 @@ describe('copy tokens on the production shape', () => {
 
   it('the texts of the new-bike fit read their prices from its variants and the windows from Regels', () => {
     const { content } = catalogue.bySlug['bikefit-nieuwe-fiets'];
-    expect(read(content.metaDescription)).toMatch(
-      /€ 275; onder 16 € 150 eenmalig of € 275 met een jaar opvolging\.$/,
-    );
+    expect(read(content.metaDescription)).toMatch(/€ 275; onder 16 € 150 eenmalig\.$/);
     expect(content.contents.map(read).join('\n')).not.toContain('{{');
-    expect(read('{{prijs:bikefit-nieuwe-fiets}}')).toBe(
-      'Volwassene € 275,00 · Jeugd – eenmalig € 150,00 · Jeugd – volledig pakket € 275,00',
+    expect(content.contents.map(read)).toContain(
+      'Jeugd (onder 16): € 150 voor een eenmalige fit zonder opvolging.',
     );
-    // The package service's description (from the defaults) as it is printed.
-    expect(read(NB_PACKAGE.description)).toBe(
-      'Voor fietsers onder 16: de volledige fit met een jaar gratis opvolging. Aangeraden: jonge renners groeien snel, en hun fiets groeit niet vanzelf mee.',
+    expect(read('{{prijs:bikefit-nieuwe-fiets}}')).toBe(
+      'Volwassene € 275,00 · Jeugd – eenmalig € 150,00',
     );
   });
 
   it('{{duur:…}} prints the booked services’ length; {{prijs:…}} the analyses’ variant price', () => {
     expect(
       read(
-        '{{duur:volwassenenfit}} | {{duur:bikefit-nieuwe-fiets-jeugd-pakket}} | {{duur:voetanalyse}} | {{duur:zadelanalyse}} | {{duur:afstellen-schoenplaatjes}}',
+        '{{duur:volwassenenfit}} | {{duur:bikefit-nieuwe-fiets-jeugd}} | {{duur:voetanalyse}} | {{duur:zadelanalyse}} | {{duur:afstellen-schoenplaatjes}}',
       ),
     ).toBe('2 uur | 2 uur | 30 min | 1 uur | 15 min');
     expect(

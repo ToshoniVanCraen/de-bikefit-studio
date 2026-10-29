@@ -1,6 +1,11 @@
-/** Synthetic pre-27-Oct CMS rehearsal fixture. Never use on a live database. */
+/**
+ * Synthetic pre-27-Oct CMS rehearsal fixture in production's shape: providers Toshoni and
+ * Fitter, the direct new-bike, current-bike and analysis services, both Jeugd services
+ * (`jeugdfit`, `bikefit-nieuwe-fiets-jeugd`) still asking for a guardian, no youth package.
+ * Never use on a live database.
+ */
 import { config } from 'dotenv';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, inArray, like, sql } from 'drizzle-orm';
 import { installRequestContextStubs, cookieJar } from './lib/request-context.mjs';
 import { KEPT_AANBOD_INTRO as SUBTITLE } from '@/lib/studio/seed-content/corrections-2026-10-27-copy';
 
@@ -105,7 +110,7 @@ async function main() {
     `→ isolated ${local ? 'PGlite' : 'Neon'} target verified (${expectedHost}); 33 CMS tables expected, marker matched`,
   );
   console.log(
-    '→ pre-27-Oct synthetic fixture: 9 offerings, direct new-bike/current-bike/analyses, two non-login providers, published pages',
+    '→ pre-27-Oct synthetic fixture: 9 offerings, direct new-bike/current-bike/analyses, two non-login providers, Jeugd services with a guardian rule, no youth package, published pages',
   );
   if (!apply) {
     console.log('= dry run: no rows written; rerun with --apply after checking host and preview');
@@ -256,6 +261,31 @@ async function main() {
     .update(schema.cmsBlocks)
     .set({ data: { ...hero.data, subtitle: SUBTITLE } })
     .where(eq(schema.cmsBlocks.id, hero.id));
+  // The premise of the rehearsal (production before the patch): both Jeugd services ask for a
+  // guardian and no youth package exists, so the patch has the guardian rule to turn off.
+  const youthServices = await db
+    .select({
+      slug: schema.cmsServices.slug,
+      requiresGuardian: schema.cmsServices.requiresGuardian,
+    })
+    .from(schema.cmsServices)
+    .where(inArray(schema.cmsServices.slug, ['jeugdfit', 'bikefit-nieuwe-fiets-jeugd']));
+  const packageVariants = await db
+    .select({ audience: offerings.cmsOfferingVariants.audience })
+    .from(offerings.cmsOfferingVariants)
+    .where(eq(offerings.cmsOfferingVariants.audience, 'youth-package'));
+  const packageServices = await db
+    .select({ slug: schema.cmsServices.slug })
+    .from(schema.cmsServices)
+    .where(like(schema.cmsServices.slug, '%-pakket'));
+  if (
+    youthServices.length !== 2 ||
+    !youthServices.every((row) => row.requiresGuardian) ||
+    packageVariants.length > 0 ||
+    packageServices.length > 0
+  ) {
+    throw new Error('fixture is not production before the patch (guardian rule, youth package)');
+  }
   const { withAdminSession } = await import('./lib/aanbod-rollout-run.mjs');
   await withAdminSession({ db, cookieJar }, admin.id, 'synthetic-rehearsal-fixture', async () => {
     const repo = await import('@/lib/cms/repo');

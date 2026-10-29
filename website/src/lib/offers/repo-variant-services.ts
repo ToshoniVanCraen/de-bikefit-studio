@@ -17,19 +17,19 @@ import type { OfferingContent } from './offering-content';
  * `./repo-addons.ts`. Called by `writeOffering()` after its permission check;
  * never on its own from a page or an action.
  *
- * Name, label, description, duration, buffer, location and guardian rule
- * follow the offering and are rewritten on every save; slug, price display
- * and existing bookings never are. A split offering has up to three services
- * (Volwassene, Jeugd – eenmalig, Jeugd – volledig pakket, 27 Oct 2026), their
- * order following the audiences.
+ * Name, label, description, duration, buffer and location follow the
+ * offering and are rewritten on every save; slug, price display and existing
+ * bookings never are. A split offering has two services (Volwassene, Jeugd –
+ * eenmalig), their order following the audiences. No service asks for a
+ * guardian since 29 Oct 2026 (Toshoni): every save writes `requires_guardian`
+ * false.
  */
 
-/** The audience part of a new service's slug: `<offering slug>-volwassene`, `-jeugd`, `-jeugd-pakket`. */
+/** The audience part of a new service's slug: `<offering slug>-volwassene`, `-jeugd`. */
 const AUDIENCE_SLUGS: Record<OfferingAudience, string> = {
   all: '',
   adult: 'volwassene',
   youth: 'jeugd',
-  'youth-package': 'jeugd-pakket',
 };
 
 /** A service slug no other service in the locale uses: the base, else `-2`, `-3`, … */
@@ -84,7 +84,7 @@ export async function syncVariantService(
     durationMinutes: service.durationMinutes,
     bufferAfterMinutes: service.bufferAfterMinutes,
     locationId: service.locationId,
-    requiresGuardian: service.requiresGuardian,
+    requiresGuardian: false,
     // A block of 10 000 per category, three slots per offering (one per audience of a split one).
     sortOrder:
       OFFER_CATEGORIES.indexOf(content.category) * 10_000 +

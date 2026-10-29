@@ -234,10 +234,7 @@ export function BookingWidget({
     return entry?.location ?? option.location;
   }
   const location = service && slot ? locationFor(service, slot) : null;
-  const mode: DetailsMode = {
-    guardian: service?.requiresGuardian ?? false,
-    address: location?.kind === 'customer',
-  };
+  const mode: DetailsMode = { address: location?.kind === 'customer' };
 
   // --- focus management --------------------------------------------------------
   useEffect(() => {
@@ -404,7 +401,7 @@ export function BookingWidget({
 
     const mapped: Partial<Record<DetailsField, string>> = {};
     for (const [inputKey, message] of Object.entries(result.fieldErrors)) {
-      const field = formFieldFor(inputKey, mode);
+      const field = formFieldFor(inputKey);
       if (field) mapped[field] = message;
     }
     setErrors(mapped);

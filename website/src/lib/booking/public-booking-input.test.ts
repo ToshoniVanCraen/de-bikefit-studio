@@ -115,9 +115,14 @@ const digits = (length: number) => '0'.repeat(length);
 const emailOf = (length: number) => `${'k'.repeat(length - 17)}@lek-test.invalid`;
 
 describe('validateBookingFields: unchanged for ordinary input', () => {
-  it('accepts a complete request, also when a guardian and an address are required', () => {
+  it('accepts a complete request, also when an address is required', () => {
     expect(rules()).toEqual({});
-    expect(rules({}, { requiresGuardian: true, requiresAddress: true })).toEqual({});
+    expect(rules({}, { requiresAddress: true })).toEqual({});
+  });
+
+  it('never asks for a parent or guardian (Toshoni, 29 Oct 2026): an empty guardian is fine', () => {
+    expect(rules({ guardianName: '', guardianEmail: '', guardianPhone: '' })).toEqual({});
+    expect(rules({ guardianName: '' }, { requiresAddress: true })).toEqual({});
   });
 
   it.each([
@@ -149,12 +154,6 @@ describe('validateBookingFields: unchanged for ordinary input', () => {
       { notes: 'k'.repeat(2001) },
       {},
       { notes: 'Maximaal 2000 tekens.' },
-    ],
-    [
-      'a required guardian left out',
-      { guardianName: '' },
-      { requiresGuardian: true },
-      { guardianName: 'Vul de naam van een ouder of voogd in.' },
     ],
     [
       'a required address too short',

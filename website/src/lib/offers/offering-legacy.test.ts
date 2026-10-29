@@ -39,7 +39,10 @@ const RETIRED_SERVICES = [
   },
 ];
 
-/** The bootstrap services plus the three retired ones, as the offering code sees them. */
+/**
+ * The bootstrap services plus the three retired ones, as the offering code sees them on a
+ * database of before 17 Oct 2026, where Jeugdfit still asked for a guardian (until 29 Oct 2026).
+ */
 const SERVICES: OfferingServiceInfo[] = [...DEFAULT_SERVICES, ...RETIRED_SERVICES].map(
   (service) => ({
     id: `svc-${service.slug}`,
@@ -48,7 +51,7 @@ const SERVICES: OfferingServiceInfo[] = [...DEFAULT_SERVICES, ...RETIRED_SERVICE
     choiceLabel: service.choiceLabel,
     durationMinutes: service.durationMinutes,
     isActive: true,
-    requiresGuardian: service.requiresGuardian,
+    requiresGuardian: service.slug === 'jeugdfit',
     priceCents: null,
     showPrice: false,
   }),
@@ -57,17 +60,14 @@ const SERVICES: OfferingServiceInfo[] = [...DEFAULT_SERVICES, ...RETIRED_SERVICE
 const ADULT = 'svc-volwassenenfit';
 const YOUTH = 'svc-jeugdfit';
 
-/**
- * The legacy `offer` block of a seeded offer page (before 17 Oct 2026). Such a
- * page never linked "Jeugdfit – volledig pakket" (27 Oct 2026).
- */
+/** The legacy `offer` block of a seeded offer page (before 17 Oct 2026). */
 function seeded(slug: string) {
   const offer = DEFAULT_OFFERS.find((entry) => entry.content.slug === slug);
   if (!offer) throw new Error(slug);
   return legacyFieldsOf({
     bookingServiceSlugs: offer.variants
       .map((variant) => variant.serviceSlug)
-      .filter((linked) => linked && linked !== 'jeugdfit-pakket'),
+      .filter((linked) => linked),
     priceCents: null,
     priceLabel: 'Prijs op aanvraag',
   });

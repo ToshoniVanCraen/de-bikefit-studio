@@ -14,11 +14,11 @@
  *    the free-text Duur and Kostprijs of an offering that is asked for, the
  *    meta description);
  *  - what an admin decides: shown on the website or not, one option or
- *    separate Volwassene / Jeugd – eenmalig / Jeugd – volledig pakket variants,
+ *    separate Volwassene / Jeugd – eenmalig variants,
  *    booked directly online or asked for through the enquiry form.
  *
  * `cms_offering_variants` keeps, per variant, the booking service it is booked
- * as (`cms_services`, which owns duration, buffer, guardian rule and location
+ * as (`cms_services`, which owns duration, buffer and location
  * and is written by the same admin form) and its public price in cents
  * (`null` = "Prijs op aanvraag"). Who offers a variant stays
  * `cms_provider_services` (the provider's own subscription). Bookings keep
@@ -104,7 +104,7 @@ export const cmsOfferings = pgTable(
     isListed: boolean('is_listed').default(true).notNull(),
     /** `direct` (online booking) | `enquiry` (the enquiry form on the offer page). */
     bookingMode: text('booking_mode').default('enquiry').notNull(),
-    /** `single` (one option) | `audience` (Volwassene, Jeugd – eenmalig and Jeugd – volledig pakket apart). */
+    /** `single` (one option) | `audience` (Volwassene and Jeugd – eenmalig apart). */
     variantMode: text('variant_mode').default('single').notNull(),
     /** Can be ticked as an extra when booking an offering that lists it (needs `addonMinutes` and a price). */
     isAddon: boolean('is_addon').default(false).notNull(),
@@ -131,9 +131,9 @@ export const cmsOfferingVariants = pgTable(
       .notNull()
       .references(() => cmsOfferings.id, { onDelete: 'cascade' }),
     /**
-     * `all` (single option) | `adult` (Volwassene) | `youth` (Jeugd – eenmalig) |
-     * `youth-package` (Jeugd – volledig pakket, 27 Oct 2026). Plain text, no CHECK: a new
-     * audience needs no migration; `src/lib/offers/offering-audience.ts` is the closed set.
+     * `all` (single option) | `adult` (Volwassene) | `youth` (Jeugd – eenmalig). Plain
+     * text, no CHECK: a new audience needs no migration; `src/lib/offers/offering-audience.ts`
+     * is the closed set.
      */
     audience: text('audience').notNull(),
     /** The booking service this variant is booked as; `null` = none (enquiry only). */

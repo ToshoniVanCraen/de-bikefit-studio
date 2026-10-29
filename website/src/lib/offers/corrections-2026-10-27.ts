@@ -26,14 +26,15 @@ import type { OfferingContent } from './offering-content';
  *                         `{{duur:volwassenenfit}}`; the one of "tweede fiets" no
  *                         longer repeats the minutes of its choices
  *   the two fits          also the content of 27 Oct that the patch of 20 Oct did not
- *                         know: the youth package, the new-bike adjustment inside the
- *                         follow-up, the second bike as the only extra
+ *                         know: the youth price as a token (one-off only, 29 Oct), the
+ *                         new-bike adjustment inside the follow-up, the second bike as
+ *                         the only extra
  *   one term              "inspanningstest" for "lactaattest" (title, meta, extras of
  *                         coaching); the slug and the URL stay
  *   tweede bezoek         the free-text Kostprijs ("gratis binnen zes maanden na je
  *                         fit, daarna € 75") that the page reads instead of "€ 75"
- *   services              Jeugdfit is "Jeugdfit – eenmalig" (the package is a third
- *                         service); the descriptions say prices and windows with tokens
+ *   services              Jeugdfit is "Jeugdfit – eenmalig"; the descriptions type no
+ *                         price or follow-up window (a token where one is named)
  *
  * Rules the patch applies, per offering and per service:
  *
@@ -217,10 +218,8 @@ function serviceTextOf(slug: string): ServiceTextFields {
 }
 
 /**
- * The booking services as they are live today. Jeugdfit is renamed (the package
- * is a third service, `jeugdfit-pakket`, created by the bootstrap from the
- * defaults, so it needs no correction); both descriptions stop typing the
- * price and the follow-up window.
+ * The booking services as they are live today. Jeugdfit is renamed; both
+ * descriptions stop typing the price and the follow-up window.
  */
 export const SERVICE_TEXT_CORRECTIONS: ReadonlyArray<ServiceTextCorrection> = [
   {

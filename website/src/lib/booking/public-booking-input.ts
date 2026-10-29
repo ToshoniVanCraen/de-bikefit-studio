@@ -115,6 +115,7 @@ export const publicBookingInputSchema = z.object({
   customerAge: z
     .union([z.number(), cappedString(RAW.customerAge, INVALID), z.null()], TYPE_ERROR)
     .default(null),
+  /** Legacy payload fields: accepted within bounds, then discarded before any new booking is stored. */
   guardianName: text(RAW.guardianName, tooLong(LIMITS.guardianName)),
   guardianEmail: text(RAW.guardianEmail, tooLong(LIMITS.guardianEmail)),
   guardianPhone: text(RAW.guardianPhone, PHONE_MESSAGE),
@@ -159,7 +160,7 @@ export function storedPhone(value: string): string | null {
 /** Field rules with Dutch messages; returns `{ field: message }` (empty when valid). */
 export function validateBookingFields(
   input: ParsedInput,
-  requirements: { requiresGuardian?: boolean; requiresAddress?: boolean } = {},
+  requirements: { requiresAddress?: boolean } = {},
 ): Record<string, string> {
   const errors: Record<string, string> = {};
   const set = (field: string, message: string) => {
@@ -194,9 +195,6 @@ export function validateBookingFields(
       set('customerAge', 'Vul een geldige leeftijd in.');
   }
 
-  if (requirements.requiresGuardian && input.guardianName.length < 2) {
-    set('guardianName', 'Vul de naam van een ouder of voogd in.');
-  }
   if (requirements.requiresAddress && input.customerAddress.length < 5) {
     set('customerAddress', 'Vul het adres in waar we langskomen.');
   }

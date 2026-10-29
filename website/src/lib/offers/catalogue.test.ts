@@ -149,8 +149,8 @@ describe('offerFromOffering (the card and labels of one offering)', () => {
       category: 'bikefit',
       title: 'Bikefit – huidige fiets',
       status: 'bookable',
-      bookingServiceSlugs: ['volwassenenfit', 'jeugdfit', 'jeugdfit-pakket'],
-      durationLabel: 'Volwassene: 2 uur · Jeugd – eenmalig: 2 uur · Jeugd – volledig pakket: 2 uur',
+      bookingServiceSlugs: ['volwassenenfit', 'jeugdfit'],
+      durationLabel: 'Volwassene: 2 uur · Jeugd – eenmalig: 2 uur',
       priceLabel: OFFER_PRICE_FALLBACK,
     });
     expect(card.summary).toBe('Comfortabeler fietsen op de fiets die je al hebt.');
@@ -334,12 +334,8 @@ describe('default offerings (what cms:bootstrap writes)', () => {
     expect(new Set(slugs).size).toBe(slugs.length);
   });
 
-  it('the three booking services are the fits; the older three are retired, not default', () => {
-    expect(DEFAULT_SERVICES.map((service) => service.slug)).toEqual([
-      'volwassenenfit',
-      'jeugdfit',
-      'jeugdfit-pakket',
-    ]);
+  it('the two booking services are the fits; the older three are retired, not default', () => {
+    expect(DEFAULT_SERVICES.map((service) => service.slug)).toEqual(['volwassenenfit', 'jeugdfit']);
     expect([...RETIRED_SERVICE_SLUGS]).toEqual(['gezinspakket', 'fit-aan-huis', 'inspanningstest']);
     const defaults = new Set(DEFAULT_SERVICES.map((service) => service.slug));
     expect(RETIRED_SERVICE_SLUGS.some((slug) => defaults.has(slug))).toBe(false);
@@ -383,14 +379,13 @@ describe('default offerings (what cms:bootstrap writes)', () => {
     expect(used.sort()).toEqual([...known].sort());
   });
 
-  it('the current-bike fit is booked directly as Volwassene, Jeugd – eenmalig and Jeugd – volledig pakket; the other eight are asked for', () => {
+  it('the current-bike fit is booked directly as Volwassene and Jeugd – eenmalig; the other eight are asked for', () => {
     const current = DEFAULT_OFFERS.find((entry) => entry.content.slug === 'bikefit-huidige-fiets')!;
     expect(current.bookingMode).toBe('direct');
     expect(current.variantMode).toBe('audience');
     expect(current.variants.map((v) => `${v.audience}:${v.serviceSlug}`)).toEqual([
       'adult:volwassenenfit',
       'youth:jeugdfit',
-      'youth-package:jeugdfit-pakket',
     ]);
     expect(DEFAULT_OFFERS.filter((entry) => entry.bookingMode === 'enquiry')).toHaveLength(8);
   });

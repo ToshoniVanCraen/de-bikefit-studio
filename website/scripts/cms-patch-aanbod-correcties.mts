@@ -5,8 +5,9 @@
  * on every page, the two new settings groups, the address of the booking
  * location, the copy corrections of the pages, the offerings and the booking
  * services, the location section on `/afspraak`, the gift voucher on the home
- * page and in the menu, "Jeugd – volledig pakket" on both bikefits, the
- * durations, and Toshoni's offerings as Aanbieder. Nothing else.
+ * page and in the menu, no guardian asked for on the youth services (29 Oct
+ * 2026), the durations, and Toshoni's offerings as Aanbieder. Nothing else; a
+ * database that already holds the withdrawn youth package blocks the run (`!`).
  *
  *   npm run cms:patch-aanbod-correcties                         # dry run (default): plan only
  *   npm run cms:patch-aanbod-correcties -- --apply --expect-host <host> --backup-dir <dir>
@@ -28,14 +29,14 @@
  *                            subtitle of 21 Oct 2026, exactly), a
  *                            page with unpublished draft edits, Toshoni's
  *                            removal while a service would be left without a
- *                            provider, a youth package no provider would
- *                            offer, and providers among which no profile (or
- *                            more than one) is Toshoni; a refusal comes before
- *                            any write (no session, no backup, no audit entry)
+ *                            provider, a database that holds the withdrawn
+ *                            youth package, and providers among which no
+ *                            profile (or more than one) is Toshoni; a refusal
+ *                            comes before any write (no session, no backup, no
+ *                            audit entry)
  *   --staging-retain-toshoni STAGING ONLY: Toshoni stays a provider with every
- *                            offering and is also offered the youth package
- *                            (without it, the default and production's rule,
- *                            his offerings go); refused (`!`) unless the
+ *                            offering (without it, the default and production's
+ *                            rule, his offerings go); refused (`!`) unless the
  *                            database has exactly one provider, Toshoni, active;
  *                            takes no value; needs --expect-host on Neon for
  *                            the dry run too; not with --restore
@@ -52,7 +53,7 @@
  * current rules (`cms:patch-aanbod-extras`, which runs BEFORE this one); the
  * build that contains the `location` block must be deployed first. Logic and
  * guarantees: `scripts/lib/aanbod-correcties-patch.mts`; the options:
- * `scripts/lib/aanbod-correcties-options.mts`. Runbook: `docs/staging-runbook.md` §24.
+ * `scripts/lib/aanbod-correcties-options.mts`. Runbook: `docs/staging-runbook.md` §25.
  */
 import { config } from 'dotenv';
 

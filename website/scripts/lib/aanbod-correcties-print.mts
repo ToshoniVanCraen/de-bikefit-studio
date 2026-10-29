@@ -10,7 +10,7 @@
  *   ~ setting contact — address: Ninove → Halsesteenweg 406 a, 9403 Neigem; phone label: …
  *   ~ setting business — new row with the schema defaults
  *   ~ location De Bikefit Studio, Ninove — address: Ninove → Halsesteenweg 406 a, 9403 Neigem
- *   ~ variant bikefit-huidige-fiets — Jeugd – volledig pakket: add variant at € 275,00; …
+ *   ~ service jeugdfit — requiresGuardian: true → false
  *   ~ page /afspraak — 3 change(s), then publish
  *   = page /aanbod — kept as it is: hero (page head).subtitle "Elke fietser is anders. …"
  *   ~ provider Toshoni — 3 offering(s) removed: volwassenenfit, jeugdfit, …
@@ -89,8 +89,10 @@ export function printCorrectiesPlan(plan: CorrectiesPlan, log: Log): void {
     for (const note of setting.notes) log('=', `setting ${setting.key} — ${note}`);
   }
   show(log, plan.location, `location ${plan.location.row?.name ?? ''}`.trim());
-  for (const entry of plan.packages) show(log, entry, `variant ${entry.slug}`);
   for (const service of plan.services) show(log, service, `service ${service.slug}`);
+  for (const entry of plan.guardians) {
+    show(log, entry, `service ${entry.row.slug}`, 'no guardian asked for');
+  }
   for (const duration of plan.durations) {
     show(log, duration, `duration ${duration.label}`, duration.note || 'as intended');
   }

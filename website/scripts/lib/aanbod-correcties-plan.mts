@@ -4,19 +4,19 @@
  * per section what would change, what blocks it and what the apply must write.
  * Never writes, never reads; the printout is `aanbod-correcties-print.mts`, the
  * writing half `aanbod-correcties-patch.mts`. The rules of the small sections
- * are `aanbod-correcties-targets.mts`, those of the youth package and the
- * provider `aanbod-correcties-youth.mts`, those of the pages
+ * are `aanbod-correcties-targets.mts`, those of the provider
+ * `aanbod-correcties-youth.mts`, those of the pages
  * `aanbod-correcties-pages.mts`; the page and the booking-service sections are
  * planned in `aanbod-correcties-plan-pages.mts` and `-plan-booking.mts`.
  *
- * Sections, in the order the apply writes them:
+ * Sections, in the order the apply writes them (the youth package of 27 Oct 2026
+ * is withdrawn: a database that holds one blocks the plan, `planPackageGuard`):
  *
  *   settings   Instellingen → Contact (address, phone), the SEO default texts and
  *              every settings group that has no row yet
  *   location   the address of the studio's booking location
- *   packages   the third variant "Jeugd – volledig pakket" of both bikefits, its
- *              service and its providers
- *   services   the copy of the booking services, and their durations
+ *   services   the copy of the booking services, no guardian asked for on the youth
+ *              services, and their durations
  *   offerings  the copy of the nine offerings
  *   provider   Toshoni's offerings as Aanbieder: they go, or with `staging-retain`
  *              (`--staging-retain-toshoni`, staging only) they all stay
@@ -32,7 +32,6 @@ import {
   type OfferingTextCorrection,
   type ServiceTextCorrection,
 } from '@/lib/offers/corrections-2026-10-27';
-import { DEFAULT_OFFERS } from '@/lib/offers/defaults';
 import { contentFromRow, validateOfferingContent } from '@/lib/offers/offering-content';
 import {
   SETTING_TEXT_CORRECTIONS,
@@ -42,15 +41,15 @@ import { STUDIO_LOCATION_ADDRESS } from '@/lib/studio/seed-content/location-sect
 import { PAGE_SOURCES, type PageSources } from './aanbod-correcties-pages.mjs';
 import {
   planDurations,
-  planPackages,
+  planGuardians,
+  planPackageGuard,
   planProvider,
   planServiceTexts,
   type DurationPlan,
   type DurationTarget,
-  type PackagePlan,
+  type GuardianPlan,
   type ProviderPlan,
   type ServicePlan,
-  type YouthPackageTarget,
 } from './aanbod-correcties-plan-booking.mjs';
 import { planPages, type PagePlan } from './aanbod-correcties-plan-pages.mjs';
 import { statusOf, type Planned } from './aanbod-correcties-status.mjs';
@@ -78,7 +77,6 @@ export type CorrectiesInputs = {
   offeringTexts: ReadonlyArray<OfferingTextCorrection>;
   serviceTexts: ReadonlyArray<ServiceTextCorrection>;
   durations: ReadonlyArray<DurationTarget>;
-  youthPackages: ReadonlyArray<YouthPackageTarget>;
 };
 
 export function defaultInputs(): CorrectiesInputs {
@@ -88,18 +86,6 @@ export function defaultInputs(): CorrectiesInputs {
     offeringTexts: OFFERING_TEXT_CORRECTIONS,
     serviceTexts: SERVICE_TEXT_CORRECTIONS,
     durations: DURATION_TARGETS,
-    youthPackages: DEFAULT_OFFERS.flatMap((offering) => {
-      const third = offering.variants.find((variant) => variant.audience === 'youth-package');
-      if (!third || third.priceCents === null) return [];
-      const youth = offering.variants.find((variant) => variant.audience === 'youth');
-      return [
-        {
-          slug: offering.content.slug,
-          priceCents: third.priceCents,
-          defaultYouthServiceSlug: youth?.serviceSlug ?? null,
-        },
-      ];
-    }),
   };
 }
 
@@ -129,7 +115,7 @@ export type OfferingPlan = Planned & {
 // The other sections' entries, so a caller imports every plan type from here.
 export type {
   DurationPlan,
-  PackagePlan,
+  GuardianPlan,
   ProviderPlan,
   ServicePlan,
 } from './aanbod-correcties-plan-booking.mjs';
@@ -144,8 +130,10 @@ export type CorrectiesPlan = {
   menu: MenuPlan;
   pages: PagePlan[];
   offerings: OfferingPlan[];
-  packages: PackagePlan[];
+  /** The withdrawn youth package: blocked when the database holds one, else nothing to do. */
+  packageGuard: Planned;
   services: ServicePlan[];
+  guardians: GuardianPlan[];
   durations: DurationPlan[];
   provider: ProviderPlan;
   /** Row counts now, and what the apply must leave (bookings and providers never move). */
@@ -312,13 +300,7 @@ function expectedCounts(plan: Omit<CorrectiesPlan, 'expected'>): Counts {
   return {
     ...guards,
     blocks: guards.blocks + added - removed,
-    variants: guards.variants + plan.packages.filter((entry) => entry.variant === 'create').length,
-    services:
-      guards.services + plan.packages.filter((entry) => entry.service.kind === 'create').length,
-    subscriptions:
-      guards.subscriptions -
-      plan.provider.rows.length +
-      plan.packages.reduce((sum, entry) => sum + entry.subscribe.length, 0),
+    subscriptions: guards.subscriptions - plan.provider.rows.length,
   };
 }
 
@@ -327,7 +309,6 @@ export function planCorrecties(
   inputs: CorrectiesInputs = defaultInputs(),
   providerMode: ProviderMode = 'remove',
 ): CorrectiesPlan {
-  const packages = planPackages(world, inputs.youthPackages, providerMode);
   const base = {
     locale: world.locale,
     providerMode,
@@ -336,10 +317,11 @@ export function planCorrecties(
     menu: planMenu(world),
     pages: planPages(world, inputs.pages),
     offerings: planOfferingTexts(world, inputs.offeringTexts),
-    packages,
+    packageGuard: planPackageGuard(world),
     services: planServiceTexts(world, inputs.serviceTexts),
+    guardians: planGuardians(world),
     durations: planDurations(world, inputs.durations),
-    provider: planProvider(world, packages, providerMode),
+    provider: planProvider(world, providerMode),
     guards: world.counts,
   };
   return { ...base, expected: expectedCounts(base) };
@@ -352,13 +334,14 @@ export function planCorrecties(
 /** Every section's entries, for the checks that look at all of them. */
 function entries(plan: CorrectiesPlan): Planned[] {
   return [
+    plan.packageGuard,
     ...plan.settings,
     plan.location,
     plan.menu,
     ...plan.pages,
     ...plan.offerings,
-    ...plan.packages,
     ...plan.services,
+    ...plan.guardians,
     ...plan.durations,
     plan.provider,
   ];

@@ -63,7 +63,7 @@ export const CMS_PERMISSIONS = [
    * Beheer → Aanbod: the offer itself — copy, shown on the website or not,
    * one option or Volwassene/Jeugd, the price per variant, booked directly
    * or asked for through the enquiry form, and the booking service of every
-   * variant (duration, buffer, location, guardian rule). Takes effect at
+   * variant (duration, buffer, location). Takes effect at
    * once (no publish step). Admin only, like `service.manage`.
    */
   'offering.manage',
