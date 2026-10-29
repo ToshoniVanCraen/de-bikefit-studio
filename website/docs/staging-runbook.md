@@ -1930,7 +1930,7 @@ this section without Toshoni's explicit GO for that deployment.
 
 ## 26. Production-only youth-service reconciliation (29 Oct 2026; pending release)
 
-**Writer-freeze implementation candidate:** see [`cms-writer-freeze.md`](cms-writer-freeze.md). It is staging-only code pending Arend’s independent Staging role split, negative probes and ingress/drain proof. It does not change the Production hold or grant any Production access.
+**Writer-freeze candidate (disposable-branch proof only):** see [`cms-writer-freeze.md`](cms-writer-freeze.md). Its SQL may run only on a named disposable Neon branch, with a trusted-platform-role list Niels approved and after the capacity/snapshot decision. It must not be installed on live Staging or Production: that first needs the APP credential migration, rotation and drain of the old `neondb_owner` credential, and a proven project-wide ingress/egress hold. It does not change the Production hold or grant any Production access.
 
 
 This section amends §25 for the Production state Arend audited on 27 Oct. It does **not**
