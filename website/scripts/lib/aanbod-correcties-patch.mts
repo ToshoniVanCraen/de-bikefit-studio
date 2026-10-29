@@ -21,7 +21,8 @@
  *              staging only, Toshoni 27 Oct 2026), he stays with every offering
  *
  * The youth package "Jeugd – volledig pakket" of that day is withdrawn (Toshoni,
- * 29 Oct 2026): never made; a database that holds one blocks the plan (`!`).
+ * 29 Oct 2026): never made. Package variants/unknown services block; the one
+ * known Production orphan can only be soft-deactivated with an explicit flag.
  *
  * Never touched: the extra's (`cms:patch-aanbod-extras` runs BEFORE this one),
  * prices, bookings, providers themselves, users, media. The rules:
@@ -52,7 +53,7 @@
  */
 import { buildCorrectiesBackup, readCorrectiesBackup } from './aanbod-correcties-backup.mjs';
 import { applyCorrecties, type CorrectiesDeps } from './aanbod-correcties-apply.mjs';
-import { assertRestoreTakesNoMode } from './aanbod-correcties-options.mjs';
+import { assertRestoreTakesNoMode, RECONCILE_PACKAGE_FLAG } from './aanbod-correcties-options.mjs';
 import {
   correctiesBlockers,
   correctiesHasChanges,
@@ -61,7 +62,7 @@ import {
   type CorrectiesPlan,
 } from './aanbod-correcties-plan.mjs';
 import { describeCountChanges, printCorrectiesPlan } from './aanbod-correcties-print.mjs';
-import { restoreCorrecties } from './aanbod-correcties-restore.mjs';
+import { preflightLegacyRestore, restoreCorrecties } from './aanbod-correcties-restore.mjs';
 import { verifyCorrecties } from './aanbod-correcties-verify.mjs';
 import { readWorld } from './aanbod-correcties-world.mjs';
 import { STAGING_RETAIN_FLAG, type ProviderMode } from './aanbod-correcties-youth.mjs';
@@ -85,10 +86,20 @@ const NOTHING_TO_DO = 'nothing to do: the corrections of 27 Oct 2026 are already
 
 export async function applyAanbodCorrecties(
   deps: CorrectiesDeps,
-  options: { backupDir: string; driver: string; providerMode: ProviderMode },
+  options: {
+    backupDir: string;
+    driver: string;
+    providerMode: ProviderMode;
+    reconcilePackageService?: boolean;
+  },
 ): Promise<AanbodCorrectiesApplyResult> {
   const { log } = deps;
-  const plan = planCorrecties(await readWorld(deps), defaultInputs(), options.providerMode);
+  const plan = planCorrecties(
+    await readWorld(deps),
+    defaultInputs(),
+    options.providerMode,
+    options.reconcilePackageService,
+  );
   refuseIfBlocked(plan);
   if (!correctiesHasChanges(plan)) {
     log('=', NOTHING_TO_DO);
@@ -140,14 +151,24 @@ export type AanbodCorrectiesRunOptions = {
   backupDir: string;
   /** Toshoni's offerings go (`remove`) or stay (`staging-retain`); one value for the whole run. */
   providerMode: ProviderMode;
+  reconcilePackageService?: boolean;
 };
 
 /** The read-only mode: plan and print; no session, no audit entry, no write method on the handle. */
-async function dryRun(deps: PlanDeps, providerMode: ProviderMode): Promise<void> {
+async function dryRun(
+  deps: PlanDeps,
+  providerMode: ProviderMode,
+  reconcilePackageService = false,
+): Promise<void> {
   const { log } = deps;
   const actor = await findActor(deps);
   log('=', `would act as ${actor.email} (no session is created in a dry run)`);
-  const plan = planCorrecties(await readWorld(deps), defaultInputs(), providerMode);
+  const plan = planCorrecties(
+    await readWorld(deps),
+    defaultInputs(),
+    providerMode,
+    reconcilePackageService,
+  );
   printCorrectiesPlan(plan, log);
   const blockers = correctiesBlockers(plan);
   for (const blocker of blockers) log('!', blocker);
@@ -171,6 +192,12 @@ export async function runAanbodCorrectiesPatch(
   const { log } = context;
   const { providerMode } = options;
   assertRestoreTakesNoMode(options);
+  if (options.reconcilePackageService) {
+    log(
+      '→',
+      `package reconciliation: ${RECONCILE_PACKAGE_FLAG} (exact legacy row only; soft deactivate)`,
+    );
+  }
   if (providerMode === 'staging-retain') {
     log(
       '→',
@@ -188,7 +215,7 @@ export async function runAanbodCorrectiesPatch(
     log,
   };
   if (!writing) {
-    await dryRun(planDeps, providerMode);
+    await dryRun(planDeps, providerMode, options.reconcilePackageService);
     return;
   }
 
@@ -212,6 +239,7 @@ export async function runAanbodCorrectiesPatch(
       await readWorld({ ...planDeps, db: readOnlyDb(context.db) }),
       defaultInputs(),
       providerMode,
+      options.reconcilePackageService,
     );
     refuseIfBlocked(precheck);
     if (!correctiesHasChanges(precheck)) {
@@ -221,10 +249,20 @@ export async function runAanbodCorrectiesPatch(
     }
   }
 
+  const restoreBackup =
+    options.restore !== null ? await readCorrectiesBackup(options.restore) : null;
+  if (restoreBackup) {
+    if (restoreBackup.locale !== planDeps.locale)
+      throw new Error(
+        `backup is for locale ${restoreBackup.locale}, database runs ${planDeps.locale}`,
+      );
+    await preflightLegacyRestore({ ...planDeps, db: readOnlyDb(context.db) }, restoreBackup);
+  }
+
   await withAdminSession(context, actor.id, 'cms-patch-aanbod-correcties', async () => {
     const deps: CorrectiesDeps = { ...planDeps, ...writeSide, actor };
-    if (options.restore !== null) {
-      await restoreCorrecties(deps, await readCorrectiesBackup(options.restore));
+    if (restoreBackup) {
+      await restoreCorrecties(deps, restoreBackup);
       log('✓', 'restore complete');
       return;
     }
@@ -232,6 +270,7 @@ export async function runAanbodCorrectiesPatch(
       backupDir: options.backupDir,
       driver: context.driver,
       providerMode,
+      reconcilePackageService: options.reconcilePackageService,
     });
     log(result.changed ? '✓' : '=', result.changed ? 'apply complete' : 'nothing written');
     if (result.changed) {

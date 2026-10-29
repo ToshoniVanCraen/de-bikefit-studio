@@ -59,6 +59,7 @@ export async function createCorrectiesKit(
     apply: boolean;
     restore: string | null;
     providerMode?: ProviderMode;
+    reconcilePackageService?: boolean;
   }) => {
     lines.length = 0;
     return runAanbodCorrectiesPatch(
@@ -67,6 +68,7 @@ export async function createCorrectiesKit(
         restore: options.restore,
         backupDir,
         providerMode: options.providerMode ?? 'remove',
+        reconcilePackageService: options.reconcilePackageService ?? false,
       },
       { db, driver: 'pglite', cookieJar, log },
     );

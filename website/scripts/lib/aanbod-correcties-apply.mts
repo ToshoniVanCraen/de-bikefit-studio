@@ -13,7 +13,7 @@
  * transactions: each section is ordered so a failure halfway leaves valid data,
  * and a repeated run finds the finished sections as intended.
  */
-import { cmsOfferings } from '@/db/cms-offering-schema';
+import { cmsOfferings, cmsOfferingVariants } from '@/db/cms-offering-schema';
 import type { BlockType, SiteSettingKey } from '@/lib/cms/blocks';
 import { STUDIO_LOCATION_ADDRESS } from '@/lib/studio/seed-content/location-section';
 import type { CorrectiesPlan, PagePlan } from './aanbod-correcties-plan.mjs';
@@ -75,6 +75,53 @@ async function applyLocation(deps: CorrectiesDeps, plan: CorrectiesPlan, summary
  * booking services, through `updateService` (validated, audited).
  */
 async function applyServices(deps: CorrectiesDeps, plan: CorrectiesPlan, summary: ApplySummary) {
+  const legacy = plan.packageGuard;
+  if (legacy.action === 'update' && legacy.row) {
+    // Neon HTTP has no cross-query transaction. Recheck identity and references
+    // inside this one UPDATE so a new booking/variant after planning cannot be
+    // silently retired. The normal repo updater cannot express this predicate.
+    const { and, eq, notExists } = deps.orm;
+    const services = deps.schema.cmsServices;
+    const bookings = deps.schema.cmsBookings;
+    const updated = await deps.db
+      .update(services)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(
+        and(
+          eq(services.id, legacy.row.id),
+          eq(services.locale, plan.locale),
+          eq(services.slug, legacy.row.slug),
+          eq(services.name, legacy.row.name),
+          eq(services.isActive, true),
+          notExists(
+            deps.db
+              .select({ id: cmsOfferingVariants.offeringId })
+              .from(cmsOfferingVariants)
+              .where(eq(cmsOfferingVariants.serviceId, legacy.row.id)),
+          ),
+          notExists(
+            deps.db
+              .select({ id: bookings.id })
+              .from(bookings)
+              .where(eq(bookings.serviceId, legacy.row.id)),
+          ),
+        ),
+      )
+      .returning({ id: services.id });
+    if (updated.length !== 1) {
+      throw new Error(
+        `service ${legacy.row.slug}: identity or references changed after planning; stop and inspect the first backup`,
+      );
+    }
+    await deps.auth.recordAudit(deps.db, deps.actor, {
+      action: 'service.update',
+      entityType: 'cms_service',
+      entityId: legacy.row.id,
+      summary: `${legacy.row.slug}: deactivated in place (patch aanbod-correcties)`,
+    });
+    summary.services.push(legacy.row.slug);
+    deps.log('~', `legacy package service ${legacy.row.slug} — ${legacy.changes.join('; ')}`);
+  }
   for (const entry of plan.services.filter((item) => item.action === 'update')) {
     if (!entry.row) continue;
     must(`service ${entry.slug}`, await deps.bookingRepo.updateService(entry.row.id, entry.writes));

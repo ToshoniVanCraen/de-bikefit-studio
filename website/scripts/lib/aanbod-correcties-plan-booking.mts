@@ -54,16 +54,37 @@ export type ProviderPlan = Planned &
     kept: SubscriptionRow[];
   };
 
-/** The package services of 27 Oct 2026: `jeugdfit-pakket` and `<offering>-jeugd-pakket`. */
+/** Only this Beheer-created production row may be retired in place; no row is deleted. */
+export const LEGACY_PACKAGE_SLUG = 'bikefit-nieuwe-fiets-jeugd-pakket';
+export const LEGACY_PACKAGE_NAME = 'Bikefit – aankoop nieuwe fiets – Jeugd – volledig pakket';
 const PACKAGE_SERVICE_SLUG = /^(jeugdfit-pakket|.+-jeugd-pakket)$/;
 
+export type PackagePlan = Planned & { row?: ServiceRowFull };
+
+/** An editor's explicit service selection must not silently disappear from a booking block. */
+function bookingBlockReferences(block: unknown, serviceId: string): boolean {
+  if (typeof block !== 'object' || block === null) return false;
+  const candidate = block as { type?: unknown; data?: unknown };
+  if (candidate.type !== 'booking' || typeof candidate.data !== 'object' || candidate.data === null)
+    return false;
+  const serviceIds = (candidate.data as { serviceIds?: unknown }).serviceIds;
+  return Array.isArray(serviceIds) && serviceIds.includes(serviceId);
+}
+
+function publishedBlocks(snapshot: unknown): unknown[] {
+  if (typeof snapshot !== 'object' || snapshot === null) return [];
+  const blocks = (snapshot as { blocks?: unknown }).blocks;
+  return Array.isArray(blocks) ? blocks : [];
+}
+
 /**
- * The youth package of 27 Oct 2026 ("Jeugd – volledig pakket") is withdrawn
- * (Toshoni, 29 Oct 2026): this patch never makes it. A database that holds one
- * (a `youth-package` variant, or a package service) is not the state the patch
- * starts from: one blocker, so nothing is written.
+ * A package variant or an unknown package service is never reconciled automatically.
+ * The one known Production service may be soft-deactivated only with an explicit
+ * flag, exact identity, and no offering-variant, booking-block or historical-booking reference.
+ * An already inactive orphan is accepted so a second run is idempotent.
  */
-export function planPackageGuard(world: World): Planned {
+export function planPackageGuard(world: World, reconcile = false): PackagePlan {
+  const row = world.services.find((service) => service.slug === LEGACY_PACKAGE_SLUG);
   const found = [
     ...world.variants
       .filter((variant) => variant.audience === 'youth-package')
@@ -72,16 +93,52 @@ export function planPackageGuard(world: World): Planned {
         return `variant youth-package of ${offering?.slug ?? variant.offeringId}`;
       }),
     ...world.services
-      .filter((service) => PACKAGE_SERVICE_SLUG.test(service.slug))
+      .filter((service) => PACKAGE_SERVICE_SLUG.test(service.slug) && service.id !== row?.id)
       .map((service) => `service ${service.slug}`),
   ];
-  const blockers =
-    found.length > 0
-      ? [
-          `youth package: this database holds the withdrawn "Jeugd – volledig pakket" (${found.join(', ')}) — restore the backup of 27 Oct 2026 first, then run again`,
-        ]
+  const blockers: string[] = [];
+  if (found.length > 0) {
+    blockers.push(
+      `youth package: this database holds the withdrawn "Jeugd – volledig pakket" (${found.join(', ')}) — stop for manual reconciliation; no package row is deleted by this patch`,
+    );
+  }
+  if (row) {
+    if (row.name !== LEGACY_PACKAGE_NAME) {
+      blockers.push(
+        `youth package: service ${row.slug} has unexpected name — stop for manual review`,
+      );
+    }
+    if (world.allVariantServiceIds.includes(row.id)) {
+      blockers.push(
+        `youth package: service ${row.slug} is linked to an offering variant — stop for manual review`,
+      );
+    }
+    if (world.bookedServiceIds.includes(row.id)) {
+      blockers.push(
+        `youth package: service ${row.slug} has booking history — stop for manual review`,
+      );
+    }
+    const referencedPage = world.pages.find((page) =>
+      [...page.blocks, ...publishedBlocks(page.row.publishedSnapshot)].some((block) =>
+        bookingBlockReferences(block, row.id),
+      ),
+    );
+    if (referencedPage) {
+      blockers.push(
+        `youth package: service ${row.slug} is explicitly selected by a booking block on /${referencedPage.row.slug} — stop for manual review`,
+      );
+    }
+    if (row.isActive && !reconcile) {
+      blockers.push(
+        `youth package: active service ${row.slug} needs explicit --reconcile-prod-youth-service to deactivate it in place`,
+      );
+    }
+  }
+  const changes =
+    row?.isActive && reconcile && blockers.length === 0
+      ? ['isActive: true → false (service row retained)']
       : [];
-  return { changes: [], blockers, action: statusOf(blockers, []) };
+  return { ...(row ? { row } : {}), changes, blockers, action: statusOf(blockers, changes) };
 }
 
 /**
@@ -214,11 +271,17 @@ export function planDurations(world: World, targets: readonly DurationTarget[]):
   return plans;
 }
 
-export function planProvider(world: World, providerMode: ProviderMode = 'remove'): ProviderPlan {
+export function planProvider(
+  world: World,
+  providerMode: ProviderMode = 'remove',
+  retiringServiceId?: string,
+): ProviderPlan {
   const removal = decideProviderRemoval({
     providers: world.providers,
     subscriptions: world.subscriptions,
-    services: world.services,
+    services: world.services.map((service) =>
+      service.id === retiringServiceId ? { ...service, isActive: false } : service,
+    ),
     planned: [],
     providerMode,
   });

@@ -10,7 +10,8 @@
  * planned in `aanbod-correcties-plan-pages.mts` and `-plan-booking.mts`.
  *
  * Sections, in the order the apply writes them (the youth package of 27 Oct 2026
- * is withdrawn: a database that holds one blocks the plan, `planPackageGuard`):
+ * is withdrawn: variants/unknown services block; the known Production orphan needs
+ * explicit, guarded soft-deactivation via `planPackageGuard`):
  *
  *   settings   Instellingen → Contact (address, phone), the SEO default texts and
  *              every settings group that has no row yet
@@ -48,6 +49,7 @@ import {
   type DurationPlan,
   type DurationTarget,
   type GuardianPlan,
+  type PackagePlan,
   type ProviderPlan,
   type ServicePlan,
 } from './aanbod-correcties-plan-booking.mjs';
@@ -130,8 +132,9 @@ export type CorrectiesPlan = {
   menu: MenuPlan;
   pages: PagePlan[];
   offerings: OfferingPlan[];
-  /** The withdrawn youth package: blocked when the database holds one, else nothing to do. */
-  packageGuard: Planned;
+  /** Withdrawn package: block unsafe states, or explicitly retire the one known orphan. */
+  packageGuard: PackagePlan;
+  reconcilePackageService: boolean;
   services: ServicePlan[];
   guardians: GuardianPlan[];
   durations: DurationPlan[];
@@ -308,20 +311,27 @@ export function planCorrecties(
   world: World,
   inputs: CorrectiesInputs = defaultInputs(),
   providerMode: ProviderMode = 'remove',
+  reconcilePackageService = false,
 ): CorrectiesPlan {
+  const packageGuard = planPackageGuard(world, reconcilePackageService);
   const base = {
     locale: world.locale,
     providerMode,
+    reconcilePackageService,
     settings: planSettings(world, inputs.settingTexts),
     location: planLocation(world),
     menu: planMenu(world),
     pages: planPages(world, inputs.pages),
     offerings: planOfferingTexts(world, inputs.offeringTexts),
-    packageGuard: planPackageGuard(world),
+    packageGuard,
     services: planServiceTexts(world, inputs.serviceTexts),
     guardians: planGuardians(world),
     durations: planDurations(world, inputs.durations),
-    provider: planProvider(world, providerMode),
+    provider: planProvider(
+      world,
+      providerMode,
+      packageGuard.action === 'update' ? packageGuard.row?.id : undefined,
+    ),
     guards: world.counts,
   };
   return { ...base, expected: expectedCounts(base) };

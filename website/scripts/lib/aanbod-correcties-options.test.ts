@@ -30,6 +30,7 @@ describe('parseCorrectiesOptions', () => {
       expectHost: null,
       backupDir: '.rollout-backups',
       providerMode: 'remove',
+      reconcilePackageService: false,
     });
     expect(
       parseCorrectiesOptions(['--apply', '--expect-host', HOST, '--backup-dir=/tmp/b']),
@@ -39,6 +40,7 @@ describe('parseCorrectiesOptions', () => {
       expectHost: HOST,
       backupDir: '/tmp/b',
       providerMode: 'remove',
+      reconcilePackageService: false,
     });
   });
 
@@ -65,6 +67,10 @@ describe('parseCorrectiesOptions', () => {
       ],
       [['--staging-retain-toshoni='], '--staging-retain-toshoni takes no value (value not shown)'],
       [['--apply=no'], '--apply takes no value (value not shown)'],
+      [
+        [`--reconcile-prod-youth-service=${SECRET}`],
+        '--reconcile-prod-youth-service takes no value (value not shown)',
+      ],
       // A word after the flag is not its value: "false" would otherwise switch it on.
       [['--staging-retain-toshoni', 'false'], 'unexpected argument #2 (value not shown)'],
       [['--apply', SECRET], 'unexpected argument #2 (value not shown)'],
@@ -90,6 +96,23 @@ describe('parseCorrectiesOptions', () => {
       restore: 'backup.json',
       providerMode: 'remove',
     });
+  });
+
+  it('the production reconciliation is explicit, incompatible with staging-retain and restore', () => {
+    expect(parseCorrectiesOptions(['--reconcile-prod-youth-service'])).toMatchObject({
+      reconcilePackageService: true,
+      providerMode: 'remove',
+    });
+    expect(
+      messageOf(() =>
+        parseCorrectiesOptions(['--reconcile-prod-youth-service', '--staging-retain-toshoni']),
+      ),
+    ).toBe('--reconcile-prod-youth-service and --staging-retain-toshoni cannot be combined');
+    expect(
+      messageOf(() =>
+        parseCorrectiesOptions(['--reconcile-prod-youth-service', '--restore', 'backup.json']),
+      ),
+    ).toBe('--reconcile-prod-youth-service and --restore cannot be combined');
   });
 
   it('refuses an unknown option, or a misspelt flag, by position only', () => {
@@ -131,6 +154,21 @@ describe('assertCorrectiesTarget', () => {
         assertCorrectiesTarget({ ...retainDry, expectHost: HOST }, 'neon-http', HOST),
       ),
     ).toBe('ok');
+  });
+
+  it('a reconciliation dry run on Neon is pinned to the exact host', () => {
+    const options = parseCorrectiesOptions(['--reconcile-prod-youth-service']);
+    expect(messageOf(() => assertCorrectiesTarget(options, 'neon-http', HOST))).toBe(
+      '--reconcile-prod-youth-service needs --expect-host on Neon, including the dry run',
+    );
+    expect(
+      messageOf(() => assertCorrectiesTarget({ ...options, expectHost: HOST }, 'neon-http', HOST)),
+    ).toBe('ok');
+    expect(
+      messageOf(() =>
+        assertCorrectiesTarget({ ...options, expectHost: 'wrong.invalid' }, 'neon-http', HOST),
+      ),
+    ).toBe('--expect-host does not match DATABASE_URL host; nothing changed');
   });
 
   it('a write to Neon needs it with or without the flag, as before', () => {

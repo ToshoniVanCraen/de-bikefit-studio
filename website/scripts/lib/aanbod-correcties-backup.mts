@@ -81,6 +81,8 @@ export function buildCorrectiesBackup(
     if (known) known.fields = [...new Set([...known.fields, ...fields])];
     else services.set(id, { id, slug, row: toJson(row), fields });
   };
+  if (plan.packageGuard.action === 'update' && plan.packageGuard.row)
+    keep(plan.packageGuard.row, plan.packageGuard.row.slug, ['isActive']);
   for (const entry of updated(plan.services))
     keep(entry.row, entry.slug, Object.keys(entry.writes));
   for (const entry of updated(plan.guardians))
