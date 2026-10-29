@@ -1927,3 +1927,99 @@ bookings.
 **Production:** the old 27 Oct GO does not cover this revision. Arend writes a new production
 plan after Toshoni's second staging acceptance. No production apply, merge or deployment from
 this section without Toshoni's explicit GO for that deployment.
+
+## 26. Production-only youth-service reconciliation (29 Oct 2026; pending release)
+
+This section amends §25 for the Production state Arend audited on 27 Oct. It does **not**
+authorise a Production run. Toshoni accepted *Op aanvraag* for the four non-current-bike offers on Staging.
+Production has its own current configuration: preserve each existing booking mode and
+service link; do not create or convert booking services to satisfy the five-item sort order.
+The existing exact `/aanbod` editor subtitle must remain unchanged in both draft and published
+snapshot. The 27 Oct Production GO is void for this revision.
+
+Production had a Beheer-created `bikefit-nieuwe-fiets-jeugd-pakket` service while the revised
+patch at staging SHA `06fdda5` refused every `*-jeugd-pakket` service. Unlike the withdrawn
+27 Oct staging package, there is no Production correction backup to restore: Production
+correcties never ran. The amended patch permits **one explicit exception**, not a general
+package migration:
+
+- Without `--reconcile-prod-youth-service`, an active exact service still blocks before any
+  write. With the flag, it can only be **soft-deactivated** (`is_active: true → false`) if its
+  slug and name exactly match the audited row, no offering variant points to its ID, and no
+  booking (including cancelled history) points to its ID, and no draft or published booking
+  block explicitly selects its ID. The service row is retained; the
+  reconciliation itself does not remove subscriptions. The normal Production provider correction
+  may still remove Toshoni’s subscriptions, as its plan and backup explicitly show. Another
+  package service, any `youth-package` variant, changed
+  name, variant link or booking history blocks even with the flag: stop for manual review.
+- The flag is incompatible with `--staging-retain-toshoni` and `--restore`. On Neon, its dry run
+  and apply both require `--expect-host` matching `DATABASE_URL`. An already inactive exact
+  orphan is accepted without the flag; a second dry run is idempotent. The usual provider
+  correction remains separate: Production's default mode removes Toshoni's subscriptions,
+  after the existing provider-coverage guard. No package service is deleted.
+- The amended v2 backup captures the original `isActive` column of the exact service before
+  any write, alongside all the normal correction rows. The same backup's `--restore` reactivates
+  it only after a fresh identity/reference preflight; a changed or newly referenced row blocks
+  restore before any correction write. Because Neon HTTP writes are not transactional, retain
+  the **first** backup if a later retry creates another one. A pre-apply Neon snapshot is the
+  independent rollback point.
+
+**Release and staging proof (Arend):** from the amended feature-branch commit, run the six
+repository gates. Rehearse dry/apply/dry/restore on a throwaway PGlite database with the exact
+service row, Production's retained `/aanbod` subtitle, existing booking modes, provider links and
+no package variant/booking; assert backup-first, no deletion, the normal provider-subscription
+plan, unchanged booking modes, idempotence and restore. The existing Staging Neon has no
+package service; deploy the amended build to staging, run the normal `--staging-retain-toshoni --expect-host '<staging host>'` dry run
+(read-only, expected nothing to do), then check the signed-in staging pages and youth flow.
+Do **not** use the Production reconciliation flag against Staging. Record exact SHA, preview
+and staging deployment IDs, host, gate logs and smoke results. Toshoni/Max acceptance is a
+separate gate. None of these steps is a Production query or approval.
+
+**Production procedure only after Toshoni's first-hand GO on Arend's concrete plan:**
+
+1. Confirm `main`/staging ancestry, the exact reviewed SHA, Production deployment/alias,
+   Neon branch and pooled host, migration 0017, and that the 27 Oct extras patch was applied
+   but correcties was **not**. Retain the previous deployment ID. Do not reuse a staging Preview
+   build with its staging DB. **Pause booking and Beheer writes before the snapshot and for the
+   entire snapshot → dry-run → apply → verify window;** capture a fresh Production snapshot and
+   baseline counts/copy while paused.
+   confirm the pause operationally before proceeding. The statement-level `NOT EXISTS` checks
+   and two plans are not a substitute for this freeze: a concurrent booking, variant or CMS
+   change could otherwise race a Neon HTTP write. If Arend cannot establish the freeze,
+   **hold the release** and design a transactional/database-level exclusion first.
+2. In `website/`, with Arend's verified Production URL and host, run the pinned **read-only**
+   dry run. Expect one `~ legacy package service … isActive: true → false` and no `!`. Review
+   every other planned change, especially the provider removals, durations, counts, retained
+   `/aanbod` subtitle, and existing direct/enquiry modes. If the row is already inactive or
+   absent, run the ordinary dry run instead; if it differs, stop and return to code review.
+
+   ```bash
+   DATABASE_URL='<Production pooled URL>' npm run cms:patch-aanbod-correcties -- --reconcile-prod-youth-service --expect-host '<Production host>'
+   ```
+
+3. Only if the exact dry run and snapshot agree, apply with the **same** host/flag and a fresh
+   private backup directory. Confirm `backup written` precedes the first `~` and verification
+   passes. Do not blindly rerun after a failure; inspect the partial state and preserve the
+   first backup. Keep the writer pause until the final audit. Then run an **ordinary read-only**
+   dry run (no reconciliation flag) and expect
+   `dry run: nothing to do`, stable service/variant/booking counts, inactive retained package
+   row, and no withdrawn package in the catalogue/booking flow.
+
+   ```bash
+   DATABASE_URL='<Production pooled URL>' npm run cms:patch-aanbod-correcties -- --apply --reconcile-prod-youth-service --expect-host '<Production host>' --backup-dir '<private Production backup directory>'
+   DATABASE_URL='<Production pooled URL>' npm run cms:patch-aanbod-correcties -- --expect-host '<Production host>'
+   ```
+
+4. Arend verifies the fresh Production build and indexed site after the cache window, including
+   both bikefits' €150 youth option without guardian fields, no withdrawn package, the exact
+   `/aanbod` subtitle, unchanged booking modes for the four other offers, public booking/provider
+   availability,
+   and the audit/backup record. Report SHA, snapshot, backup, checks and known limits to
+   Toshoni. Any Production deployment or rollback needs its own explicit GO.
+
+**Rollback if authorised:** pause booking and Beheer writers again, then use the v2 backup from
+step 3 with
+`npm run cms:patch-aanbod-correcties -- --restore '<first backup.json>' --expect-host '<Production host>'`
+against the verified Production URL, then re-audit row counts, `is_active`, provider links,
+subtitle and live pages. Keep the pre-apply snapshot until accepted. A code-only rollback is a
+separate Arend plan; do not silently promote a Preview deployment.

@@ -7,11 +7,14 @@
  * services, the location section on `/afspraak`, the gift voucher on the home
  * page and in the menu, no guardian asked for on the youth services (29 Oct
  * 2026), the durations, and Toshoni's offerings as Aanbieder. Nothing else; a
- * database that already holds the withdrawn youth package blocks the run (`!`).
+ * package variant/unknown service blocks; the one known Production orphan needs
+ * an explicit, guarded soft-deactivation flag.
  *
  *   npm run cms:patch-aanbod-correcties                         # dry run (default): plan only
  *   npm run cms:patch-aanbod-correcties -- --apply --expect-host <host> --backup-dir <dir>
  *   npm run cms:patch-aanbod-correcties -- --restore <backup.json> --expect-host <host>
+ *   npm run cms:patch-aanbod-correcties -- --reconcile-prod-youth-service --expect-host <host>
+ *   npm run cms:patch-aanbod-correcties -- --apply --reconcile-prod-youth-service --expect-host <host> --backup-dir <dir>
  *
  * On staging (Toshoni, 27 Oct 2026, 15:12: he stays a provider there) every run,
  * the dry runs too, carries the same two flags:
@@ -30,7 +33,7 @@
  *                            page with unpublished draft edits, Toshoni's
  *                            removal while a service would be left without a
  *                            provider, a database that holds the withdrawn
- *                            youth package, and providers among which no
+ *                            unsafe youth package state, and providers among which no
  *                            profile (or more than one) is Toshoni; a refusal
  *                            comes before any write (no session, no backup, no
  *                            audit entry)
@@ -40,10 +43,18 @@
  *                            database has exactly one provider, Toshoni, active;
  *                            takes no value; needs --expect-host on Neon for
  *                            the dry run too; not with --restore
+ *   --reconcile-prod-youth-service  PRODUCTION ONLY, only after a fresh plan/GO:
+ *                            deactivate exactly bikefit-nieuwe-fiets-jeugd-pakket
+ *                            in place if it has the audited name and no variant
+ *                            or booking/booking-block references; no deletion, no subscription
+ *                            change from this reconciliation. Refuses unknown
+ *                            package states. Requires --expect-host on Neon even
+ *                            for the dry run; not with staging-retain or restore.
  *   --restore <file>         put a backup written by --apply back and remove
  *                            what it created
  *   --expect-host <host>     REQUIRED for --apply/--restore against Neon (and for
- *                            any run with --staging-retain-toshoni): must equal
+ *                            any run with --staging-retain-toshoni or
+ *                            --reconcile-prod-youth-service): must equal
  *                            the host in DATABASE_URL
  *   --backup-dir <dir>       where --apply writes its backup
  *                            (default: .rollout-backups/, gitignored)
@@ -53,7 +64,7 @@
  * current rules (`cms:patch-aanbod-extras`, which runs BEFORE this one); the
  * build that contains the `location` block must be deployed first. Logic and
  * guarantees: `scripts/lib/aanbod-correcties-patch.mts`; the options:
- * `scripts/lib/aanbod-correcties-options.mts`. Runbook: `docs/staging-runbook.md` §25.
+ * `scripts/lib/aanbod-correcties-options.mts`. Runbook: `docs/staging-runbook.md` §§25–26.
  */
 import { config } from 'dotenv';
 

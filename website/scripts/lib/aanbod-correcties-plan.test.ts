@@ -6,6 +6,7 @@ import {
   type CorrectiesPlan,
 } from './aanbod-correcties-plan.mjs';
 import { describeCountChanges, printCorrectiesPlan } from './aanbod-correcties-print.mjs';
+import { planPackageGuard } from './aanbod-correcties-plan-booking.mjs';
 import type { Counts, World } from './aanbod-correcties-world.mjs';
 import type { ProviderMode } from './aanbod-correcties-youth.mjs';
 
@@ -90,7 +91,13 @@ const offersAll = (providerId: string) =>
 function worldWith(
   providers: ReadonlyArray<typeof toshoni>,
   subscriptions: ReadonlyArray<{ providerId: string; serviceId: string; locationId: null }>,
-  more: { services?: typeof services; variants?: typeof variants } = {},
+  more: {
+    services?: typeof services;
+    variants?: typeof variants;
+    bookedServiceIds?: string[];
+    allVariantServiceIds?: string[];
+    pages?: World['pages'];
+  } = {},
 ): World {
   const allServices = more.services ?? services;
   const allVariants = more.variants ?? variants;
@@ -109,10 +116,14 @@ function worldWith(
     settings: new Map(),
     locations: [],
     mainMenu: { exists: false, items: null },
-    pages: [],
+    pages: more.pages ?? [],
     offerings,
     variants: allVariants,
     services: allServices,
+    bookedServiceIds: more.bookedServiceIds ?? [],
+    allVariantServiceIds:
+      more.allVariantServiceIds ??
+      allVariants.flatMap((entry) => (entry.serviceId ? [entry.serviceId] : [])),
     providers,
     subscriptions,
     counts,
@@ -230,12 +241,17 @@ describe('planCorrecties without the flag: unchanged', () => {
 });
 
 describe('the youth package of 27 Oct 2026 is withdrawn (Toshoni, 29 Oct 2026)', () => {
-  const packaged = (extra: { services?: typeof services; variants?: typeof variants }) =>
-    plan(worldWith([toshoni, winston], [...offersAll('p1'), ...offersAll('p2')], extra));
+  const packaged = (extra: {
+    services?: typeof services;
+    variants?: typeof variants;
+    bookedServiceIds?: string[];
+    allVariantServiceIds?: string[];
+    pages?: World['pages'];
+  }) => plan(worldWith([toshoni, winston], [...offersAll('p1'), ...offersAll('p2')], extra));
   const guard = (result: CorrectiesPlan) =>
     correctiesBlockers(result).filter((line) => line.startsWith('youth package:'));
 
-  it('a database that holds its variant or service blocks the plan with one line: restore the 27 Oct backup first', () => {
+  it('an old package variant and service still block the plan for manual reconciliation', () => {
     const pakket = { ...services[1], id: 's-pakket', slug: 'jeugdfit-pakket', name: 'pakket' };
     const result = packaged({
       services: [...services, pakket],
@@ -250,22 +266,119 @@ describe('the youth package of 27 Oct 2026 is withdrawn (Toshoni, 29 Oct 2026)',
       ],
     });
     expect(guard(result)).toEqual([
-      'youth package: this database holds the withdrawn "Jeugd – volledig pakket" (variant youth-package of bikefit-huidige-fiets, service jeugdfit-pakket) — restore the backup of 27 Oct 2026 first, then run again',
+      'youth package: this database holds the withdrawn "Jeugd – volledig pakket" (variant youth-package of bikefit-huidige-fiets, service jeugdfit-pakket) — stop for manual reconciliation; no package row is deleted by this patch',
     ]);
     expect(correctiesBlockers(result)[0]).toBe(guard(result)[0]);
     expect(result.packageGuard.action).toBe('blocked');
   });
 
-  it('so does a package service a Beheer save made for a fit (`<offering>-jeugd-pakket`), on its own', () => {
-    const made = {
-      ...services[1],
-      id: 's-nb',
-      slug: 'bikefit-nieuwe-fiets-jeugd-pakket',
-      name: 'nb',
-    };
-    expect(guard(packaged({ services: [...services, made] }))).toEqual([
-      expect.stringContaining('(service bikefit-nieuwe-fiets-jeugd-pakket)'),
+  const legacy = {
+    ...services[1],
+    id: 's-nb',
+    slug: 'bikefit-nieuwe-fiets-jeugd-pakket',
+    name: 'Bikefit – aankoop nieuwe fiets – Jeugd – volledig pakket',
+  };
+
+  it('the known active Production orphan blocks without the explicit flag; with it, only isActive changes', () => {
+    const source = worldWith(
+      [toshoni, winston],
+      [
+        ...offersAll('p1'),
+        ...offersAll('p2'),
+        { providerId: 'p1', serviceId: legacy.id, locationId: null },
+      ],
+      { services: [...services, legacy] },
+    );
+    const ordinary = plan(source);
+    expect(guard(ordinary)).toContain(
+      `youth package: active service ${legacy.slug} needs explicit --reconcile-prod-youth-service to deactivate it in place`,
+    );
+    const reconciled = planCorrecties(source, defaultInputs(), 'remove', true);
+    expect(guard(reconciled)).toEqual([]);
+    expect(reconciled.packageGuard).toMatchObject({
+      action: 'update',
+      row: { id: legacy.id },
+      changes: ['isActive: true → false (service row retained)'],
+    });
+    expect(reconciled.provider.blockers).toEqual([]);
+    expect(reconciled.expected.services).toBe(source.counts.services);
+    expect(printout(reconciled)).toContain(
+      `~ legacy package service ${legacy.slug} — isActive: true → false (service row retained)`,
+    );
+  });
+
+  it('an already inactive orphan is accepted without a flag', () => {
+    const result = packaged({ services: [...services, { ...legacy, isActive: false }] });
+    expect(guard(result)).toEqual([]);
+    expect(result.packageGuard.action).toBe('none');
+  });
+
+  it('wrong identity, offering links, or booking history block even with the flag', () => {
+    const reconcile = (extra: {
+      services?: typeof services;
+      variants?: typeof variants;
+      bookedServiceIds?: string[];
+      allVariantServiceIds?: string[];
+    }) =>
+      planCorrecties(
+        worldWith([toshoni, winston], [...offersAll('p1'), ...offersAll('p2')], extra),
+        defaultInputs(),
+        'remove',
+        true,
+      );
+    expect(
+      guard(reconcile({ services: [...services, { ...legacy, name: 'Different service' }] })),
+    ).toEqual([
+      `youth package: service ${legacy.slug} has unexpected name — stop for manual review`,
     ]);
+    expect(
+      guard(
+        reconcile({
+          services: [...services, legacy],
+          variants: [...variants, { ...variants[0], serviceId: legacy.id }],
+        }),
+      ),
+    ).toContain(
+      `youth package: service ${legacy.slug} is linked to an offering variant — stop for manual review`,
+    );
+    expect(
+      guard(reconcile({ services: [...services, legacy], bookedServiceIds: [legacy.id] })),
+    ).toEqual([
+      `youth package: service ${legacy.slug} has booking history — stop for manual review`,
+    ]);
+    expect(
+      guard(reconcile({ services: [...services, legacy], allVariantServiceIds: [legacy.id] })),
+    ).toContain(
+      `youth package: service ${legacy.slug} is linked to an offering variant — stop for manual review`,
+    );
+    expect(
+      guard(reconcile({ services: [...services, { ...legacy, slug: 'other-jeugd-pakket' }] })),
+    ).toEqual([
+      'youth package: this database holds the withdrawn "Jeugd – volledig pakket" (service other-jeugd-pakket) — stop for manual reconciliation; no package row is deleted by this patch',
+    ]);
+  });
+
+  it('an explicit booking-block reference in a draft or published page blocks retirement', () => {
+    for (const source of ['draft', 'published'] as const) {
+      const block = { type: 'booking', data: { serviceIds: [legacy.id] } };
+      const page = {
+        row: {
+          slug: 'afspraak',
+          publishedSnapshot: source === 'published' ? { blocks: [block] } : null,
+        },
+        blocks: source === 'draft' ? [block] : [],
+      } as unknown as World['pages'][number];
+      const result = planPackageGuard(
+        worldWith([toshoni, winston], [...offersAll('p1'), ...offersAll('p2')], {
+          services: [...services, legacy],
+          pages: [page],
+        }),
+        true,
+      );
+      expect(result.blockers).toContain(
+        `youth package: service ${legacy.slug} is explicitly selected by a booking block on /afspraak — stop for manual review`,
+      );
+    }
   });
 
   it('a youth service that asks for no guardian already is as intended; other services are not looked at', () => {

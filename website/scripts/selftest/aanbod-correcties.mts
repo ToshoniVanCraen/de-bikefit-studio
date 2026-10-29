@@ -58,6 +58,7 @@ import { seedBefore } from './aanbod-correcties-fixture.mjs';
 import { guardChecks } from './aanbod-correcties-guards.mjs';
 import { retainChecks } from './aanbod-correcties-retain.mjs';
 import { productionCopyChecks } from './aanbod-correcties-production-copy.mjs';
+import { productionPackageChecks } from './aanbod-correcties-production-package.mjs';
 import { stagingChecks } from './aanbod-correcties-staging.mjs';
 import {
   createCorrectiesKit,
@@ -432,6 +433,7 @@ export async function aanbodCorrectiesSection(ctx: CorrectiesSectionContext) {
 
     // --- 7: production's exact editor copy, draft and published -----------------------------------
     await productionCopyChecks({ ctx, kit, original });
+    await productionPackageChecks({ ctx, kit, original });
 
     // --- 8: staging with --staging-retain-toshoni --------------------------------------------------
     await retainChecks({ ctx, kit, original });

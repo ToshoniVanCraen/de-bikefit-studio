@@ -84,6 +84,14 @@ export function describeCountChanges(before: Counts, after: Counts): string {
 }
 
 export function printCorrectiesPlan(plan: CorrectiesPlan, log: Log): void {
+  if (plan.packageGuard.row) {
+    show(
+      log,
+      plan.packageGuard,
+      `legacy package service ${plan.packageGuard.row.slug}`,
+      'inactive; row retained',
+    );
+  }
   for (const setting of plan.settings) {
     show(log, setting, `setting ${setting.key}`);
     for (const note of setting.notes) log('=', `setting ${setting.key} — ${note}`);

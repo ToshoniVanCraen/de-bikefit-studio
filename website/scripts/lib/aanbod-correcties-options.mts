@@ -23,7 +23,8 @@ import {
   valueOf,
 } from './cli-options.mjs';
 
-const BOOLEAN_FLAGS = ['--apply', STAGING_RETAIN_FLAG];
+export const RECONCILE_PACKAGE_FLAG = '--reconcile-prod-youth-service';
+const BOOLEAN_FLAGS = ['--apply', STAGING_RETAIN_FLAG, RECONCILE_PACKAGE_FLAG];
 const VALUE_FLAGS = ['--restore', '--expect-host', '--backup-dir'];
 
 export type CorrectiesCliOptions = {
@@ -34,12 +35,21 @@ export type CorrectiesCliOptions = {
   backupDir: string;
   /** `staging-retain` with `--staging-retain-toshoni`, else `remove`. */
   providerMode: ProviderMode;
+  reconcilePackageService: boolean;
 };
 
 /** A restore takes no mode: it puts back what its backup lists, whatever the apply kept. */
 export function assertRestoreTakesNoMode(
-  options: Pick<CorrectiesCliOptions, 'restore' | 'providerMode'>,
+  options: Pick<CorrectiesCliOptions, 'restore' | 'providerMode'> & {
+    reconcilePackageService?: boolean;
+  },
 ): void {
+  if (options.restore !== null && options.reconcilePackageService) {
+    throw new Error(`${RECONCILE_PACKAGE_FLAG} and --restore cannot be combined`);
+  }
+  if (options.providerMode === 'staging-retain' && options.reconcilePackageService) {
+    throw new Error(`${RECONCILE_PACKAGE_FLAG} and ${STAGING_RETAIN_FLAG} cannot be combined`);
+  }
   if (options.restore !== null && options.providerMode !== 'remove') {
     throw new Error(
       `${STAGING_RETAIN_FLAG} and --restore cannot be combined: a restore takes no mode, it puts back what its backup lists`,
@@ -59,6 +69,7 @@ export function parseCorrectiesOptions(args: string[]): CorrectiesCliOptions {
     expectHost: valueOf(args, '--expect-host'),
     backupDir: valueOf(args, '--backup-dir') ?? '.rollout-backups',
     providerMode: args.includes(STAGING_RETAIN_FLAG) ? 'staging-retain' : 'remove',
+    reconcilePackageService: args.includes(RECONCILE_PACKAGE_FLAG),
   };
   if (options.apply && options.restore !== null) {
     throw new Error('--apply and --restore cannot be combined');
@@ -73,16 +84,27 @@ export function parseCorrectiesOptions(args: string[]): CorrectiesCliOptions {
  * `--staging-retain-toshoni`. PGlite (a local database, the self-test) needs none.
  */
 export function assertCorrectiesTarget(
-  options: Pick<CorrectiesCliOptions, 'apply' | 'restore' | 'expectHost' | 'providerMode'>,
+  options: Pick<CorrectiesCliOptions, 'apply' | 'restore' | 'expectHost' | 'providerMode'> & {
+    reconcilePackageService?: boolean;
+  },
   driver: string,
   host: string | null,
 ): void {
   const writing = options.apply || options.restore !== null;
   const retain = options.providerMode === 'staging-retain';
+  if (
+    options.reconcilePackageService &&
+    !writing &&
+    driver === 'neon-http' &&
+    !options.expectHost
+  ) {
+    throw new Error(`${RECONCILE_PACKAGE_FLAG} needs --expect-host on Neon, including the dry run`);
+  }
   if (retain && !writing && driver === 'neon-http' && !options.expectHost) {
     throw new Error(
       `${STAGING_RETAIN_FLAG} needs --expect-host on Neon, for the dry run too; this DATABASE_URL points at ${host}`,
     );
   }
-  if (writing || retain) assertWriteTarget(driver, host, options.expectHost);
+  if (writing || retain || options.reconcilePackageService)
+    assertWriteTarget(driver, host, options.expectHost);
 }

@@ -42,6 +42,7 @@ function pendingSections(plan: CorrectiesPlan): string[] {
   const pending = (entries: ReadonlyArray<{ action: string }>) =>
     entries.some((entry) => entry.action === 'update');
   return [
+    pending([plan.packageGuard]) && 'legacy package service',
     pending(plan.settings) && 'settings',
     pending([plan.location]) && 'location',
     pending(plan.services) && 'services',
@@ -95,7 +96,12 @@ async function keptProviderProblems(
 /** `before` is the plan the apply wrote: its mode, its counts and what it kept. */
 export async function verifyCorrecties(deps: PlanDeps, before: CorrectiesPlan): Promise<string[]> {
   const world = await readWorld(deps);
-  const plan = planCorrecties(world, defaultInputs(), before.providerMode);
+  const plan = planCorrecties(
+    world,
+    defaultInputs(),
+    before.providerMode,
+    before.reconcilePackageService,
+  );
   const problems = [...correctiesBlockers(plan)];
   if (correctiesHasChanges(plan)) {
     problems.push(`a second plan still finds work: ${pendingSections(plan).join(', ')}`);

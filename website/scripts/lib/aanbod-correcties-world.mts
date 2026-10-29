@@ -54,6 +54,10 @@ export type World = {
   offerings: OfferingRowFull[];
   variants: VariantRowFull[];
   services: ServiceRowFull[];
+  /** Service IDs of all bookings, including cancelled ones; package retirement must not touch history. */
+  bookedServiceIds: string[];
+  /** Service IDs referenced by variants across every locale, not only this locale. */
+  allVariantServiceIds: string[];
   providers: ProviderRowFull[];
   subscriptions: SubscriptionRow[];
   counts: Counts;
@@ -128,9 +132,14 @@ export async function readWorld(deps: PlanDeps): Promise<World> {
         db.select({ id: schema.cmsPages.id }).from(schema.cmsPages),
         db.select({ id: schema.cmsBlocks.id }).from(schema.cmsBlocks),
         db.select({ id: cmsOfferings.id }).from(cmsOfferings),
-        db.select({ id: cmsOfferingVariants.offeringId }).from(cmsOfferingVariants),
+        db
+          .select({
+            offeringId: cmsOfferingVariants.offeringId,
+            serviceId: cmsOfferingVariants.serviceId,
+          })
+          .from(cmsOfferingVariants),
         db.select({ id: schema.cmsServices.id }).from(schema.cmsServices),
-        db.select({ id: schema.cmsBookings.id }).from(schema.cmsBookings),
+        db.select({ serviceId: schema.cmsBookings.serviceId }).from(schema.cmsBookings),
         db.select({ id: schema.cmsProviders.id }).from(schema.cmsProviders),
         db.select({ id: schema.cmsProviderServices.serviceId }).from(schema.cmsProviderServices),
       ]),
@@ -149,6 +158,8 @@ export async function readWorld(deps: PlanDeps): Promise<World> {
     offerings,
     variants,
     services,
+    bookedServiceIds: ids[5].map((row) => row.serviceId),
+    allVariantServiceIds: ids[3].flatMap((row) => (row.serviceId ? [row.serviceId] : [])),
     providers: providerRows.map((entry) => ({
       ...entry.provider,
       userActive: entry.userActive,

@@ -143,7 +143,7 @@ export async function guardChecks(env: {
   });
   await blockedBy(
     'a database that holds the withdrawn youth package',
-    'youth package: this database holds the withdrawn "Jeugd – volledig pakket" (variant youth-package of bikefit-huidige-fiets, service jeugdfit-pakket) — restore the backup of 27 Oct 2026 first, then run again',
+    'youth package: this database holds the withdrawn "Jeugd – volledig pakket" (variant youth-package of bikefit-huidige-fiets, service jeugdfit-pakket) — stop for manual reconciliation; no package row is deleted by this patch',
     true,
   );
   await db
