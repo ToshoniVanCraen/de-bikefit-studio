@@ -94,7 +94,7 @@ const CMS_DEPENDENCY_OWNERS = `(WITH RECURSIVE covered AS (SELECT ${COVERED}::oi
           JOIN objs ON d.classid = objs.classid AND d.objid = objs.objid)
       SELECT s.refobjid FROM objs JOIN pg_catalog.pg_shdepend s ON s.classid = objs.classid
         AND s.objid = objs.objid AND s.deptype = 'o' AND s.dbid = ${DB_OID})`;
-const GUARD_BODY = `
+export const GUARD_BODY = `
 DECLARE locked boolean; permitted name;
 BEGIN
   SELECT enabled, cli_role INTO locked, permitted FROM cms_writer_freeze.state WHERE singleton;

@@ -25,9 +25,33 @@ const ID = /^(?:[a-z0-9]+-)*[a-z0-9]+$/;
 const NAME = /^[A-Za-z0-9_-]{1,80}$/;
 const PG_NAME = /^[a-z_][a-z0-9_]{0,62}$/;
 const HOST = /^ep-[a-z0-9-]+\.[a-z0-9-]+\.(?:aws|azure)\.neon\.tech$/;
+/** Reviewed 30 Oct live control-plane inventory; changing this requires a new review. */
+export const LIVE_NEON_TARGETS = {
+  staging: {
+    projectId: 'gentle-frost-06624287',
+    branchId: 'br-rough-smoke-a2fzlwrv',
+    branchName: 'Staging',
+    endpointId: 'ep-solitary-rain-a2kchckw',
+    host: 'ep-solitary-rain-a2kchckw.eu-central-1.aws.neon.tech',
+  },
+  production: {
+    projectId: 'gentle-frost-06624287',
+    branchId: 'br-soft-forest-a2wbxtb1',
+    branchName: 'production',
+    endpointId: 'ep-wispy-frost-a2hudbl7',
+    host: 'ep-wispy-frost-a2hudbl7.eu-central-1.aws.neon.tech',
+  },
+} as const;
 
 export function validateLivePins(pins: LivePins): void {
+  const target = LIVE_NEON_TARGETS[pins.environment];
   if (
+    !target ||
+    pins.projectId !== target.projectId ||
+    pins.branchId !== target.branchId ||
+    pins.branchName !== target.branchName ||
+    pins.endpointId !== target.endpointId ||
+    pins.host !== target.host ||
     !['staging', 'production'].includes(pins.environment) ||
     pins.purpose !== `live-${pins.environment}-writer-freeze` ||
     !ID.test(pins.projectId) ||

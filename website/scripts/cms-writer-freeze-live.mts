@@ -33,6 +33,7 @@ import {
   type FreezeRoles,
 } from './lib/cms-writer-freeze-sql.mjs';
 import { validateIdentity } from './lib/cms-writer-freeze-runner.mjs';
+import { validateOperationalHoldReceipt } from './lib/cms-writer-freeze-live-receipt.mjs';
 import {
   auditLiveRoleGrants,
   auditLiveProbeRelations,
@@ -66,10 +67,10 @@ async function main() {
       ],
       'generate-setup': [...COMMON, ...ROLE, '--out'],
       check: COMMON,
-      setup: [...COMMON, ...ROLE, '--file', '--sha256'],
+      setup: [...COMMON, ...ROLE, '--file', '--sha256', '--hold-file', '--hold-sha256'],
       'check-roles': [...COMMON, ...ROLE],
       probe: [...COMMON, ...ROLE, '--phase', '--cms-table'],
-      execute: [...COMMON, '--file', '--sha256'],
+      execute: [...COMMON, '--file', '--sha256', '--hold-file', '--hold-sha256'],
     };
     if (!mode || !modeOptions[mode]) throw new Error(USAGE);
     const argv = process.argv.slice(3);
@@ -152,7 +153,7 @@ async function main() {
     await attestNeonBranch(pins, apiKey);
     parseDirectTarget(installerUrl, pins.host, pins.database, pins.installer);
 
-    async function privateSqlFile(path: string): Promise<string> {
+    async function privateReviewFile(path: string, limit: number): Promise<string> {
       const absolute = resolve(path);
       if ((await realpath(absolute)) !== absolute)
         throw new Error('Live SQL file must not be a symlink');
@@ -163,10 +164,11 @@ async function main() {
           !stat.isFile() ||
           (stat.mode & 0o777) !== 0o600 ||
           stat.nlink !== 1 ||
-          stat.size > 2_000_000
+          stat.size > limit ||
+          stat.size === 0
         )
           throw new Error(
-            'Live SQL file must be private mode-0600 regular file with one link and <=2 MB',
+            'Live review file must be private mode-0600 regular file with one link and within size limit',
           );
         return await handle.readFile('utf8');
       } finally {
@@ -225,8 +227,15 @@ async function main() {
       const pw = credentials();
       // Static grant contract: exactly the four audited legacy webshop tables; CLI gets no non-CMS grant.
       // setupSql also checks all four ordinary/installer-owned and all CMS table-like relations ordinary/installer-owned.
-      const sql = await privateSqlFile(values['--file']);
+      const sql = await privateReviewFile(values['--file'], 2_000_000);
       validateReviewedLiveSetupSql(sql, values['--sha256'], names!, pins);
+      validateOperationalHoldReceipt(
+        await privateReviewFile(values['--hold-file'], 16_384),
+        values['--hold-sha256'],
+        pins,
+        'setup',
+        values['--sha256'],
+      );
       return withClient(installerUrl!, pins.installer, async (client, pid) => {
         let begun = false;
         let submitted = false;
@@ -338,14 +347,15 @@ async function main() {
               ['cli', names!.cli, pw.cli],
             ];
       const out: string[] = [];
-      await withClient(installerUrl!, pins.installer, async (client) =>
-        auditLiveProbeRelations(
-          client,
-          values['--cms-table'],
-          phase as 'frozen' | 'unfrozen' | 'uninstalled',
-        ),
-      );
       for (const [actor, role, password] of actors) {
+        await withClient(installerUrl!, pins.installer, async (client) =>
+          auditLiveProbeRelations(
+            client,
+            values['--cms-table'],
+            phase as 'frozen' | 'unfrozen' | 'uninstalled',
+            names!.owner,
+          ),
+        );
         const events = await withClient(roleUrl(role, password), role, async (client, pid) =>
           runRollbackProbe(
             client,
@@ -367,9 +377,16 @@ async function main() {
 
     async function execute(): Promise<string> {
       const reviewed = validateReviewedLiveSql(
-        await privateSqlFile(values['--file']),
+        await privateReviewFile(values['--file'], 2_000_000),
         values['--sha256'],
         pins,
+      );
+      validateOperationalHoldReceipt(
+        await privateReviewFile(values['--hold-file'], 16_384),
+        values['--hold-sha256'],
+        pins,
+        reviewed.action,
+        reviewed.digest,
       );
       return withClient(installerUrl!, pins.installer, async (client, pid) => {
         let result: unknown;

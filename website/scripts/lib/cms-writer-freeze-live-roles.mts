@@ -1,5 +1,6 @@
 /** Read-only post-setup audit before any APP deployment. */
 import { SHOP_TABLES, type ProofRoles } from './cms-writer-freeze-proof.mjs';
+import { GUARD_BODY } from './cms-writer-freeze-sql.mjs';
 
 export type AuditClient = {
   query(sql: string, values?: unknown[]): Promise<{ rows: Array<Record<string, unknown>> }>;
@@ -110,6 +111,7 @@ export async function auditLiveProbeRelations(
   client: AuditClient,
   cmsTable: string,
   phase: 'frozen' | 'unfrozen' | 'uninstalled',
+  owner: string,
 ): Promise<void> {
   const inventory = await client.query(
     `SELECT c.relname,c.relkind FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
@@ -132,23 +134,82 @@ export async function auditLiveProbeRelations(
   );
   if (webshopEffects.rows[0]?.triggers !== 0 || webshopEffects.rows[0]?.rules !== 0)
     throw new Error('Live webshop probe has unreviewed statement trigger or rule');
+  // Inspect all triggers, including internal ones: any extra executable path is a HOLD.
   const cmsEffects = await client.query(
-    `SELECT t.tgname,t.tgenabled FROM pg_trigger t
-    WHERE t.tgrelid=$1::regclass AND NOT t.tgisinternal`,
+    `SELECT t.tgname,t.tgenabled,t.tgtype,t.tgfoid::text AS function_oid,
+      t.tgqual IS NULL AS no_when,octet_length(t.tgargs)=0 AS no_args,
+      t.tgattr::text='' AS no_columns,
+      t.tgoldtable IS NULL AND t.tgnewtable IS NULL AS no_transition_tables,
+      t.tgparentid=0 AS no_parent_trigger,
+      t.tgisinternal,t.tgconstraint=0 AS no_constraint,
+      NOT t.tgdeferrable AS not_deferrable,NOT t.tginitdeferred AS not_deferred
+    FROM pg_catalog.pg_trigger t WHERE t.tgrelid=$1::regclass`,
     [`public.${cmsTable}`],
   );
   const cmsRules = await client.query(
-    `SELECT count(*)::integer AS n FROM pg_rewrite r
+    `SELECT count(*)::integer AS n FROM pg_catalog.pg_rewrite r
     WHERE r.ev_class=$1::regclass AND r.rulename <> '_RETURN'`,
     [`public.${cmsTable}`],
   );
   const expected =
-    phase === 'uninstalled' ? [] : ['cms_writer_freeze_dml', 'cms_writer_freeze_truncate'];
+    phase === 'uninstalled'
+      ? new Map<string, number>()
+      : new Map([
+          ['cms_writer_freeze_dml', 30],
+          ['cms_writer_freeze_truncate', 34],
+        ]);
+  const guard = await client.query(
+    `SELECT p.oid::text AS oid,p.proowner=$1::regrole::oid AS owner_ok,
+      p.prosecdef,p.prosrc,p.proconfig,l.lanname,p.pronargs,
+      p.prorettype='pg_catalog.trigger'::regtype::oid AS trigger_return,
+      p.prokind,p.provolatile,p.proparallel,p.proleakproof,p.proisstrict,
+      p.proacl IS NOT NULL AS acl_explicit,
+      (SELECT count(*)::integer FROM pg_catalog.aclexplode(
+        coalesce(p.proacl,pg_catalog.acldefault('f',p.proowner))) a
+        WHERE a.grantee<>$1::regrole::oid) AS other_grants
+    FROM pg_catalog.pg_proc p JOIN pg_catalog.pg_language l ON l.oid=p.prolang
+    WHERE p.oid=pg_catalog.to_regprocedure('cms_writer_freeze.reject_unless_cli()')`,
+    [owner],
+  );
+  const fn = guard.rows[0];
   if (
     cmsRules.rows[0]?.n !== 0 ||
-    cmsEffects.rows.length !== expected.length ||
-    new Set(cmsEffects.rows.map((r) => r.tgname)).size !== expected.length ||
-    cmsEffects.rows.some((r) => !expected.includes(String(r.tgname)) || r.tgenabled !== 'A')
+    cmsEffects.rows.length !== expected.size ||
+    new Set(cmsEffects.rows.map((r) => r.tgname)).size !== expected.size ||
+    cmsEffects.rows.some(
+      (r) =>
+        expected.get(String(r.tgname)) !== r.tgtype ||
+        r.tgenabled !== 'A' ||
+        r.function_oid !== fn?.oid ||
+        r.no_when !== true ||
+        r.no_args !== true ||
+        r.no_columns !== true ||
+        r.no_transition_tables !== true ||
+        r.no_parent_trigger !== true ||
+        r.tgisinternal !== false ||
+        r.no_constraint !== true ||
+        r.not_deferrable !== true ||
+        r.not_deferred !== true,
+    ) ||
+    (phase === 'uninstalled'
+      ? guard.rows.length !== 0
+      : guard.rows.length !== 1 ||
+        fn?.owner_ok !== true ||
+        fn.prosecdef !== true ||
+        fn.prosrc !== GUARD_BODY ||
+        !Array.isArray(fn.proconfig) ||
+        fn.proconfig.length !== 1 ||
+        fn.proconfig[0] !== 'search_path=pg_catalog' ||
+        fn.lanname !== 'plpgsql' ||
+        fn.pronargs !== 0 ||
+        fn.trigger_return !== true ||
+        fn.prokind !== 'f' ||
+        fn.provolatile !== 'v' ||
+        fn.proparallel !== 'u' ||
+        fn.proleakproof !== false ||
+        fn.proisstrict !== false ||
+        fn.acl_explicit !== true ||
+        fn.other_grants !== 0)
   )
-    throw new Error('Live CMS probe has unexpected trigger or rule');
+    throw new Error('Live CMS probe guard manifest or rule mismatch');
 }

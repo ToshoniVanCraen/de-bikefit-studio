@@ -14,11 +14,11 @@ import { makeFreezeSql, type FreezeRoles } from './cms-writer-freeze-sql.mjs';
 const pins: LivePins = {
   environment: 'staging',
   purpose: 'live-staging-writer-freeze',
-  projectId: 'silent-sun-123456',
-  branchId: 'br-silent-sun-123456',
+  projectId: 'gentle-frost-06624287',
+  branchId: 'br-rough-smoke-a2fzlwrv',
   branchName: 'Staging',
-  endpointId: 'ep-bright-moon-123456',
-  host: 'ep-bright-moon-123456.eu-central-1.aws.neon.tech',
+  endpointId: 'ep-solitary-rain-a2kchckw',
+  host: 'ep-solitary-rain-a2kchckw.eu-central-1.aws.neon.tech',
   database: 'neondb',
   installer: 'neondb_owner',
 };
@@ -41,10 +41,34 @@ describe('live writer-freeze contract', () => {
     expect(() =>
       validateLivePins({
         ...pins,
-        host: 'ep-bright-moon-123456-pooler.eu-central-1.aws.neon.tech',
+        host: 'ep-solitary-rain-a2kchckw-pooler.eu-central-1.aws.neon.tech',
       }),
     ).toThrow();
     expect(() => validateLivePins({ ...pins, endpointId: 'ep-other-123456' })).toThrow();
+    expect(() => validateLivePins({ ...pins, projectId: 'another-project-123' })).toThrow();
+    expect(() => validateLivePins({ ...pins, branchId: 'br-other-123456' })).toThrow();
+    expect(() =>
+      validateLivePins({ ...pins, host: 'ep-solitary-rain-a2kchckw.us-east-2.aws.neon.tech' }),
+    ).toThrow();
+    expect(() =>
+      validateLivePins({
+        ...pins,
+        environment: 'production',
+        purpose: 'live-production-writer-freeze',
+        branchName: 'production',
+      }),
+    ).toThrow();
+    expect(() =>
+      validateLivePins({
+        ...pins,
+        environment: 'production',
+        purpose: 'live-production-writer-freeze',
+        branchId: 'br-soft-forest-a2wbxtb1',
+        branchName: 'production',
+        endpointId: 'ep-wispy-frost-a2hudbl7',
+        host: 'ep-wispy-frost-a2hudbl7.eu-central-1.aws.neon.tech',
+      }),
+    ).not.toThrow();
   });
   it('regenerates every statement while binding environment and all pins into the hash', () => {
     const sql = makeLiveFreezeSql('install', roles, pins);
