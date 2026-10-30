@@ -36,7 +36,11 @@
     "staging:access": "tsx scripts/staging-access.mts",
     "images:import": "tsx scripts/import-editorial-image.mts",
     "images:portrait": "tsx scripts/team-portrait.mts",
-    "cms:rehearsal-fixture": "tsx scripts/cms-rehearsal-fixture.mts"
+    "cms:rehearsal-fixture": "tsx scripts/cms-rehearsal-fixture.mts",
+    "cms:writer-freeze": "tsx scripts/cms-writer-freeze.mts",
+    "cms:writer-freeze:run": "tsx scripts/cms-writer-freeze-run.mts",
+    "cms:writer-freeze:proof": "tsx scripts/cms-writer-freeze-proof.mts",
+    "cms:writer-freeze:live": "tsx scripts/cms-writer-freeze-live.mts"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
@@ -52,6 +56,7 @@
     "lucide-react": "^1.17.0",
     "next": "16.4.3",
     "next-mdx-remote": "^6.0.0",
+    "pg": "8.23.1",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "sanitize-html": "^2.18.0",
@@ -67,6 +72,7 @@
     "@tailwindcss/postcss": "^4",
     "@tailwindcss/typography": "^0.5.19",
     "@types/node": "^22.20.4",
+    "@types/pg": "8.15.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/sanitize-html": "^2.16.1",
