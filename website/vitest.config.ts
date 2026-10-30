@@ -19,6 +19,9 @@ export default defineConfig({
     },
   },
   test: {
+    // PGlite's PostgreSQL/WASM suites exceed the 5s per-test limit when Vitest
+    // runs all files concurrently; two workers keep the default CI gate stable.
+    maxWorkers: 2,
     include: ['src/**/*.test.ts', 'scripts/lib/**/*.test.ts'],
     environment: 'node',
   },
