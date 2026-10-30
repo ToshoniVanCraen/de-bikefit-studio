@@ -240,7 +240,11 @@ export function derivePoolerUrl(
     parsed.hostname !== poolerHost ||
     parsed.username !== role ||
     parsed.pathname !== new URL(directUrl).pathname ||
-    parsed.search !== '?sslmode=require' ||
+    parsed.searchParams.size !== 2 ||
+    parsed.searchParams.getAll('sslmode').length !== 1 ||
+    parsed.searchParams.get('sslmode') !== 'require' ||
+    parsed.searchParams.getAll('channel_binding').length !== 1 ||
+    parsed.searchParams.get('channel_binding') !== 'require' ||
     (parsed.port && parsed.port !== '5432')
   )
     throw new Error('Pooled target mismatch');

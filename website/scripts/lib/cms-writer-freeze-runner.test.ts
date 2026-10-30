@@ -11,7 +11,7 @@ import {
 } from './cms-writer-freeze-runner.mjs';
 
 const host = 'ep-proof-branch.eu-central-1.aws.neon.tech';
-const url = `postgresql://freeze_installer:private@${host}/proofdb?sslmode=require`;
+const url = `postgresql://freeze_installer:private@${host}/proofdb?sslmode=require&channel_binding=require`;
 const roles: FreezeRoles = {
   app: 'freeze_app',
   cli: 'freeze_cli',
@@ -34,7 +34,9 @@ describe('disposable freeze runner validation', () => {
       url.replace('sslmode=require', 'sslmode=disable'),
       url + '&sslmode=disable',
       url + '&options=-csearch_path=public',
+      url.replace('channel_binding=require', 'channel_binding=disable'),
       url + '&channel_binding=require',
+      url.replace('&channel_binding=require', ''),
       url.replace('/proofdb', ':5433/proofdb'),
     ])
       expect(() => validateTarget(bad, host, 'proofdb', 'freeze_installer')).toThrow();

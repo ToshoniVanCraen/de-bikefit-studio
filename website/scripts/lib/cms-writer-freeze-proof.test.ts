@@ -178,7 +178,7 @@ describe('copy-only freeze proof helper', () => {
 
   it('derives only the exact pooler companion for read-only HTTP identity checks', () => {
     const host = 'ep-proof-branch.eu-central-1.aws.neon.tech';
-    const url = `postgresql://proof_app:private@${host}/proofdb?sslmode=require`;
+    const url = `postgresql://proof_app:private@${host}/proofdb?sslmode=require&channel_binding=require`;
     expect(new URL(derivePoolerUrl(url, host, roles.app)).hostname).toBe(
       'ep-proof-branch-pooler.eu-central-1.aws.neon.tech',
     );

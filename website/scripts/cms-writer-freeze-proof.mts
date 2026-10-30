@@ -1,6 +1,12 @@
 /** Disposable direct-host proof only: fresh SQL roles and rollback-only APP/CLI probes. */
-import { Client, neon, neonConfig } from '@neondatabase/serverless';
-import { validateIdentity, validateTarget } from './lib/cms-writer-freeze-runner.mjs';
+import { neon } from '@neondatabase/serverless';
+import {
+  createStrictPlusClient,
+  deriveRoleUrl,
+  parseDirectTarget,
+  type StrictPlusClient,
+} from './lib/cms-writer-freeze-direct.mjs';
+import { validateIdentity } from './lib/cms-writer-freeze-runner.mjs';
 import {
   checkedName,
   derivePoolerUrl,
@@ -64,33 +70,25 @@ if (mode === 'probe' && !['frozen', 'unfrozen', 'uninstalled'].includes(phase))
 if (mode === 'probe') validateCmsTable(values['--cms-table']);
 const installerUrl = process.env.DATABASE_URL;
 if (!installerUrl) throw new Error('DATABASE_URL must be supplied in the environment');
-validateTarget(installerUrl, values['--expected-host'], values['--database'], roles.installer);
+parseDirectTarget(installerUrl, values['--expected-host'], values['--database'], roles.installer);
 const appPassword = process.env.CMS_FREEZE_APP_PASSWORD;
 const cliPassword = process.env.CMS_FREEZE_CLI_PASSWORD;
 if (!appPassword || !cliPassword)
   throw new Error('APP and CLI passwords must be supplied in environment variables');
 validateProofPasswords(appPassword, cliPassword);
 
-neonConfig.webSocketConstructor = WebSocket;
-neonConfig.useSecureWebSocket = true;
-neonConfig.forceDisablePgSSL = true;
-neonConfig.pipelineConnect = false;
-
 function roleUrl(base: string, role: string, password: string): string {
-  const url = new URL(base);
-  url.username = role;
-  url.password = password;
-  const derived = url.toString();
-  validateTarget(derived, values['--expected-host'], values['--database'], role);
-  return derived;
+  return deriveRoleUrl(base, values['--expected-host'], values['--database'], role, password);
 }
 
 async function withClient<T>(
   url: string,
   role: string,
-  fn: (client: Client, pid: unknown) => Promise<T>,
+  fn: (client: StrictPlusClient, pid: unknown) => Promise<T>,
 ): Promise<T> {
-  const client = new Client(url);
+  const client = createStrictPlusClient(
+    parseDirectTarget(url, values['--expected-host'], values['--database'], role),
+  );
   let transportFailed = false;
   let connected = false;
   client.on('error', () => {
@@ -98,7 +96,7 @@ async function withClient<T>(
   });
   let result: T | undefined;
   try {
-    await client.connect();
+    await client.connectStrict();
     connected = true;
     const identity = await client.query(
       "SELECT session_user, current_user, current_database() AS current_database, current_setting('server_version_num') AS server_version_num, pg_backend_pid() AS backend_pid",

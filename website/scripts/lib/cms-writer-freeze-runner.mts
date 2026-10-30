@@ -8,54 +8,15 @@ import {
   type FreezeRoles,
 } from './cms-writer-freeze-sql.mjs';
 
+import { parseDirectTarget } from './cms-writer-freeze-direct.mjs';
+
 export function validateTarget(
   connectionString: string,
   expectedHost: string,
   expectedDatabase: string,
   installer: string,
 ): void {
-  // The expected endpoint must be a concrete Neon direct endpoint, never a wildcard or pooler.
-  if (
-    !/^[a-z_][a-z0-9_]{0,62}$/.test(expectedDatabase) ||
-    !/^[a-z_][a-z0-9_]{0,62}$/.test(installer)
-  ) {
-    throw new Error('Expected database and installer must be exact PostgreSQL names');
-  }
-  if (
-    !/^ep-[a-z0-9-]+\.[a-z0-9-]+\.(?:aws|azure)\.neon\.tech$/.test(expectedHost) ||
-    expectedHost.split('.')[0].endsWith('-pooler')
-  ) {
-    throw new Error('Expected host must be an exact non-pooler Neon endpoint');
-  }
-  let url: URL;
-  try {
-    url = new URL(connectionString);
-  } catch {
-    throw new Error('DATABASE_URL is not a valid PostgreSQL URL');
-  }
-  let database: string;
-  let username: string;
-  try {
-    database = decodeURIComponent(url.pathname.slice(1));
-    username = decodeURIComponent(url.username);
-  } catch {
-    throw new Error('DATABASE_URL has invalid encoded connection fields');
-  }
-  if (
-    !['postgres:', 'postgresql:'].includes(url.protocol) ||
-    url.hostname !== expectedHost ||
-    (url.port && url.port !== '5432') ||
-    url.hash ||
-    !url.username ||
-    !url.password ||
-    database !== expectedDatabase ||
-    username !== installer ||
-    url.searchParams.getAll('sslmode').length !== 1 ||
-    url.searchParams.get('sslmode') !== 'require' ||
-    [...url.searchParams.keys()].some((key) => key !== 'sslmode')
-  ) {
-    throw new Error('DATABASE_URL must target the pinned direct Neon host with sslmode=require');
-  }
+  parseDirectTarget(connectionString, expectedHost, expectedDatabase, installer);
 }
 
 export type ReviewedSql = { action: FreezeAction; roles: FreezeRoles; digest: string; sql: string };

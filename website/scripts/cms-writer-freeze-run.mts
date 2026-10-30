@@ -2,13 +2,16 @@
 import { constants } from 'node:fs';
 import { open, realpath } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { Client, neonConfig } from '@neondatabase/serverless';
+import {
+  createStrictPlusClient,
+  parseDirectTarget,
+  type StrictPlusClient,
+} from './lib/cms-writer-freeze-direct.mjs';
 import {
   PROBE_FAILURE_SQL,
   PROBE_SUCCESS_SQL,
   validateIdentity,
   validateReviewedSql,
-  validateTarget,
 } from './lib/cms-writer-freeze-runner.mjs';
 
 const usage =
@@ -38,7 +41,12 @@ if (Object.keys(values).length !== expectedKeys.length || expectedKeys.some((key
   throw new Error(usage);
 const url = process.env.DATABASE_URL;
 if (!url) throw new Error('DATABASE_URL must be supplied in the environment');
-validateTarget(url, values['--expected-host'], values['--database'], values['--installer']);
+const target = parseDirectTarget(
+  url,
+  values['--expected-host'],
+  values['--database'],
+  values['--installer'],
+);
 
 async function readReviewedFile(path: string): Promise<string> {
   const absolute = resolve(path);
@@ -57,7 +65,7 @@ async function readReviewedFile(path: string): Promise<string> {
 }
 
 /** Temp-only probe: no guard SQL, no existing tables, and no persistent relation/data changes. */
-async function runTransportProbe(client: Client, backendPid: unknown): Promise<string> {
+async function runTransportProbe(client: StrictPlusClient, backendPid: unknown): Promise<string> {
   const rollback = async () => {
     try {
       return await client.query('ROLLBACK');
@@ -121,14 +129,9 @@ async function main() {
           values['--installer'],
         )
       : undefined;
-  // Node 24 built-in WebSocket; do not use cleartext-password connect pipelining.
-  neonConfig.webSocketConstructor = WebSocket;
-  neonConfig.useSecureWebSocket = true;
-  neonConfig.forceDisablePgSSL = true; // WSS protects the Neon proxy hop, not PostgreSQL-layer TLS.
-  neonConfig.pipelineConnect = false;
-  const client = new Client(url);
+  const client = createStrictPlusClient(target);
   let transportFailed = false;
-  // The driver can emit an idle WebSocket error outside an awaited query. Never surface its raw Error.
+  // The native client can emit an idle socket error outside an awaited query. Never surface its raw Error.
   client.on('error', () => {
     transportFailed = true;
   });
@@ -137,7 +140,7 @@ async function main() {
   let completed = false;
   const status: string[] = [];
   try {
-    await client.connect();
+    await client.connectStrict();
     connected = true;
     const identity = await client.query(
       "SELECT session_user, current_user, current_database() AS current_database, current_setting('server_version_num') AS server_version_num, pg_backend_pid() AS backend_pid",
