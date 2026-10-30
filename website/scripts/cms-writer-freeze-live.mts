@@ -22,27 +22,27 @@ import {
 import {
   checkedName,
   derivePoolerUrl,
-  runRollbackProbe,
-  validateCmsTable,
   validateProofPasswords,
-  SHOP_TABLES,
 } from './lib/cms-writer-freeze-proof.mjs';
 import {
   FREEZE_ACTIONS,
   type FreezeAction,
   type FreezeRoles,
 } from './lib/cms-writer-freeze-sql.mjs';
-import { validateIdentity } from './lib/cms-writer-freeze-runner.mjs';
 import { validateOperationalHoldReceipt } from './lib/cms-writer-freeze-live-receipt.mjs';
 import {
-  auditLiveRoleGrants,
-  auditLiveProbeRelations,
-} from './lib/cms-writer-freeze-live-roles.mjs';
+  LiveOperationError,
+  runLiveGuardTransaction,
+  runLiveSetupTransaction,
+  safeLiveError,
+  withPinnedLiveClient,
+} from './lib/cms-writer-freeze-live-transactions.mjs';
+import { auditLiveRoleGrants } from './lib/cms-writer-freeze-live-roles.mjs';
 
 async function main() {
   try {
     const USAGE =
-      'cms:writer-freeze:live -- <generate|generate-setup|check|setup|check-roles|probe|execute> --environment staging|production --purpose live-ENV-writer-freeze --project-id ID --branch-id ID --branch-name NAME --endpoint-id ID --expected-host DIRECT_HOST --database DB --installer ROLE [mode-specific options]';
+      'cms:writer-freeze:live -- <generate|generate-setup|check|setup|check-roles|execute> --environment staging|production --purpose live-ENV-writer-freeze --project-id ID --branch-id ID --branch-name NAME --endpoint-id ID --expected-host DIRECT_HOST --database DB --installer ROLE [mode-specific options]';
     const COMMON = [
       '--environment',
       '--purpose',
@@ -69,9 +69,12 @@ async function main() {
       check: COMMON,
       setup: [...COMMON, ...ROLE, '--file', '--sha256', '--hold-file', '--hold-sha256'],
       'check-roles': [...COMMON, ...ROLE],
-      probe: [...COMMON, ...ROLE, '--phase', '--cms-table'],
       execute: [...COMMON, '--file', '--sha256', '--hold-file', '--hold-sha256'],
     };
+    if (mode === 'probe')
+      throw new LiveOperationError(
+        'Live probe disabled: catalog race and external effects require a new reviewed design',
+      );
     if (!mode || !modeOptions[mode]) throw new Error(USAGE);
     const argv = process.argv.slice(3);
     const values: Record<string, string> = {};
@@ -182,34 +185,13 @@ async function main() {
       fn: (client: StrictPlusClient, pid: unknown) => Promise<T>,
     ): Promise<T> {
       const client = createStrictPlusClient(parseDirectTarget(url, pins.host, pins.database, role));
-      let failed = false;
-      client.on('error', () => {
-        failed = true;
-      });
-      let connected = false;
-      let result: T;
-      try {
-        await client.connectStrict();
-        connected = true;
-        await attestNeonBranch(pins, apiKey!);
-        const identity = await client.query(
-          "SELECT session_user, current_user, current_database() AS current_database, current_setting('server_version_num') AS server_version_num, pg_backend_pid() AS backend_pid",
-        );
-        const row = identity.rows[0];
-        if (!row) throw new Error('Identity missing');
-        validateIdentity(row, role, pins.database);
-        if (failed) throw new Error('Transport failed');
-        result = await fn(client, row.backend_pid);
-      } finally {
-        if (connected)
-          try {
-            await client.end();
-          } catch {
-            failed = true;
-          }
-        if (failed) throw new Error('Transport failed; outcome uncertain after SQL submission');
-      }
-      return result!;
+      return withPinnedLiveClient(
+        client,
+        role,
+        pins,
+        () => attestNeonBranch(pins, apiKey!),
+        async (_client, pid) => fn(client, pid),
+      );
     }
 
     function credentials(): { app: string; cli: string } {
@@ -225,74 +207,28 @@ async function main() {
 
     async function setup(): Promise<string> {
       const pw = credentials();
-      // Static grant contract: exactly the four audited legacy webshop tables; CLI gets no non-CMS grant.
-      // setupSql also checks all four ordinary/installer-owned and all CMS table-like relations ordinary/installer-owned.
       const sql = await privateReviewFile(values['--file'], 2_000_000);
+      const holdRaw = await privateReviewFile(values['--hold-file'], 16_384);
       validateReviewedLiveSetupSql(sql, values['--sha256'], names!, pins);
       validateOperationalHoldReceipt(
-        await privateReviewFile(values['--hold-file'], 16_384),
+        holdRaw,
         values['--hold-sha256'],
         pins,
         'setup',
         values['--sha256'],
       );
-      return withClient(installerUrl!, pins.installer, async (client, pid) => {
-        let begun = false;
-        let submitted = false;
-        let committed = false;
-        try {
-          const begin = await client.query('BEGIN');
-          if (begin.command !== 'BEGIN') throw new Error('BEGIN not acknowledged');
-          begun = true;
-          await client.query('SET LOCAL search_path = pg_catalog, pg_temp');
-          await client.query("SET LOCAL lock_timeout = '15s'");
-          await client.query("SET LOCAL statement_timeout = '60s'");
-          // Refuse PUBLIC DML on any audited table or CMS relation: a fresh CLI would inherit it.
-          const publicAcl = await client.query(
-            `SELECT count(*)::integer AS n FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
-        WHERE (n.nspname='public' AND c.relname=ANY($1::text[]) OR (c.relname LIKE 'cms\\_%' ESCAPE '\\' AND n.nspname NOT LIKE 'pg\\_%' ESCAPE '\\'))
-          AND c.relkind IN ('r','p','v','m','f')
-          AND EXISTS (SELECT 1 FROM aclexplode(coalesce(c.relacl,acldefault('r',c.relowner))) a
-            WHERE a.grantee=0 AND a.privilege_type IN ('SELECT','INSERT','UPDATE','DELETE','TRUNCATE','TRIGGER'))`,
-            [SHOP_TABLES],
-          );
-          if (publicAcl.rows[0]?.n !== 0)
-            throw new Error('PUBLIC relation privilege preflight failed');
-          const settings = await client.query(
-            "SELECT set_config('cms_freeze.app_password',$1,true) IS NOT NULL AS app_set, set_config('cms_freeze.cli_password',$2,true) IS NOT NULL AS cli_set",
-            [pw.app, pw.cli],
-          );
-          if (!settings.rows[0]?.app_set || !settings.rows[0]?.cli_set)
-            throw new Error('Password injection failed');
-          submitted = true;
-          await client.query(sql);
-          const same = await client.query(
-            'SELECT session_user,current_user,pg_backend_pid() AS pid',
-          );
-          if (
-            same.rows[0]?.session_user !== pins.installer ||
-            same.rows[0]?.current_user !== pins.installer ||
-            same.rows[0]?.pid !== pid
-          )
-            throw new Error('Setup backend identity changed');
-          const commit = await client.query('COMMIT');
-          committed = commit.command === 'COMMIT';
-          if (!committed) throw new Error('COMMIT acknowledgement missing');
-          return `Live ${pins.environment} setup COMMIT confirmed: project=${pins.projectId} branch=${pins.branchId} endpoint=${pins.endpointId} database=${pins.database} backend_pid=${pid} SHA-256=${values['--sha256']}; APP grants=USAGE public + SELECT/INSERT/UPDATE/DELETE on public.${SHOP_TABLES.join(',public.')}; CLI non-CMS grants=none`;
-        } catch {
-          if (begun && !committed)
-            try {
-              await client.query('ROLLBACK');
-            } catch {
-              /* uncertain */
-            }
-          throw new Error(
-            submitted
-              ? 'Live setup failed or COMMIT uncertain; inspect branch state, no retry'
-              : 'Live setup preflight failed; no role SQL submitted',
-          );
-        }
-      });
+      return withClient(installerUrl!, pins.installer, async (client, pid) =>
+        runLiveSetupTransaction(client, {
+          sql,
+          hash: values['--sha256'],
+          holdRaw,
+          holdHash: values['--hold-sha256'],
+          names: names!,
+          pins,
+          passwords: pw,
+          pid,
+        }),
+      );
     }
 
     async function checkRoles(): Promise<string[]> {
@@ -334,93 +270,27 @@ async function main() {
       return out;
     }
 
-    async function probe(): Promise<string[]> {
-      const pw = credentials();
-      const phase = values['--phase'];
-      if (!['frozen', 'unfrozen', 'uninstalled'].includes(phase)) throw new Error(USAGE);
-      const table = validateCmsTable(values['--cms-table']);
-      const actors =
-        phase === 'unfrozen'
-          ? [['app', names!.app, pw.app]]
-          : [
-              ['app', names!.app, pw.app],
-              ['cli', names!.cli, pw.cli],
-            ];
-      const out: string[] = [];
-      for (const [actor, role, password] of actors) {
-        await withClient(installerUrl!, pins.installer, async (client) =>
-          auditLiveProbeRelations(
-            client,
-            values['--cms-table'],
-            phase as 'frozen' | 'unfrozen' | 'uninstalled',
-            names!.owner,
-          ),
-        );
-        const events = await withClient(roleUrl(role, password), role, async (client, pid) =>
-          runRollbackProbe(
-            client,
-            role,
-            pins.database,
-            table,
-            phase as 'frozen' | 'unfrozen' | 'uninstalled',
-            pid,
-            actor as 'app' | 'cli',
-            names!.owner,
-          ),
-        );
-        out.push(
-          `${pins.environment} ${phase} ${actor} rollback-only probe ROLLBACK acknowledged: ${events.join(' ')}`,
-        );
-      }
-      return out;
-    }
-
     async function execute(): Promise<string> {
-      const reviewed = validateReviewedLiveSql(
-        await privateReviewFile(values['--file'], 2_000_000),
-        values['--sha256'],
-        pins,
-      );
+      const sql = await privateReviewFile(values['--file'], 2_000_000);
+      const holdRaw = await privateReviewFile(values['--hold-file'], 16_384);
+      const reviewed = validateReviewedLiveSql(sql, values['--sha256'], pins);
       validateOperationalHoldReceipt(
-        await privateReviewFile(values['--hold-file'], 16_384),
+        holdRaw,
         values['--hold-sha256'],
         pins,
         reviewed.action,
         reviewed.digest,
       );
-      return withClient(installerUrl!, pins.installer, async (client, pid) => {
-        let result: unknown;
-        try {
-          result = await client.query(reviewed.sql);
-        } catch {
-          try {
-            await client.query('ROLLBACK');
-          } catch {
-            /* uncertain */
-          }
-          throw new Error(
-            'Live guard SQL failed; outcome uncertain, inspect branch state, no retry',
-          );
-        }
-        const results = Array.isArray(result) ? result : [result];
-        if ((results.at(-1) as { command?: unknown })?.command !== 'COMMIT')
-          throw new Error('Live guard COMMIT acknowledgement missing; outcome uncertain, no retry');
-        if (reviewed.action === 'verify') {
-          const row = results.find(
-            (r: { rows?: Array<Record<string, unknown>> }) =>
-              r.rows?.[0] && 'guarded_tables' in r.rows[0],
-          )?.rows?.[0];
-          if (
-            !row ||
-            typeof row.enabled !== 'boolean' ||
-            !Number.isInteger(Number(row.guarded_tables)) ||
-            Number(row.guarded_tables) < 1 ||
-            row.installer_role !== pins.installer
-          )
-            throw new Error('Live verify result invalid; inspect branch state');
-        }
-        return `Live ${pins.environment} ${reviewed.action} COMMIT confirmed: project=${pins.projectId} branch=${pins.branchId} endpoint=${pins.endpointId} SHA-256=${reviewed.digest} backend_pid=${pid}`;
-      });
+      return withClient(installerUrl!, pins.installer, async (client, pid) =>
+        runLiveGuardTransaction(client, {
+          sql,
+          hash: values['--sha256'],
+          holdRaw,
+          holdHash: values['--hold-sha256'],
+          pins,
+          pid,
+        }),
+      );
     }
 
     const output =
@@ -437,20 +307,11 @@ async function main() {
           ? [await setup()]
           : mode === 'check-roles'
             ? await checkRoles()
-            : mode === 'probe'
-              ? await probe()
-              : [await execute()];
+            : [await execute()];
     process.stdout.write(`${output.join('\n')}\n`);
   } catch (error) {
-    // Never surface raw driver/API/secret-bearing errors, even during transport cleanup.
-    const safe =
-      error instanceof Error &&
-      /^(Live (setup|guard|verify|SQL|environment|roles)|Neon control-plane|Transport failed|Pooled HTTPS|PUBLIC relation privilege|APP\/CLI passwords|DATABASE_URL required|Resolved NEON_API_KEY)/.test(
-        error.message,
-      )
-        ? error.message
-        : 'Live writer-freeze refused; inspect pinned branch state before any retry';
-    process.stderr.write(`${safe}\n`);
+    // Only locally constructed operation errors are surfaced, never raw driver/API data.
+    process.stderr.write(`${safeLiveError(error)}\n`);
     process.exitCode = 1;
   }
 }
