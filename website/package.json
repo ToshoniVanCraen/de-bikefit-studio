@@ -38,7 +38,8 @@
     "images:portrait": "tsx scripts/team-portrait.mts",
     "cms:rehearsal-fixture": "tsx scripts/cms-rehearsal-fixture.mts",
     "cms:writer-freeze": "tsx scripts/cms-writer-freeze.mts",
-    "cms:writer-freeze:run": "tsx scripts/cms-writer-freeze-run.mts"
+    "cms:writer-freeze:run": "tsx scripts/cms-writer-freeze-run.mts",
+    "cms:writer-freeze:proof": "tsx scripts/cms-writer-freeze-proof.mts"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
