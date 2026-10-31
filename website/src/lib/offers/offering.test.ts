@@ -326,7 +326,7 @@ describe('resolveOffering and its labels', () => {
       bookableServiceIds: bothOffered,
     });
     expect(offeringPriceLabel(resolved)).toBe(
-      `Volwassene ${formatPrice(15000)} · Jeugd – eenmalig op aanvraag`,
+      `Volwassene ${formatPrice(15000)} · Jeugd op aanvraag`,
     );
   });
 });

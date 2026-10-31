@@ -12,17 +12,16 @@ import {
 } from '@/lib/analytics/consent';
 
 /**
- * Cookie consent banner for the public site.
+ * Cookie consent banner for Google Maps and, when configured, Analytics.
  *
- * Mounted by `StudioAnalytics` only when analytics could ever load on this
- * deployment (valid `NEXT_PUBLIC_GA4_MEASUREMENT_ID` AND `analytics.enabled`);
- * everywhere else nothing is rendered and nothing is asked.
+ * Mounted across the public site by `StudioAnalytics`, including when GA4 is
+ * disabled: the appointment map can still be shown. Legacy Analytics-only
+ * cookie values count as unset, so the new Maps purpose is presented first.
  *
- * - No `cms_consent` cookie → a fixed bar at the bottom with two equally
- *   weighted buttons, "Accepteren" and "Weigeren".
- * - A choice writes the cookie (`granted` | `denied`, 365 days) and fires the
- *   `cms-consent` window event, so the GA4 tag starts (or stops) without a
- *   reload.
+ * - No current `cms_consent` choice → a fixed bar with equally weighted
+ *   "Accepteren" and "Weigeren" buttons.
+ * - A choice writes the versioned cookie (365 days) and fires the
+ *   `cms-consent` event; GA4 and the map react without a reload.
  * - `openConsent()` (the footer "Cookies" link) shows the bar again.
  *
  * The server never knows the choice, so the server HTML contains no banner;
@@ -36,7 +35,13 @@ type Snapshot = ConsentValue | 'unset' | 'server';
 const clientSnapshot = (): Snapshot => readConsent() ?? 'unset';
 const serverSnapshot = (): Snapshot => 'server';
 
-export function ConsentBanner({ privacyHref }: { privacyHref?: string | null }) {
+export function ConsentBanner({
+  privacyHref,
+  analyticsEnabled,
+}: {
+  privacyHref?: string | null;
+  analyticsEnabled: boolean;
+}) {
   const consent = useSyncExternalStore(subscribeConsent, clientSnapshot, serverSnapshot);
   const [reopened, setReopened] = useState(false);
   const panelRef = useRef<HTMLElement>(null);
@@ -92,9 +97,12 @@ export function ConsentBanner({ privacyHref }: { privacyHref?: string | null }) 
             Cookies
           </h2>
           <p className="mt-1 text-[length:var(--ds-text-small)] leading-[var(--ds-leading-body)]">
-            We gebruiken Google Analytics om te zien hoe bezoekers deze site gebruiken. Dat gebeurt
-            alleen als je akkoord gaat. Je kan je keuze altijd aanpassen via ‘Cookies’ onderaan de
-            pagina.
+            {analyticsEnabled
+              ? 'Met jouw toestemming gebruiken we Google Analytics om het gebruik van de site te meten en laden we de kaart van Google Maps op de afspraakpagina.'
+              : 'Met jouw toestemming laden we de kaart van Google Maps op de afspraakpagina.'}{' '}
+            Bij het laden van de kaart krijgt Google je IP-adres en kan Google cookies plaatsen.
+            Zonder toestemming laadt de kaart alleen als je zelf op ‘Kaart tonen’ klikt. Je kan je
+            keuze altijd aanpassen via ‘Cookies’ onderaan de pagina.
             {privacyHref ? (
               <>
                 {' '}

@@ -360,7 +360,7 @@ own `_ga*` cookies appear only after consent (§12.7).
 | `cms_session` | login (`session.ts`); for admins, providers and editors with an authenticator only after the second step | random session token; the DB stores only its HMAC | `httpOnly`, `sameSite=lax`, `path=/`, `secure` in production. Admins: expires at the absolute end (sign-in + 8 h; the 15-minute idle limit is enforced server-side). Editors and providers: 14 days, sliding |
 | `cms_mfa` | password sign-in of an admin, a provider or an editor with an authenticator (`src/lib/cms/mfa/challenge.ts`) | random challenge token for the second step; the DB stores only its HMAC. Not a session: no guard reads it | `httpOnly`, `sameSite=lax`, `path=/admin`, `secure` in production; 10 minutes, never extended; one per user (a new password sign-in replaces it); deleted on success, cancel, logout, 5 wrong codes, a password change or an admin's password or MFA reset |
 | `cms_google_oauth` | `GET /api/google/oauth/start` (`src/app/api/google/oauth/state.ts`) | provider id, CMS user id, nonce, return target, expiry; HMAC-SHA256 signed with `CMS_SESSION_SECRET` (domain-separated). The callback accepts only a valid signature, an unexpired state, a nonce equal to Google's `state` (constant-time) and the same signed-in user | `httpOnly`, `sameSite=lax`, `path=/api/google/oauth`, `secure` in production; 10 minutes |
-| `cms_consent` | the consent banner, client-side (`src/lib/analytics/consent.ts`) | `granted` or `denied` | `SameSite=Lax`, `path=/`, `Secure` on https; 365 days. Not `httpOnly`: the banner and the GA4 loader read it in the browser |
+| `cms_consent` | the Google Maps and optional Analytics consent banner, client-side (`src/lib/analytics/consent.ts`) | `v2:granted` or `v2:denied`; older Analytics-only values require a new choice | `SameSite=Lax`, `path=/`, `Secure` on https; 365 days. Not `httpOnly`: the banner, map and GA4 loader read it in the browser |
 
 ### Rate limiting
 
@@ -927,7 +927,7 @@ defaultDataFor('hero')          // deep clone of the above
 | `giftVoucher` | Cadeaubon (bestelformulier) | the gift voucher page `/cadeaubon`: page head (owns the `<h1>`, with the `intro` and the one-line `validityNote`) + the order form (suggested amounts next to "Ander bedrag" with the free amount field, personal message, contact details, button "Bestel nu"). Owns only copy and the suggestions (`eyebrow`, `title`, `intro`, `formTitle`, `sentTitle`, `sentText`, `validityNote` (default "Een cadeaubon is een jaar geldig na aankoop."), `amounts`: at most six `{ cents, caption }`, € 1 to € 5.000, default € 75 / € 150 / € 275 "Volledige bikefit"; both default in the schema, so content saved before 27 Oct 2026 shows them; `summary` and `sortOrder` are kept for old content); a suggestion only fills the amount field and the order is validated as before; fields, rules and sending are code in `src/lib/gift-voucher/` (server action → `sendEmail` to the order inbox from `/admin/email` / env `GIFT_VOUCHER_RECIPIENT`, never `contact.email`; success only when Resend accepted it). Its card on `/aanbod` is an `extraCards` entry of that page's catalogue block ("Bedrag naar keuze"); it is never a booking target. Ops: `booking-runbook.md` §12 |
 | `team` | Team | profiles: name, role, bio paragraphs (verified text only), image; without an image the initials are drawn. `internalNote` is never rendered and names the person's open register rows; interim profiles end with "Een uitgebreid profiel volgt binnenkort." |
 | `booking` | Afspraak boeken | the booking widget on `/afspraak` (service → provider → day → slot → details → confirmation). Carries copy and a filter only: `serviceIds` (empty = every active service), `showProviderChoice` (AND-ed with the `booking.showProviderChoice` setting), `successTitle`, `successText` (empty → `booking.confirmationText`). Services, providers and live availability are read at render time through `@/lib/booking/content`, so nothing in the block goes stale. |
-| `location` | Locatie | "Waar vind je ons?": the studio's address as text (an `<address>`), an optional `note` under it ("Parking beschikbaar voor de deur."), a "Route plannen" link to Google Maps and a small map. Owns only copy (`variant`, `eyebrow`, `title`, `intro`, `note`, `showMap`, `mapLabel`, `routeLabel`); the address is not a field: it is read from Instellingen → Contact, the same setting the footer and the JSON-LD postal address use, so it is edited in one place. Without a street line it renders nothing. The map follows the two-click rule below. Last block of `/afspraak` in the seed |
+| `location` | Locatie | "Waar vind je ons?": the studio's address as text (an `<address>`), an optional `note` under it ("Parking beschikbaar voor de deur."), a "Route plannen" link to Google Maps and a small map. Owns only copy (`variant`, `eyebrow`, `title`, `intro`, `note`, `showMap`, `mapLabel`, `routeLabel`); the address is not a field: it is read from Instellingen → Contact, the same setting the footer and the JSON-LD postal address use, so it is edited in one place. Without a street line it renders nothing. The map follows the consent rule below. Last block of `/afspraak` in the seed |
 
 Most blocks share `variant: 'default' | 'gray' | 'dark'`, matching the
 prototype's white / `--gray` / `--dark` section backgrounds.
@@ -948,7 +948,7 @@ Deploy code that adds a block type **before** publishing pages that use it
 (this is why `/afspraak` is refreshed after the booking deploy, see the
 staging runbook).
 
-### The `location` block and its two-click map (27 Oct 2026)
+### The `location` block and its consent-gated map (27 Oct 2026; banner consent 31 Oct)
 
 Toshoni asked for a section with the exact address and a small Google Maps map with the location
 pinned, on the appointment page (`/afspraak`; `/contact` redirects there), and for the same address in
@@ -961,16 +961,17 @@ plain link to Google Maps ("Route plannen", `rel="noopener noreferrer"`, new tab
 name; both URLs are built from it and URL-encoded, never from a literal; no street line means no place,
 so the block renders nothing).
 
-**The map is a two-click embed, because the frame sets Google cookies (CLAUDE.md §4).** The server
+**The map is consent-gated, because the frame sets Google cookies (CLAUDE.md §4).** The server
 renders only a placeholder: a notice that the map comes from Google Maps and that Google receives the
 visitor's IP address and may set cookies, a link to the privacy statement and the button "Kaart tonen".
 The small client leaf `location-map.tsx` mounts
 `<iframe src="https://www.google.com/maps?q=…&z=15&output=embed" referrerpolicy="no-referrer-when-downgrade" loading="lazy">`
-only after that click, and moves focus into it. Until then there is no frame in the HTML or the DOM and no
-request to Google; no API key is involved and the choice is not stored (the next visit asks again).
-`showMap` off drops the map and its placeholder. A new Google embed anywhere else needs the same click:
-the `contact` block's `mapEmbedUrl` goes through the same leaf (27 Oct 2026; it used to render its
-frame at once), so no Google request happens before the visitor presses the button there either.
+after a version-2 cookie-banner acceptance, which explicitly covers Maps; the notice and button then
+disappear. With no consent or a refusal, the visitor may still click "Kaart tonen" for this view; that
+click loads the frame and moves focus into it. Before either action there is no frame in the HTML or
+DOM and no request to Google. Old Analytics-only consent is ignored so existing visitors choose again.
+No API key is involved. `showMap` off drops the map and its placeholder. The `contact` block's
+`mapEmbedUrl` goes through the same leaf, so it follows the same consent rule.
 
 **The address in the data.** Halsesteenweg 406 a, 9403 Neigem (Toshoni, 27 Oct 2026) is the default of the
 booking location in `lib/booking/defaults.ts` (its name stays "De Bikefit Studio, Ninove": Neigem belongs
@@ -998,7 +999,7 @@ page, e-mail and meta tag follows. The admin and the stored data keep the token 
 | Token | Prints | Master | Fallback |
 | --- | --- | --- | --- |
 | `{{duur:<service-slug>}}` | the planning duration of that bookable service as the widget shows it: "2 uur", "1 u 30 min" | Beheer → Aanbod, the variant's duration (the service behind it, `listPublicServices()`) | `in overleg` (unknown, inactive or unoffered service) |
-| `{{prijs:<offering-slug>}}` | the price line of the offering as `/aanbod` shows it (`CatalogueOffer.priceLabel`): the variants joined ("Volwassene € 275,00 · Jeugd – eenmalig € 150,00"), or the free-text price of an offering that is asked for, itself resolved, or "Prijs op aanvraag" | Beheer → Aanbod, prices per variant (and "Prijs (tekst)") | `op aanvraag` |
+| `{{prijs:<offering-slug>}}` | the price line of the offering as `/aanbod` shows it (`CatalogueOffer.priceLabel`): the variants joined ("Volwassene € 275,00 · Jeugd € 150,00"; the Jeugd price label is short, while booking and duration labels remain unchanged), or the free-text price of an offering that is asked for, itself resolved, or "Prijs op aanvraag" | Beheer → Aanbod, prices per variant (and "Prijs (tekst)") | `op aanvraag` |
 | `{{prijs:<offering-slug>:<audience>}}` | one variant's amount in prose: "€ 275", "€ 75,50"; audience `all`, `adult` or `youth`. Reads the variant's cents only, never the price text | Beheer → Aanbod, price per variant | `op aanvraag` |
 | `{{extra:<offering-slug>}}` | an extra without choices: "€ 85 en 30 minuten extra" (price, then time; no label, no total) | Beheer → Aanbod, the extra's time and price | `in overleg` (not an extra, hidden, no time or price; an extra with choices needs the choice) |
 | `{{extra:<offering-slug>:<choice-key>}}` | one choice of an extra, same shape: "€ 75 en 30 minuten extra" | Beheer → Aanbod → Extra's → Keuzes (the choice's `key`) | `in overleg` |
@@ -1662,18 +1663,18 @@ texts.
 ### 12.7 Analytics — consent-gated GA4 tag and admin panel
 
 **Public tag.** `src/components/studio/analytics.tsx` (`StudioAnalytics`,
-mounted once by the studio layout) renders nothing unless **both**
-`NEXT_PUBLIC_GA4_MEASUREMENT_ID` is set and well-formed **and**
-`cms_site_settings.analytics.enabled` is `true` (`resolveMeasurementId()` in
-`src/lib/analytics/consent.ts`). When both hold it mounts two client
-components:
+mounted once by the studio layout) always mounts `ConsentBanner` for Google Maps.
+It additionally mounts `Ga4Tag` only if **both** `NEXT_PUBLIC_GA4_MEASUREMENT_ID`
+is set and well-formed **and** `cms_site_settings.analytics.enabled` is `true`
+(`resolveMeasurementId()` in `src/lib/analytics/consent.ts`).
 
-- `ConsentBanner` (`src/components/studio/consent-banner.tsx`) asks once and
-  stores the choice in the `cms_consent` cookie (`granted` | `denied`, 365
-  days; §4 *Cookies*). *Weigeren* is as prominent as *Accepteren* and also
-  removes any `_ga*` cookies left from an earlier acceptance. The cookie icon on
-  the right of the footer's bottom bar (accessible name "Cookie-instellingen")
-  reopens the banner; the banner links to `/privacy` once published.
+- `ConsentBanner` (`src/components/studio/consent-banner.tsx`) names Google Maps
+  and, when enabled, Google Analytics. It stores the choice in `cms_consent`
+  (`v2:granted` | `v2:denied`, 365 days; §4 *Cookies*). Earlier Analytics-only
+  values are ignored and re-prompted. *Weigeren* is as prominent as *Accepteren*
+  and also removes any `_ga*` cookies left from an earlier acceptance. The
+  cookie icon in the footer (accessible name "Cookie-instellingen") reopens
+  the banner; the banner links to `/privacy` once published.
 - `Ga4Tag` (`src/lib/analytics/ga4-tag.tsx`) loads `gtag/js` only after
   `granted` and sends a `page_view` on every route change. The page fields
   come from `analyticsPageView()` (`src/lib/analytics/page-view.ts`), never

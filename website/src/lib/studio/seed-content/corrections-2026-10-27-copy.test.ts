@@ -243,7 +243,7 @@ describe('the texts of the seed script and the seeds', () => {
     expect(PRIVACY_HTML).toContain(
       '<h2>8. Minderjarigen</h2>\n<p>Voor een jeugdfit verwerken wij ook gegevens van jongeren onder 16: enkel wat nodig is om de afspraak te plannen en de fit uit te voeren.</p>',
     );
-    expect(PRIVACY_HTML).toContain('<p><em>Laatst bijgewerkt: 29 oktober 2026</em></p>');
+    expect(PRIVACY_HTML).toContain('<p><em>Laatst bijgewerkt: 31 oktober 2026</em></p>');
   });
 
   it('the privacy statement names Google Maps, the click on "Kaart tonen", the IP address and the cookies', () => {
@@ -254,7 +254,8 @@ describe('the texts of the seed script and the seeds', () => {
       '“Kaart tonen”',
       'IP-adres',
       'cookies plaatsen',
-      'Klik je niet',
+      'cookiebanner',
+      'geen toestemming en klik je niet',
     ]) {
       expect(PRIVACY_MAPS_HTML).toContain(part);
     }

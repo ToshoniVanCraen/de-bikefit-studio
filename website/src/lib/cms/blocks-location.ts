@@ -54,7 +54,7 @@ export const locationBlockRegistry = {
     description:
       'Het adres uit Instellingen → Contact, een opmerking (bv. parking), een kaart van Google Maps die pas laadt na een klik van de bezoeker en een link om de route te plannen.',
     editorHint:
-      'Het adres komt uit Instellingen → Contact, dezelfde plaats als de footer: pas het daar aan. Zonder adresregels toont dit blok niets. De kaart laadt pas nadat de bezoeker op de knop klikt, omdat Google dan cookies kan plaatsen. De opmerking onder het adres mag leeg blijven.',
+      'Het adres komt uit Instellingen → Contact, dezelfde plaats als de footer: pas het daar aan. Zonder adresregels toont dit blok niets. De kaart laadt na toestemming in de cookiebanner, of nadat de bezoeker zelf op de knop klikt. Google kan dan cookies plaatsen. De opmerking onder het adres mag leeg blijven.',
     schema: locationSchema,
     defaultData: {
       variant: 'default',

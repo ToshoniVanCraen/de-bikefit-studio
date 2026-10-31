@@ -102,10 +102,9 @@ function card(catalogue: ReturnType<typeof build>, slug: string) {
 }
 
 /** What the offer page prints for the two fits (29 Oct 2026: Jeugd is the one-off fit only). */
-const BIKEFIT_PRICE = [
-  `Volwassene ${formatPrice(27500)}`,
-  `Jeugd – eenmalig ${formatPrice(15000)}`,
-].join(' · ');
+const BIKEFIT_PRICE = [`Volwassene ${formatPrice(27500)}`, `Jeugd ${formatPrice(15000)}`].join(
+  ' · ',
+);
 const BIKEFIT_DURATION = 'Volwassene: 2 uur · Jeugd – eenmalig: 2 uur';
 
 describe('buildOfferCatalogue: the seeded offer', () => {
@@ -233,7 +232,7 @@ describe('buildOfferCatalogue: what Beheer → Aanbod controls', () => {
     });
     const catalogue = build([priced]);
     expect(card(catalogue, 'bikefit-huidige-fiets')?.priceLabel).toBe(
-      `Volwassene ${formatPrice(15000)} · Jeugd – eenmalig op aanvraag`,
+      `Volwassene ${formatPrice(15000)} · Jeugd op aanvraag`,
     );
     expect(catalogue.variantDisplay).toEqual({
       [ADULT]: { label: 'Volwassene', priceLabel: formatPrice(15000), priceCents: 15000 },

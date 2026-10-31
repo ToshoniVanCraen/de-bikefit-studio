@@ -10,7 +10,7 @@ What this switches on:
 | --- | --- | --- |
 | **Google Calendar** (per provider, OAuth) | Availability = business hours minus existing bookings. No Google events. | Busy times in the provider's Google Calendar block slots; every booking becomes an event (without guests) in that calendar. |
 | **Resend** (e-mail) | Booking mails are written to the server log and skipped. | Customer gets a confirmation with an `.ics` file and a cancel link; the provider gets a notification. |
-| **GA4 tag** (public site) | No analytics at all, no cookie banner. | Cookie banner; GA4 loads **only after "Accepteren"**. |
+| **GA4 tag** (public site) | No analytics at all; the cookie banner still covers Google Maps. | Cookie banner; GA4 loads **only after "Accepteren"**. |
 | **GA4 Data API** (admin dashboard) | Dashboard panel shows "Google Analytics: niet verbonden" with the setup steps. | Dashboard opens with users, sessions, page views, top pages and top sources for the last 28 days; **Details** opens `/admin/analytics` with graphs for 7, 28 or 90 days against the previous period. |
 
 Everything degrades gracefully: the booking flow works with none of these set.
@@ -657,10 +657,10 @@ The panel names the problem:
 
 ### No cookie banner on the public site
 
-Needs all three: `NEXT_PUBLIC_GA4_MEASUREMENT_ID` set in the deployment's
-environment (redeploy after adding it), **Analytics ingeschakeld** ticked in Instellingen → Analytics,
-and no earlier choice in this browser (delete the `cms_consent` cookie or use
-the footer link **Cookies**).
+The banner is mounted across the public site because Google Maps is available on the
+appointment page, even when GA4 is disabled. If it is not visible, check whether
+`cms_consent` already holds a version-2 choice; use the footer link **Cookies** to
+review it. Older Analytics-only choices are re-prompted automatically.
 
 ### Mail does not arrive
 
@@ -685,34 +685,29 @@ production** (§11.5).
 
 ### 11.1 Cookie banner
 
-- The banner exists only where GA4 can load: `NEXT_PUBLIC_GA4_MEASUREMENT_ID`
-  set for the deployment **and** *Analytics ingeschakeld* ticked (§5.3). Everywhere
-  else there is no banner, no analytics script, no non-essential cookie, and
-  the footer shows no "Cookies" button (there is no choice to revisit).
-- Before a choice: **no** GA script, no request to `googletagmanager.com` or
-  `google-analytics.com`, no `_ga` cookie. The only cookie a choice writes is
-  `cms_consent` (`granted` or `denied`, 365 days).
-- After **Accepteren**, the tag sends GA4 each page's title, its path, and
-  the origin plus path with only the `utm_*` campaign keys of the query,
-  never the full address: no other query keys (such as the signed `?ref=` of
-  `/afspraak/bevestigd`) and no fragment. It never sends the cancel link's
-  token, which can cancel a booking: that page is reported as
-  `/afspraak/annuleren/[token]`. Data minimisation; §9.5 verifies it in the
-  browser, GA's own automatic hits included.
-- **Weigeren** is as easy as **Accepteren**: two buttons of equal weight side
-  by side, no pre-ticked boxes, no "more options" detour. Weigeren also removes
-  any `_ga*` cookies left from an earlier acceptance.
-- The choice can be changed at any time with **Cookies** in the footer's
-  bottom row (it reopens the banner).
-- The banner links to `/privacy` automatically once that page is published.
-- Test it as in §9.5, in a private window.
-- **Google Maps is a separate choice, made per view.** The `location` block on `/afspraak`
-  (`cms-architecture.md` §5) never loads its map by itself: the page holds a notice and the button
-  "Kaart tonen", and only that click mounts the Google frame (Google then receives the visitor's IP
-  address and may set cookies). It does not depend on the banner or on GA4, nothing is stored, and
-  without the click there is no request to `google.com`. Check it in a private window: DevTools →
-  Network shows no `google.com` request until the click. **Open:** the privacy statement does not
-  name Google Maps yet; add it (Google Ireland Ltd, on the visitor's own click) before production.
+- The banner is present on the public site for Google Maps, even if GA4 is disabled.
+  It also names Google Analytics when a valid measurement id and the admin switch
+  are both enabled. The footer always offers **Cookies** to revisit the choice.
+- Before a current choice: no Google Maps frame and, if GA4 is configured, no GA
+  script, request to `googletagmanager.com` or `google-analytics.com`, or
+  `_ga` cookie. The choice writes `cms_consent` (`v2:granted` or `v2:denied`,
+  365 days). Older Analytics-only values (`granted` or `denied`) are not
+  interpreted as Maps consent: the banner asks again.
+- After **Accepteren**, the map on `/afspraak` loads when it enters view,
+  without its separate notice or button. Google then receives the visitor's IP
+  address and may set cookies. GA4, if enabled, starts too and sends each page's
+  title, path and only the `utm_*` campaign keys of the query; never the full
+  address or the cancel link's token (§9.5).
+- **Weigeren** is as easy as **Accepteren**. It unmounts an automatically
+  loaded map and removes any `_ga*` cookies from an earlier acceptance. A
+  visitor who declined may still request a map for one view via the notice and
+  **Kaart tonen**; without that click there is no Google Maps request.
+- The choice can be changed with **Cookies** in the footer. The banner links to
+  `/privacy` once that page is published.
+- Test accepted, refused and no-choice states in a private window. Before consent
+  or a map click, DevTools → Network shows no Google Maps request. With acceptance,
+  the notice disappears and the frame loads when visible; with refusal it remains
+  behind the click.
 
 ### 11.2 Privacyverklaring and Algemene voorwaarden
 

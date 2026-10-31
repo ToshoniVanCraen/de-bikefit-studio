@@ -176,7 +176,7 @@ export async function offeringsSection(ctx: {
   const adultId = publicServices.find((s) => s.slug === 'volwassenenfit')?.id;
   const youthId = publicServices.find((s) => s.slug === 'jeugdfit')?.id;
   const homeId = publicServices.find((s) => s.slug === 'fit-aan-huis')?.id;
-  const twoPrices = `Volwassene ${formatPrice(27500)} · Jeugd – eenmalig ${formatPrice(15000)}`;
+  const twoPrices = `Volwassene ${formatPrice(27500)} · Jeugd ${formatPrice(15000)}`;
   check(
     'bootstrap: nine offerings created once (all shown, no hidden legacy ones), kept on a second run',
     first.created.length === 9 &&
@@ -624,7 +624,7 @@ export async function offeringsSection(ctx: {
     subscribe.ok &&
       bookable?.status === 'bookable' &&
       bookable.bookingServiceSlugs.join(',') === 'selftest-nieuw-volwassene' &&
-      bookable.priceLabel === `Volwassene ${formatPrice(14950)} · Jeugd – eenmalig op aanvraag` &&
+      bookable.priceLabel === `Volwassene ${formatPrice(14950)} · Jeugd op aanvraag` &&
       bookable.durationLabel === 'Volwassene: 1 u 15 min · Jeugd – eenmalig: 45 min',
     JSON.stringify(bookable),
   );

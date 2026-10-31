@@ -89,7 +89,7 @@ describe('/aanbod and the offer pages on the production shape', () => {
       bookingServiceSlugs: NB_IDS.map((id) => id.replace(/^svc-/, '')),
       durationLabel: 'Volwassene: 2 uur · Jeugd – eenmalig: 2 uur',
     });
-    expect(plain(offer.priceLabel)).toBe('Volwassene € 275,00 · Jeugd – eenmalig € 150,00');
+    expect(plain(offer.priceLabel)).toBe('Volwassene € 275,00 · Jeugd € 150,00');
     expect(
       offer.variants.map((v) => [v.label, v.durationMinutes, v.requiresGuardian, v.bookable]),
     ).toEqual([
@@ -182,7 +182,7 @@ describe('/afspraak on the production shape: the choices of the widget', () => {
       priceCents: null,
     });
     expect(plain(card(catalogue, 'bikefit-nieuwe-fiets').priceLabel)).toBe(
-      'Volwassene € 275,00 · Jeugd – eenmalig op aanvraag',
+      'Volwassene € 275,00 · Jeugd op aanvraag',
     );
   });
 
@@ -283,9 +283,7 @@ describe('copy tokens on the production shape', () => {
     expect(content.contents.map(read)).toContain(
       'Jeugd (onder 16): € 150 voor een eenmalige fit zonder opvolging.',
     );
-    expect(read('{{prijs:bikefit-nieuwe-fiets}}')).toBe(
-      'Volwassene € 275,00 · Jeugd – eenmalig € 150,00',
-    );
+    expect(read('{{prijs:bikefit-nieuwe-fiets}}')).toBe('Volwassene € 275,00 · Jeugd € 150,00');
   });
 
   it('{{duur:…}} prints the booked services’ length; {{prijs:…}} the analyses’ variant price', () => {

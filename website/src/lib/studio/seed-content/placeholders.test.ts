@@ -118,7 +118,7 @@ describe('content placeholder register', () => {
           : offer.variants
               .map(
                 (variant) =>
-                  `${AUDIENCE_LABELS[variant.audience]} ${formatPrice(variant.priceCents)}`,
+                  `${variant.audience === 'youth' ? 'Jeugd' : AUDIENCE_LABELS[variant.audience]} ${formatPrice(variant.priceCents)}`,
               )
               .join(' · ');
       expect(priceLabel).not.toBe(OFFER_PRICE_FALLBACK);
