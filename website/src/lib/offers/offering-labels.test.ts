@@ -58,17 +58,18 @@ const resolved = (settings: OfferingSettings) =>
     bookableServiceIds: ALL_OFFERED,
   });
 
-const TWO_PRICES = [
-  `Volwassene ${formatPrice(27500)}`,
-  `Jeugd – eenmalig ${formatPrice(15000)}`,
-].join(' · ');
+const TWO_PRICES = [`Volwassene ${formatPrice(27500)}`, `Jeugd ${formatPrice(15000)}`].join(' · ');
 
 describe('the fits name their two variants (29 Oct 2026)', () => {
-  it('Bikefit – huidige fiets: Kostprijs and Duur list Volwassene and Jeugd – eenmalig', () => {
+  it('Bikefit – huidige fiets: short Jeugd price label, unchanged duration and booking labels', () => {
     const fit = resolved(settingsOf('bikefit-huidige-fiets'));
     expect(fit.status).toBe('bookable');
     expect(offeringPriceLabel(fit)).toBe(TWO_PRICES);
     expect(offeringDurationLabel(fit, '')).toBe('Volwassene: 2 uur · Jeugd – eenmalig: 2 uur');
+    expect(fit.variants.map((variant) => variant.label)).toEqual([
+      'Volwassene',
+      'Jeugd – eenmalig',
+    ]);
   });
 
   it('Bikefit – aankoop nieuwe fiets (asked for): the same prices, its own duration text', () => {

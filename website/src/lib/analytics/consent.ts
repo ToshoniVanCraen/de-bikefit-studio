@@ -1,14 +1,16 @@
 /**
  * Cookie consent for the public site — shared by the consent banner and the
- * GA4 loader (both client components) and by the server-side guard in
+ * GA4 loader and Google Maps (all client components) and by the guard in
  * `src/components/studio/analytics.tsx`.
  *
  * Plain module: no `server-only`, no `'use client'`. The browser helpers check
  * for `document`/`window` themselves and are no-ops on the server.
  *
  * The choice lives in one first-party cookie, `cms_consent`, holding
- * `granted` or `denied` for 365 days. It is written by the banner, never by
- * the server, and nothing analytics-related runs until it says `granted`.
+ * `v2:granted` or `v2:denied` for 365 days. Version 2 adds Google Maps to
+ * the banner: old Analytics-only choices are ignored and visitors choose again.
+ * Neither GA4 nor Google Maps loads until the new choice is granted (Maps may
+ * also load after its own explicit click on the placeholder).
  */
 
 export const CONSENT_COOKIE = 'cms_consent';
@@ -22,6 +24,8 @@ export const CONSENT_OPEN_EVENT = 'cms-consent-open';
 export const CONSENT_MAX_AGE_SECONDS = 365 * 24 * 60 * 60;
 
 export type ConsentValue = 'granted' | 'denied';
+
+const CONSENT_VERSION = 'v2';
 
 /** GA4 measurement ids look like `G-XXXXXXXXXX`; anything else is not rendered. */
 export const MEASUREMENT_ID_PATTERN = /^[A-Za-z0-9-_]{1,32}$/;
@@ -38,7 +42,9 @@ export function resolveMeasurementId(envId: string | undefined, enabled: boolean
 }
 
 export function parseConsent(value: string | null | undefined): ConsentValue | null {
-  return value === 'granted' || value === 'denied' ? value : null;
+  if (value === `${CONSENT_VERSION}:granted`) return 'granted';
+  if (value === `${CONSENT_VERSION}:denied`) return 'denied';
+  return null;
 }
 
 /** Reads a cookie by name from a `document.cookie`-style string. */
@@ -69,7 +75,7 @@ export function readConsent(): ConsentValue | null {
 export function writeConsent(value: ConsentValue): void {
   if (typeof document === 'undefined') return;
   const secure = window.location.protocol === 'https:' ? '; Secure' : '';
-  document.cookie = `${CONSENT_COOKIE}=${value}; Max-Age=${CONSENT_MAX_AGE_SECONDS}; Path=/; SameSite=Lax${secure}`;
+  document.cookie = `${CONSENT_COOKIE}=${CONSENT_VERSION}:${value}; Max-Age=${CONSENT_MAX_AGE_SECONDS}; Path=/; SameSite=Lax${secure}`;
   if (value === 'denied') clearAnalyticsCookies();
   window.dispatchEvent(new CustomEvent<ConsentValue>(CONSENT_EVENT, { detail: value }));
 }

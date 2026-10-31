@@ -192,7 +192,7 @@ export async function aanbodPrijzenSection(ctx: {
   const nieuwe = catalogue.bySlug['bikefit-nieuwe-fiets'];
   const voet = catalogue.bySlug['voetanalyse'];
   // The 20 Oct patch writes the pair Volwassene + Jeugd, the two variants of the fits.
-  const pair = `Volwassene ${formatPrice(27500)} · Jeugd – eenmalig ${formatPrice(15000)}`;
+  const pair = `Volwassene ${formatPrice(27500)} · Jeugd ${formatPrice(15000)}`;
   check(
     'catalogue: the fit shows € 275 / € 150 and 2 u, the new-bike fit per audience, the foot analysis € 85 and 30 min',
     huidige?.offer.priceLabel === pair &&

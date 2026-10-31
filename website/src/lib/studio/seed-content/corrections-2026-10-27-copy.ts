@@ -199,7 +199,7 @@ const NEW_TERMS_META =
 
 // ----------------------------------------------------------- legal pages ----
 
-export const PRIVACY_DATE_HTML = '<p><em>Laatst bijgewerkt: 29 oktober 2026</em></p>';
+export const PRIVACY_DATE_HTML = '<p><em>Laatst bijgewerkt: 31 oktober 2026</em></p>';
 const OLD_PRIVACY_DATE_HTML = '<p><em>Laatst bijgewerkt: 20 oktober 2026</em></p>';
 
 /**
@@ -213,9 +213,9 @@ const PRIVACY_GUARDIAN_HTML = 'doelen. Bij een fit aan huis';
 const OLD_PRIVACY_MINORS_HTML =
   '<p>Voor een jeugdfit verwerken wij gegevens van kinderen. Dat doen wij enkel met de betrokkenheid van een ouder of voogd, die de afspraak maakt en de contactpersoon is.</p>';
 
-/** The paragraph on the map of `/afspraak` (Google Maps loads after a click), before "3. Hoe lang ...". */
+/** The paragraph on the map of `/afspraak` (banner consent or a map click), before "3. Hoe lang ...". */
 export const PRIVACY_MAPS_HTML =
-  '<h3>Kaart op de afspraakpagina</h3>\n<p>Op de afspraakpagina kun je een kaart van Google Maps tonen die laat zien waar de studio ligt. De kaart laadt pas nadat je op “Kaart tonen” klikt. Dan ontvangt Google (Google Ireland Ltd) je IP-adres en kan Google cookies plaatsen. Klik je niet, dan wordt er niets van Google geladen. Rechtsgrond: je toestemming (art. 6.1.a AVG), die je geeft door op de knop te klikken.</p>';
+  '<h3>Kaart op de afspraakpagina</h3>\n<p>Op de afspraakpagina kun je een kaart van Google Maps tonen die laat zien waar de studio ligt. Als je in de cookiebanner toestemming geeft, laadt de kaart zodra je die op de pagina bekijkt. Zonder die toestemming laadt de kaart pas nadat je zelf op “Kaart tonen” klikt. Dan ontvangt Google (Google Ireland Ltd) je IP-adres en kan Google cookies plaatsen. Geef je geen toestemming en klik je niet, dan wordt er niets van Google Maps geladen. Rechtsgrond: je toestemming (art. 6.1.a AVG), via de cookiebanner of je klik op de kaartknop. Je kunt je cookiekeuze aanpassen via “Cookies” onderaan de website.</p>';
 const NEXT_PRIVACY_SECTION_HTML = '<h2>3. Hoe lang bewaren wij je gegevens?</h2>';
 
 /**

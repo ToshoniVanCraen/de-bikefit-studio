@@ -2,7 +2,6 @@ import { Cookie } from 'lucide-react';
 import type { NavigationItem } from '@/lib/cms/blocks';
 import { LEGAL_LINKS } from '@/lib/studio/legal';
 import type { StudioChrome } from '@/lib/studio/site';
-import { studioMeasurementId } from './analytics';
 import { ConsentSettingsLink } from './consent-banner';
 import { StudioLink } from './link';
 import { StudioLogo } from './logo';
@@ -30,8 +29,7 @@ import { StudioLogo } from './logo';
  * organisation's `sameAs` profiles hold an instagram.com URL (Instellingen →
  * Organisatie): the Instagram glyph with its name. The bottom bar carries the
  * cookie control on the right, vertically centred: it reopens the consent
- * banner — only where analytics can load at all (same guard as the banner),
- * otherwise there is no choice to make.
+ * banner for Google Maps and, when configured, Analytics.
  *
  * The company identity line (Qarakter BV, registered office, BTW, RPR) and
  * the "city · hours" note in the bottom bar were removed at Toshoni's request
@@ -57,7 +55,6 @@ export function StudioSiteFooter({ chrome }: { chrome: StudioChrome }) {
     { label: 'Privacyverklaring', href: LEGAL_LINKS.privacy },
     { label: 'Algemene voorwaarden', href: LEGAL_LINKS.terms },
   ].filter((link) => !menuHrefs.has(pathKey(link.href)));
-  const showCookies = studioMeasurementId(settings) !== null;
   const instagramUrl = instagramProfile(settings.organization.sameAs);
 
   return (
@@ -132,14 +129,12 @@ export function StudioSiteFooter({ chrome }: { chrome: StudioChrome }) {
         <span>
           &copy; {year} {site.name}
         </span>
-        {showCookies ? (
-          <span className="studio-footer__icons">
-            <ConsentSettingsLink className="studio-footer__icon studio-footer__cookies">
-              <Cookie aria-hidden="true" />
-              <span className="sr-only">Cookie-instellingen</span>
-            </ConsentSettingsLink>
-          </span>
-        ) : null}
+        <span className="studio-footer__icons">
+          <ConsentSettingsLink className="studio-footer__icon studio-footer__cookies">
+            <Cookie aria-hidden="true" />
+            <span className="sr-only">Cookie-instellingen</span>
+          </ConsentSettingsLink>
+        </span>
       </div>
 
       {legalLinks.length > 0 ? (

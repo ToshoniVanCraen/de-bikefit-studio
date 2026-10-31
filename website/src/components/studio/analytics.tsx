@@ -8,22 +8,13 @@ import { defaultLocale, localePath } from '@/lib/studio/locale';
 import { ConsentBanner } from './consent-banner';
 
 /**
- * Google Analytics 4 for the public site — consent first.
+ * Site-wide consent for Google Maps and, when configured, Google Analytics 4.
  *
- * Server entry point, mounted once by `src/app/(studio)/layout.tsx`. It
- * renders nothing at all unless BOTH are true (unchanged guard):
- *   - `NEXT_PUBLIC_GA4_MEASUREMENT_ID` is set and looks like a measurement id,
- *   - `cms_site_settings.analytics.enabled` is `true` (admin → Instellingen).
- *
- * When both hold it mounts two client components:
- *   - `ConsentBanner` — asks once, stores `cms_consent` (granted | denied);
- *   - `Ga4Tag` — loads `gtag/js` only after `granted`, sends `page_view` on
- *     every route change.
- *
- * Before consent the page contains no analytics script, no preload, no
- * request to Google and no analytics cookie. See `docs/booking-runbook.md`
- * for the GA4 property setup. The footer's "Cookies" link (reopens the banner)
- * lives in `site-footer.tsx`, behind the same `studioMeasurementId()` guard.
+ * The banner always mounts on the public site because the appointment map
+ * remains available even if GA4 is disabled. The GA4 tag mounts only when a
+ * valid measurement id is configured and analytics.enabled is on. Neither
+ * third party loads before the versioned consent; Maps also has a per-view
+ * click option for visitors without banner consent.
  */
 
 export function studioMeasurementId(settings: SiteSettings): string | null {
@@ -51,12 +42,10 @@ export async function StudioAnalytics({
   locale?: string;
 }) {
   const measurementId = studioMeasurementId(settings);
-  if (!measurementId) return null;
-
   return (
     <>
-      <ConsentBanner privacyHref={await privacyHref(locale)} />
-      <Ga4Tag measurementId={measurementId} />
+      <ConsentBanner privacyHref={await privacyHref(locale)} analyticsEnabled={!!measurementId} />
+      {measurementId ? <Ga4Tag measurementId={measurementId} /> : null}
     </>
   );
 }

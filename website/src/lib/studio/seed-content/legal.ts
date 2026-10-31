@@ -23,7 +23,7 @@ export const PRIVACY_MINORS_HTML =
  * experience question after an appointment is named, the phone number in the +32 format.
  * 29 Oct 2026 (Toshoni): no parent or guardian is asked for a jeugdfit any more (§2, §8).
  */
-export const PRIVACY_HTML = `<p><em>Laatst bijgewerkt: 29 oktober 2026</em></p>
+export const PRIVACY_HTML = `<p><em>Laatst bijgewerkt: 31 oktober 2026</em></p>
 
 <h2>1. Wie zijn wij?</h2>
 <p>De Bikefit Studio is een handelsnaam van <strong>{{bedrijf}}</strong>, met maatschappelijke zetel te {{zetel}}, ingeschreven in de Kruispuntbank van Ondernemingen onder het nummer <strong>{{kbo}}</strong> (RPR Brussel, Nederlandstalige afdeling). Wij zijn de verwerkingsverantwoordelijke voor de persoonsgegevens die je via deze website en bij een bikefit aan ons toevertrouwt.</p>
@@ -46,7 +46,7 @@ export const PRIVACY_HTML = `<p><em>Laatst bijgewerkt: 29 oktober 2026</em></p>
 <h3>Statistieken</h3>
 <p>Enkel als je daarvoor toestemming geeft via de cookiebanner, gebruiken wij Google Analytics 4 om te zien hoe de website gebruikt wordt (bezochte pagina’s, herkomst van bezoekers, gebruikt toestel). IP-adressen worden daarbij geanonimiseerd. Rechtsgrond: je toestemming (art. 6.1.a AVG), die je op elk moment kunt intrekken via de link “Cookies” onderaan de website.</p>
 <h3>Kaart op de afspraakpagina</h3>
-<p>Op de afspraakpagina kun je een kaart van Google Maps tonen die laat zien waar de studio ligt. De kaart laadt pas nadat je op “Kaart tonen” klikt. Dan ontvangt Google (Google Ireland Ltd) je IP-adres en kan Google cookies plaatsen. Klik je niet, dan wordt er niets van Google geladen. Rechtsgrond: je toestemming (art. 6.1.a AVG), die je geeft door op de knop te klikken.</p>
+<p>Op de afspraakpagina kun je een kaart van Google Maps tonen die laat zien waar de studio ligt. Als je in de cookiebanner toestemming geeft, laadt de kaart zodra je die op de pagina bekijkt. Zonder die toestemming laadt de kaart pas nadat je zelf op “Kaart tonen” klikt. Dan ontvangt Google (Google Ireland Ltd) je IP-adres en kan Google cookies plaatsen. Geef je geen toestemming en klik je niet, dan wordt er niets van Google Maps geladen. Rechtsgrond: je toestemming (art. 6.1.a AVG), via de cookiebanner of je klik op de kaartknop. Je kunt je cookiekeuze aanpassen via “Cookies” onderaan de website.</p>
 
 <h2>3. Hoe lang bewaren wij je gegevens?</h2>
 <ul>

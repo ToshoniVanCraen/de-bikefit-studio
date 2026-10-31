@@ -35,8 +35,9 @@ export function offeringPriceText(
 /**
  * The offering's Kostprijs line: the free text of an offering that is asked
  * for, else "Prijs op aanvraag" while no variant has a price; one amount for a
- * single option; per variant otherwise ("Volwassene € 275,00 · Jeugd – eenmalig
- * op aanvraag"). Never an invented amount.
+ * single option; per variant otherwise ("Volwassene € 275,00 · Jeugd
+ * op aanvraag"). The youth price line uses the short label; booking and
+ * duration labels retain the service's full label. Never an invented amount.
  */
 export function offeringPriceLabel(
   offering: Pick<ResolvedOffering, 'bookingMode' | 'variants'> & { addonOptions?: AddonChoice[] },
@@ -56,7 +57,7 @@ export function offeringPriceLabel(
   return variants
     .map(
       (variant) =>
-        `${variant.label} ${variant.priceCents != null ? formatPrice(variant.priceCents) : 'op aanvraag'}`,
+        `${variant.audience === 'youth' ? 'Jeugd' : variant.label} ${variant.priceCents != null ? formatPrice(variant.priceCents) : 'op aanvraag'}`,
     )
     .join(' · ');
 }

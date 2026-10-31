@@ -17,9 +17,9 @@ import type { BlockProps } from './types';
  * studio without a street line has no place to show, so the block renders
  * nothing (no half-empty section, no pin on a town centre).
  *
- * The map is a two-click embed (`LocationMap`): this server component puts no
- * Google frame in the page, only the placeholder, so no Google request or cookie
- * happens before the visitor asks for the map (CLAUDE.md §4). The address, the
+ * The map is consent-gated (`LocationMap`): this server component puts no
+ * Google frame in the page, only the placeholder. The client loads the frame
+ * after fresh banner consent or an explicit per-view click (CLAUDE.md §4). The address, the
  * note and the route link are plain HTML next to it, so they work without
  * scripts and stay visible after the map has loaded. The route link opens
  * Google Maps in a new tab; that is the visitor's own navigation, not an embed.

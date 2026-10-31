@@ -12,13 +12,24 @@ import {
 } from './consent';
 
 describe('parseConsent', () => {
-  it('accepts exactly "granted" and "denied"', () => {
-    expect(parseConsent('granted')).toBe('granted');
-    expect(parseConsent('denied')).toBe('denied');
+  it('accepts the version that explicitly includes Maps', () => {
+    expect(parseConsent('v2:granted')).toBe('granted');
+    expect(parseConsent('v2:denied')).toBe('denied');
   });
 
-  it('treats anything else as no choice', () => {
-    for (const value of [null, undefined, '', 'GRANTED', ' granted', 'yes', 'true']) {
+  it('re-prompts legacy Analytics-only consent and rejects other values', () => {
+    for (const value of [
+      null,
+      undefined,
+      '',
+      'granted',
+      'denied',
+      'v1:granted',
+      'GRANTED',
+      ' granted',
+      'yes',
+      'true',
+    ]) {
       expect(parseConsent(value), String(value)).toBeNull();
     }
   });

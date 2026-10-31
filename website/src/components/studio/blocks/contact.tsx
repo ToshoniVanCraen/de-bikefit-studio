@@ -14,9 +14,9 @@ import type { BlockProps } from './types';
  * (`{{telefoon}}`, `{{telefoon-href}}`, `{{e-mail}}`, `{{adres}}`), resolved by
  * `BlockRenderer` from Instellingen → Contact before this component runs, so a
  * token whose setting is empty makes its row disappear like an empty field.
- * The optional `mapEmbedUrl` goes through the same two-click leaf as the
- * `location` block (`LocationMap`): the Google frame is not in the page and
- * Google receives nothing until the visitor presses the button (CLAUDE.md §4).
+ * The optional `mapEmbedUrl` uses the same consent-gated leaf as the
+ * `location` block (`LocationMap`). The Google frame loads only after fresh
+ * banner consent or an explicit per-view click (CLAUDE.md §4).
  */
 export function ContactBlock({ data, anchor, headingLevel }: BlockProps<'contact'>) {
   const address = data.addressLines.filter(Boolean);

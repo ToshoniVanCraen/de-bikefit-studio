@@ -1,18 +1,20 @@
 'use client';
 
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
+import { readConsent, subscribeConsent } from '@/lib/analytics/consent';
 import { StudioLink } from '../link';
 
 /**
- * The map of the `location` block, as a two-click embed.
+ * The map of the `location` block, consent-first with a per-view alternative.
  *
  * A Google Maps frame sets Google cookies and hands Google the visitor's IP
  * address the moment it loads, and CLAUDE.md §4 allows no non-essential script
  * or cookie before consent. So the server renders only a placeholder: a short
  * notice that the map comes from Google Maps, and a button. The iframe is not in
- * the HTML, not in the DOM and not requested until the button is pressed; the
- * press is the visitor's explicit, informed choice for this view. Nothing is
- * remembered (no cookie, no storage): the next visit asks again.
+ * the server HTML. It mounts only after version-2 cookie consent or a direct
+ * press of the map button. The press is an explicit, informed choice for this
+ * view and is not remembered separately. Rejection or no choice keeps the
+ * notice and button. Legacy Analytics-only cookie choices do not load Maps.
  *
  * The button disappears when the frame replaces it, so keyboard focus moves into
  * the frame instead of falling back to the page. The address and the plain
@@ -28,7 +30,7 @@ export function LocationMap({
   buttonLabel,
   privacyHref,
 }: {
-  /** The Google Maps embed URL; only used once the visitor asks for the map. */
+  /** The Google Maps embed URL; used only after banner consent or a map click. */
   src: string;
   /** The frame's accessible name, e.g. "Kaart: De Bikefit Studio". */
   title: string;
@@ -40,12 +42,13 @@ export function LocationMap({
   const [loaded, setLoaded] = useState(false);
   const frameRef = useRef<HTMLIFrameElement>(null);
   const noticeId = useId();
+  const cookieConsent = useSyncExternalStore(subscribeConsent, readConsent, () => null);
 
   useEffect(() => {
     if (loaded) frameRef.current?.focus();
   }, [loaded]);
 
-  if (loaded) {
+  if (loaded || cookieConsent === 'granted') {
     return (
       <div className="studio-location__map">
         <iframe
