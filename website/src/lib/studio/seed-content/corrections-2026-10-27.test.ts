@@ -99,7 +99,10 @@ describe('the seeds carry the corrections', () => {
       FAQ_BRING_ITEM.answer,
       BRING_PARAGRAPH_HTML,
       BRING_ALONG,
-      String(AFSPRAAK_PAGE.blocks.find((block) => block.data.title === 'Voor je komt')?.data.html),
+      // "Voor je komt" is a split with plain paragraphs since the redesign of 24 Nov 2026.
+      JSON.stringify(
+        AFSPRAAK_PAGE.blocks.find((block) => block.data.title === 'Voor je komt')?.data.paragraphs,
+      ),
     ];
     for (const list of lists) {
       expect(list).toContain('eigen pedalen');

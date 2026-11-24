@@ -7,7 +7,7 @@
  * Persons: the keys of `src/lib/studio/team-portraits.json`. The script:
  *  1. reads the source file (never modified) and records its sha256;
  *  2. writes `public/images/team/<person>-v<version>.webp`: EXIF-rotated,
- *     cropped to the 4:5 frame of the `team` block (`.studio-team__portrait`)
+ *     cropped to the 3:4 frame of the `team` block (`.studio-founder__portrait`)
  *     around `--focus` (x,y as fractions of the source, the centre of the
  *     crop window; default 0.5,0.5), at most 1200×1500, metadata stripped,
  *     WebP at the highest quality that stays under 450 KB;

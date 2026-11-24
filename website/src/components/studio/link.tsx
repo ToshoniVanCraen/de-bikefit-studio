@@ -65,7 +65,7 @@ export function StudioButtonLink({
   className,
   children,
 }: StudioLinkProps & {
-  variant?: 'primary' | 'outline' | 'ghost' | 'ghost-on-dark' | 'dark';
+  variant?: 'primary' | 'outline' | 'ghost' | 'ghost-on-dark' | 'dark' | 'light' | 'outline-light';
   arrow?: boolean;
 }) {
   return (

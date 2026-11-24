@@ -17,13 +17,13 @@ export type TeamPortraitPerson = keyof typeof manifest.portraits;
 
 export const TEAM_PORTRAIT_PERSONS = Object.keys(manifest.portraits) as TeamPortraitPerson[];
 
-/** The frame of `.studio-team__portrait` (`src/app/studio-aanbod.css`). */
-export const PORTRAIT_FRAME = { width: 4, height: 5 } as const;
+/** The frame of `.studio-founder__portrait` (`src/app/studio-sections-people.css`). */
+export const PORTRAIT_FRAME = { width: 3, height: 4 } as const;
 
 export type CropWindow = { left: number; top: number; width: number; height: number };
 
 /**
- * The largest 4:5 window inside a `width`×`height` picture whose centre is as
+ * The largest 3:4 window inside a `width`×`height` picture whose centre is as
  * close to `focus` (fractions of the picture, 0–1) as the edges allow. Used by
  * `scripts/team-portrait.mts`; pure, tested in `team-portraits.test.ts`.
  */

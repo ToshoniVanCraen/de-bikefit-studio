@@ -1,0 +1,428 @@
+/* Section primitives and blocks: sections, tiles, split, callout, steps, cards, faq
+   (split out of globals.css). */
+@layer components {
+  /* ---- sections -------------------------------------------------------- */
+  .studio-section {
+    padding: var(--ds-section-padding-block) var(--ds-gutter);
+  }
+  .studio-section--gray,
+  .studio-section--cream {
+    background: var(--ds-color-surface);
+  }
+  .studio-section--dark {
+    background: var(--ds-color-surface-inverse);
+    color: var(--ds-color-fg-inverse-soft);
+  }
+  .studio-section__inner {
+    max-width: var(--ds-container-max);
+    margin-inline: auto;
+  }
+  .studio-section--dark .studio-eyebrow {
+    color: var(--ds-color-fg-inverse-subtle);
+  }
+  /* Section h2 (design `.section-head h2`). */
+  .studio-section__title {
+    font-family: var(--ds-font-display);
+    font-weight: 700;
+    text-transform: uppercase;
+    line-height: var(--ds-leading-display);
+    font-size: var(--ds-text-display);
+    letter-spacing: -0.01em;
+    margin-bottom: 12px;
+  }
+  .studio-section--dark .studio-section__title {
+    color: var(--ds-color-fg-inverse);
+  }
+  .studio-section__lede {
+    color: var(--ds-color-fg-muted);
+    max-width: 640px;
+    margin-bottom: var(--ds-space-2xl);
+  }
+  .studio-section--dark .studio-section__lede {
+    color: var(--ds-color-fg-inverse-soft);
+  }
+  /* The smaller section heading (design `.h2`), for a heading inside a
+     section or a section that opens on prose. */
+  .studio-h2 {
+    font-family: var(--ds-font-display);
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: var(--ds-text-prose-title);
+    line-height: var(--ds-leading-display);
+    letter-spacing: -0.01em;
+    margin-bottom: 20px;
+  }
+  .studio-section--dark .studio-h2 {
+    color: var(--ds-color-fg-inverse);
+  }
+
+  /* ---- feature grid / tiles (`services` with labels) -------------------- */
+  /* The design's `.grid4` of `.tile`s: "01 / Houding", a heading, a short
+     body, under a 2px wine rule (sand on a dark section). `--studio-card-min`
+     (set by the block from `columns`) only sets the minimum track width. */
+  .studio-feature-grid {
+    display: grid;
+    /* `min(100%, …)` is what stops a track from overflowing a 360px phone. */
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--studio-card-min, 240px)), 1fr));
+    gap: var(--ds-space-md);
+  }
+  .studio-section__title + .studio-feature-grid {
+    margin-top: var(--ds-space-xl);
+  }
+  .studio-feature {
+    border-top: 2px solid var(--ds-color-accent);
+    padding-top: 18px;
+    display: flex;
+    flex-direction: column;
+  }
+  .studio-section--dark .studio-feature {
+    border-top-color: var(--ds-color-fg-inverse);
+  }
+  .studio-feature__num {
+    font-family: var(--ds-font-display);
+    font-size: var(--ds-text-micro);
+    letter-spacing: var(--ds-tracking-eyebrow);
+    text-transform: uppercase;
+    color: var(--ds-color-fg-muted);
+    margin-bottom: 6px;
+  }
+  .studio-section--dark .studio-feature__num {
+    color: var(--ds-color-fg-inverse-soft);
+  }
+  .studio-feature__title {
+    font-family: var(--ds-font-display);
+    font-weight: 800;
+    text-transform: uppercase;
+    font-size: var(--ds-text-tile-title);
+    line-height: var(--ds-leading-display);
+    margin-bottom: 10px;
+  }
+  .studio-section--dark .studio-feature__title {
+    color: var(--ds-color-fg-inverse);
+  }
+  .studio-feature__body {
+    font-size: var(--ds-text-card-body);
+  }
+
+  /* ---- split ----------------------------------------------------------- */
+  /* Photo (4/5, cover) beside the copy, 72px apart; `--reverse` puts the
+     photo first on wide screens while the copy stays first in the DOM. */
+  .studio-split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 72px;
+    align-items: center;
+  }
+  .studio-split--reverse > :first-child {
+    order: 2;
+  }
+  /* With a quote the split takes the team page's proportions. */
+  .studio-split--quote {
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+    gap: var(--ds-space-3xl);
+  }
+  .studio-split--quote.studio-split--reverse {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+  }
+  .studio-split__visual {
+    position: relative;
+    overflow: hidden;
+    aspect-ratio: 4 / 5;
+    background: var(--ds-color-surface-alt);
+  }
+  .studio-split__visual img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  /* Split copy (design `.split h2`, `.split p`). */
+  .studio-split__title {
+    font-family: var(--ds-font-display);
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: var(--ds-text-split-title);
+    line-height: var(--ds-leading-display);
+    margin-bottom: 20px;
+  }
+  .studio-split--quote .studio-split__title {
+    font-weight: 800;
+    font-size: var(--ds-text-callout);
+    margin-bottom: 16px;
+  }
+  .studio-section--dark .studio-split__title {
+    color: var(--ds-color-fg-inverse);
+  }
+  .studio-split__copy > p {
+    margin-bottom: 28px;
+  }
+  .studio-split--quote .studio-split__copy > p {
+    color: var(--ds-color-fg-muted);
+  }
+  .studio-section--dark .studio-split--quote .studio-split__copy > p {
+    color: var(--ds-color-fg-inverse-soft);
+  }
+  .studio-split__copy > :last-child {
+    margin-bottom: 0;
+  }
+  /* The "ticks" list: a 16px rule before each line. */
+  .studio-ticks {
+    list-style: none;
+    margin-bottom: 36px;
+  }
+  .studio-ticks li {
+    position: relative;
+    padding: 8px 0 8px 32px;
+  }
+  .studio-ticks li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 20px;
+    width: 16px;
+    height: 1px;
+    background: currentColor;
+  }
+  /* The pull quote (design `.team-split blockquote`). */
+  .studio-quote {
+    font-family: var(--ds-font-display-italic);
+    font-style: italic;
+    font-weight: 800;
+    font-size: var(--ds-text-tagline);
+    line-height: var(--ds-leading-tagline);
+    text-transform: uppercase;
+    color: var(--ds-color-accent);
+    border-left: 3px solid var(--ds-color-accent);
+    padding-left: 16px;
+    margin-bottom: 28px;
+  }
+  .studio-split__copy > .studio-stack {
+    margin-top: 0;
+  }
+  :is(.studio-quote, .studio-lead) cite {
+    display: block;
+    margin-top: var(--ds-space-2xs);
+    font-family: var(--ds-font-display);
+    font-style: normal;
+    font-weight: 600;
+    font-size: var(--ds-text-small);
+    letter-spacing: var(--ds-tracking-eyebrow);
+    color: var(--ds-color-fg-muted);
+  }
+  .studio-section--dark .studio-quote {
+    color: var(--ds-color-fg-inverse);
+    border-left-color: var(--ds-color-fg-inverse);
+  }
+  .studio-section--dark .studio-quote cite {
+    color: var(--ds-color-fg-inverse-soft);
+  }
+
+  /* ---- callout --------------------------------------------------------- */
+  /* The wine band: a heading and a line of copy on the left, the actions on
+     the right, wrapping under each other when there is no room. The photo
+     and compact variants live in studio-sections.css. */
+  .studio-callout {
+    position: relative;
+    overflow: hidden;
+    background: var(--ds-color-surface-inverse);
+    color: var(--ds-color-fg-inverse);
+    padding: 72px var(--ds-gutter);
+  }
+  .studio-callout--gray {
+    background: var(--ds-color-surface);
+    color: var(--ds-color-fg);
+  }
+  .studio-callout__inner {
+    position: relative;
+    z-index: 1;
+    max-width: var(--ds-container-max);
+    margin-inline: auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--ds-space-xl);
+    flex-wrap: wrap;
+  }
+  .studio-callout__title {
+    font-family: var(--ds-font-display);
+    font-weight: 800;
+    text-transform: uppercase;
+    line-height: var(--ds-leading-display);
+    font-size: var(--ds-text-callout);
+    margin-bottom: 12px;
+    color: var(--ds-color-fg-inverse);
+  }
+  .studio-callout__title:last-child {
+    margin-bottom: 0;
+  }
+  .studio-callout--gray .studio-callout__title {
+    color: var(--ds-color-fg);
+  }
+  .studio-callout__body {
+    max-width: 620px;
+    color: var(--ds-color-fg-inverse-soft);
+  }
+  .studio-callout--gray .studio-callout__body {
+    color: var(--ds-color-fg-muted);
+  }
+  .studio-callout__actions {
+    display: flex;
+    gap: var(--ds-space-xs);
+    flex-wrap: wrap;
+  }
+
+  /* ---- steps (`process`) ----------------------------------------------- */
+  /* White bordered cards with a big wine number. */
+  .studio-steps {
+    display: grid;
+    /* Four across at full width; fewer steps share the row. */
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+    gap: var(--ds-space-md);
+    list-style: none;
+  }
+  .studio-section__title + .studio-steps {
+    margin-top: var(--ds-space-xl);
+  }
+  .studio-step {
+    background: var(--ds-color-surface-card);
+    color: var(--ds-color-fg);
+    border: 1px solid var(--ds-color-border);
+    padding: 28px;
+  }
+  .studio-step__num {
+    font-family: var(--ds-font-display);
+    font-weight: 800;
+    font-size: var(--ds-text-numeral);
+    line-height: var(--ds-leading-display);
+    color: var(--ds-color-accent);
+    margin-bottom: 12px;
+  }
+  .studio-step__title {
+    font-family: var(--ds-font-display);
+    font-weight: 800;
+    text-transform: uppercase;
+    font-size: var(--ds-text-heading-md);
+    line-height: var(--ds-leading-display);
+    margin-bottom: 8px;
+  }
+  .studio-step__body {
+    color: var(--ds-color-fg-muted);
+    font-size: var(--ds-text-card-body);
+  }
+
+  /* ---- card grid (services without labels, audience) ------------------- */
+  /* White, hairline edge, 28px in, at least 230px high; on hover the edge
+     turns wine and the card lifts 2px (motion only when allowed). */
+  .studio-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--studio-card-min, 280px)), 1fr));
+    gap: var(--ds-space-md);
+  }
+  .studio-card {
+    position: relative;
+    background: var(--ds-color-surface-card);
+    color: var(--ds-color-fg);
+    border: 1px solid var(--ds-color-border-card);
+    padding: 28px;
+    min-height: 230px;
+    display: flex;
+    flex-direction: column;
+  }
+  a.studio-card:hover,
+  .studio-card:has(a:hover) {
+    border-color: var(--ds-color-accent);
+  }
+  .studio-card--featured {
+    border-top: 2px solid var(--ds-color-accent);
+  }
+  .studio-card__title {
+    font-family: var(--ds-font-display);
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: var(--ds-text-card-title);
+    line-height: var(--ds-leading-heading);
+    margin-bottom: 10px;
+  }
+  .studio-card__body {
+    font-size: var(--ds-text-card-body);
+    color: var(--ds-color-fg-muted);
+    margin-bottom: 16px;
+  }
+  /* The small caps line (a booking badge, a duration): design `.tag`. */
+  .studio-card__meta {
+    font-family: var(--ds-font-display);
+    font-size: var(--ds-text-meta);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--ds-color-fg-muted);
+    margin-bottom: var(--ds-space-xs);
+  }
+  .studio-card > :last-child {
+    margin-top: auto;
+    margin-bottom: 0;
+  }
+  .studio-card > .studio-card__title:last-child,
+  .studio-card > .studio-card__body:last-child {
+    margin-top: 0;
+  }
+  .studio-card__media {
+    position: relative;
+    aspect-ratio: 3 / 2;
+    overflow: hidden;
+    margin: -28px -28px 22px;
+    background: var(--ds-color-surface-alt);
+  }
+  .studio-card__media img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .studio-card {
+      transition:
+        border-color var(--ds-transition-fast),
+        transform var(--ds-transition-fast);
+    }
+    a.studio-card:hover,
+    .studio-card:has(a:hover) {
+      transform: translateY(-2px);
+    }
+  }
+
+  /* ---- faq ------------------------------------------------------------- */
+  /* `details/summary` rows under hairlines; plus and minus in wine. The
+     summary and its single `::after` marker are styled in studio-sections.css
+     (`.studio-faq__summary`). */
+  .studio-faq {
+    max-width: var(--ds-container-narrow);
+  }
+  .studio-faq__item {
+    border-bottom: 1px solid var(--ds-color-border);
+    padding: 22px 0;
+  }
+  .studio-section--dark .studio-faq__item {
+    border-bottom-color: var(--ds-color-border-inverse-strong);
+  }
+  .studio-faq__q {
+    font-family: var(--ds-font-display);
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: var(--ds-text-heading-md);
+    line-height: var(--ds-leading-heading);
+    color: var(--ds-color-fg);
+  }
+  .studio-section--dark .studio-faq__q {
+    color: var(--ds-color-fg-inverse);
+  }
+  .studio-faq__a {
+    margin-top: 14px;
+    max-width: 720px;
+    color: var(--ds-color-fg-muted);
+  }
+  .studio-section--dark .studio-faq__a {
+    color: var(--ds-color-fg-inverse-soft);
+  }
+}

@@ -1,0 +1,483 @@
+/* ============================================================================
+   BOOKING WIDGET (`booking` block, /afspraak) — additive, studio-booking* only
+   ----------------------------------------------------------------------------
+   Mobile first: one column below 720px, two-column form rows from 720px, and
+   the calendar beside the slot list from 960px. Square, hairline, condensed
+   caps — the same language as the feature grid and the FAQ. The widget always
+   sits on a light raised panel, so it stays legible inside a dark section.
+   ========================================================================== */
+@layer components {
+  /* The widget sits straight on the page (the section is its frame); the
+     panels inside it (details form, confirmation) are white with a hairline. */
+  .studio-booking {
+    color: var(--ds-color-fg);
+    max-width: none;
+  }
+
+  /* ---- steps ------------------------------------------------------------- */
+  .studio-booking__steps {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .studio-booking__step {
+    padding: var(--ds-space-lg) 0;
+  }
+  .studio-booking__step:first-child {
+    padding-top: 0;
+  }
+  .studio-booking__step + .studio-booking__step {
+    border-top: 1px solid var(--ds-color-border);
+  }
+  .studio-booking__step-head {
+    display: block;
+  }
+  /* "Stap n": the eyebrow of the design, in front of the step's heading. */
+  .studio-booking__step-num {
+    margin-bottom: var(--ds-space-sm);
+  }
+  .studio-booking__step-main {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--ds-space-md);
+  }
+  .studio-booking__step-heading {
+    flex: 1;
+    min-width: 0;
+  }
+  .studio-booking__step-title {
+    font-family: var(--ds-font-display);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
+    font-size: clamp(36px, 4.5vw, 54px);
+    line-height: 1;
+  }
+  /* A finished or coming step is a quiet line, only the open one is large. */
+  .studio-booking__step:not([data-state='active']) .studio-booking__step-title {
+    font-size: var(--ds-text-heading-sm);
+    letter-spacing: 0.02em;
+    line-height: var(--ds-leading-heading);
+  }
+  .studio-booking__step-title:focus {
+    outline: none;
+  }
+  .studio-booking__step-title:focus-visible {
+    outline: 2px solid var(--ds-color-accent);
+    outline-offset: 4px;
+  }
+  .studio-booking__step[data-state='active'] .studio-booking__step-num {
+    color: var(--ds-color-accent);
+    border-top-color: var(--ds-color-accent);
+  }
+  .studio-booking__step[data-state='upcoming'] .studio-booking__step-title {
+    color: var(--ds-color-fg-muted);
+  }
+  .studio-booking__step-summary {
+    margin-top: var(--ds-space-3xs);
+    color: var(--ds-color-fg-muted);
+    font-size: var(--ds-text-small);
+  }
+  .studio-booking__edit {
+    flex: none;
+    min-height: 44px;
+    padding: 0 var(--ds-space-sm);
+    font-family: var(--ds-font-display);
+    font-size: var(--ds-text-micro);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--ds-color-accent);
+    background: transparent;
+    border: 1px solid var(--ds-color-border-strong);
+    cursor: pointer;
+    transition:
+      background var(--ds-transition-fast),
+      border-color var(--ds-transition-fast);
+  }
+  .studio-booking__edit:hover {
+    background: var(--ds-color-surface);
+    border-color: var(--ds-color-accent);
+  }
+  /* Narrow on phones: at 360px the 7-column month still gets ~38px per day. */
+  .studio-booking__step-body {
+    margin-top: var(--ds-space-md);
+  }
+
+  /* ---- option cards (service / provider) --------------------------------- */
+  /* The design's `.services` tiles: white, hairline, wine border on hover,
+     wine fill when chosen. Three columns, two below 1080px, one below 720px. */
+  .studio-booking__options {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--ds-space-sm);
+  }
+  .studio-booking__option {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--ds-space-3xs);
+    width: 100%;
+    min-height: 44px;
+    padding: 20px;
+    text-align: left;
+    color: var(--ds-color-fg);
+    background: var(--ds-color-surface-raised);
+    border: 1px solid var(--ds-color-border);
+    cursor: pointer;
+    transition:
+      background var(--ds-transition-fast),
+      border-color var(--ds-transition-fast),
+      color var(--ds-transition-fast);
+  }
+  .studio-booking__option:hover {
+    border-color: var(--ds-color-accent);
+  }
+  .studio-booking__option[aria-pressed='true'] {
+    background: var(--ds-color-interactive);
+    border-color: var(--ds-color-interactive);
+    color: var(--ds-color-interactive-fg);
+  }
+  .studio-booking__option-title {
+    font-family: var(--ds-font-display);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0;
+    font-size: 19px;
+    line-height: 1.15;
+  }
+  .studio-booking__option-meta {
+    font-size: var(--ds-text-small);
+    color: var(--ds-color-fg-muted);
+  }
+  .studio-booking__option-body {
+    font-size: var(--ds-text-small);
+    color: var(--ds-color-fg-muted);
+  }
+  .studio-booking__option[aria-pressed='true'] .studio-booking__option-meta,
+  .studio-booking__option[aria-pressed='true'] .studio-booking__option-body {
+    color: color-mix(in srgb, var(--ds-color-interactive-fg) 88%, transparent);
+  }
+  .studio-booking__option[aria-pressed='true']:focus-visible {
+    outline-color: var(--ds-color-accent);
+    outline-offset: 3px;
+  }
+
+  /* ---- extra's (add-ons) --------------------------------------------------- */
+  .studio-booking__addon-step {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ds-space-sm);
+  }
+  .studio-booking__addons {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--ds-space-2xs);
+  }
+  .studio-booking__addon-group {
+    margin: var(--ds-space-xs) 0 var(--ds-space-3xs);
+    font-family: var(--ds-font-display);
+    font-size: var(--ds-text-micro);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--ds-color-fg-muted);
+  }
+  .studio-booking__addons > li:first-child .studio-booking__addon-group {
+    margin-top: 0;
+  }
+  .studio-booking__addon {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    column-gap: var(--ds-space-sm);
+    align-items: start;
+    min-height: 44px;
+    padding: var(--ds-space-sm) 20px;
+    color: var(--ds-color-fg);
+    background: var(--ds-color-surface-raised);
+    border: 1px solid var(--ds-color-border);
+    cursor: pointer;
+    transition:
+      background var(--ds-transition-fast),
+      border-color var(--ds-transition-fast);
+  }
+  .studio-booking__addon:hover {
+    border-color: var(--ds-color-accent);
+  }
+  /* Ticked: cream ground and a wine edge; the checkbox says it as well. */
+  .studio-booking__addon[data-checked='true'] {
+    background: var(--ds-color-surface);
+    border-color: var(--ds-color-accent);
+    box-shadow: inset 3px 0 0 var(--ds-color-accent);
+  }
+  .studio-booking__addon:has(input:focus-visible) {
+    outline: 2px solid var(--ds-color-accent);
+    outline-offset: 2px;
+  }
+  .studio-booking__addon input {
+    margin-top: 0.3em;
+    width: 1.1em;
+    height: 1.1em;
+    accent-color: var(--ds-color-accent);
+  }
+  .studio-booking__addon-title {
+    display: block;
+    font-family: var(--ds-font-display);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0;
+    font-size: 19px;
+    line-height: 1.15;
+  }
+  .studio-booking__addon-meta {
+    display: block;
+    margin-top: var(--ds-space-3xs);
+    font-size: var(--ds-text-small);
+    color: var(--ds-color-fg-muted);
+  }
+  .studio-booking__total {
+    font-family: var(--ds-font-display);
+    font-weight: 700;
+    font-size: var(--ds-text-heading-xs);
+    letter-spacing: 0.02em;
+  }
+
+  /* ---- where (location) --------------------------------------------------- */
+  .studio-booking__where {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ds-space-xs);
+    margin-bottom: var(--ds-space-md);
+    padding: var(--ds-space-sm) var(--ds-space-md);
+    background: var(--ds-color-surface);
+    border-left: 3px solid var(--ds-color-accent);
+  }
+  .studio-booking__where-title {
+    font-family: var(--ds-font-display);
+    font-size: var(--ds-text-micro);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--ds-color-fg-muted);
+  }
+  .studio-booking__where-title strong {
+    color: var(--ds-color-fg);
+  }
+  .studio-booking__where address {
+    font-style: normal;
+    font-size: var(--ds-text-small);
+    color: var(--ds-color-fg-muted);
+  }
+  .studio-booking__where-line {
+    display: block;
+  }
+  .studio-booking__where-list {
+    display: grid;
+    gap: var(--ds-space-xs);
+  }
+  .studio-booking__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ds-space-2xs);
+  }
+  .studio-booking__chip {
+    min-height: 40px;
+    padding: var(--ds-space-2xs) var(--ds-space-sm);
+    font-family: var(--ds-font-display);
+    font-size: var(--ds-text-micro);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--ds-color-accent);
+    background: var(--ds-color-surface-raised);
+    border: 1px solid var(--ds-color-accent);
+    cursor: pointer;
+    transition:
+      background var(--ds-transition-fast),
+      color var(--ds-transition-fast);
+  }
+  .studio-booking__chip:hover,
+  .studio-booking__chip[aria-pressed='true'] {
+    color: var(--ds-color-interactive-fg);
+    background: var(--ds-color-interactive);
+  }
+  .studio-booking__summary-extra {
+    display: block;
+  }
+
+  /* ---- calendar + slots --------------------------------------------------- */
+  .studio-booking__when {
+    display: grid;
+    gap: var(--ds-space-lg);
+  }
+  .studio-booking__cal-wrap {
+    max-width: 420px;
+  }
+  .studio-booking__cal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--ds-space-xs);
+    margin-bottom: var(--ds-space-xs);
+  }
+  .studio-booking__cal-title {
+    font-family: var(--ds-font-display);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: var(--ds-text-heading-xs);
+  }
+  .studio-booking__cal-nav {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    font-weight: 800;
+    color: var(--ds-color-accent);
+    background: transparent;
+    border: 1px solid var(--ds-color-border-strong);
+    cursor: pointer;
+  }
+  .studio-booking__cal-nav:hover:not(:disabled) {
+    border-color: var(--ds-color-accent);
+  }
+  .studio-booking__cal-nav:disabled {
+    color: var(--ds-color-border-strong);
+    cursor: not-allowed;
+  }
+  .studio-booking__cal {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+  .studio-booking__cal th {
+    padding-bottom: var(--ds-space-2xs);
+    font-family: var(--ds-font-display);
+    font-weight: 400;
+    font-size: var(--ds-text-micro);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--ds-color-fg-muted);
+    text-align: center;
+  }
+  .studio-booking__cal td {
+    padding: 1px;
+    text-align: center;
+  }
+  .studio-booking__day {
+    position: relative;
+    width: 100%;
+    min-height: 44px;
+    aspect-ratio: 1;
+    font-family: var(--ds-font-display);
+    font-size: var(--ds-text-body);
+    font-weight: 500;
+    color: var(--ds-color-fg-muted);
+    background: transparent;
+    border: 1px solid transparent;
+    cursor: default;
+  }
+  .studio-booking__day[data-today='true'] {
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
+  .studio-booking__day[data-available='true'] {
+    font-weight: 700;
+    color: var(--ds-color-fg);
+    background: var(--ds-color-surface-alt);
+    border-color: var(--ds-color-border-strong);
+    cursor: pointer;
+  }
+  .studio-booking__day[data-available='true']::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: 6px;
+    width: 4px;
+    height: 4px;
+    margin-left: -2px;
+    border-radius: 50%;
+    background: var(--ds-color-accent);
+  }
+  .studio-booking__day[data-available='true']:hover {
+    border-color: var(--ds-color-accent);
+  }
+  .studio-booking__day[aria-pressed='true'] {
+    color: var(--ds-color-interactive-fg);
+    background: var(--ds-color-interactive);
+    border-color: var(--ds-color-interactive);
+  }
+  .studio-booking__day[aria-pressed='true']::after {
+    background: var(--ds-color-interactive-fg);
+  }
+  .studio-booking__cal[aria-busy='true'] {
+    opacity: 0.6;
+  }
+  .studio-booking__legend {
+    display: flex;
+    align-items: center;
+    gap: var(--ds-space-2xs);
+    margin-top: var(--ds-space-xs);
+    font-size: var(--ds-text-micro);
+    color: var(--ds-color-fg-muted);
+  }
+  .studio-booking__legend-mark {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    background: var(--ds-color-surface-alt);
+    border: 1px solid var(--ds-color-border-strong);
+  }
+  .studio-booking__day-panel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ds-space-sm);
+    min-width: 0;
+  }
+  .studio-booking__status {
+    color: var(--ds-color-fg-muted);
+    font-size: var(--ds-text-small);
+    min-height: 1.6em;
+  }
+  .studio-booking__slots {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 112px), 1fr));
+    gap: var(--ds-space-2xs);
+  }
+  .studio-booking__slot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 48px;
+    padding: var(--ds-space-2xs) var(--ds-space-xs);
+    color: var(--ds-color-accent);
+    background: var(--ds-color-surface-raised);
+    border: 1px solid var(--ds-color-accent);
+    cursor: pointer;
+    transition:
+      background var(--ds-transition-fast),
+      color var(--ds-transition-fast);
+  }
+  .studio-booking__slot:hover,
+  .studio-booking__slot[aria-pressed='true'] {
+    color: var(--ds-color-interactive-fg);
+    background: var(--ds-color-interactive);
+  }
+  .studio-booking__slot-time {
+    font-family: var(--ds-font-display);
+    font-weight: 700;
+    font-size: var(--ds-text-heading-xs);
+    letter-spacing: 0.04em;
+  }
+  .studio-booking__slot-provider {
+    font-size: var(--ds-text-meta);
+    letter-spacing: 0.04em;
+  }
+}

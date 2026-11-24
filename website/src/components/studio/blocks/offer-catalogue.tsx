@@ -97,6 +97,10 @@ export async function OfferCatalogueBlock({
   const CardHeading = GroupHeading === 'h2' ? 'h3' : 'h4';
   const idBase = anchor ?? 'aanbod';
   const showPrices = data.showPrices && showsOfferPrices(page.slug);
+  // One group under a section title (/bikefit): no left column and no group
+  // heading, the cards sit straight under the section head, one level lower.
+  const single = groups.length === 1 && Boolean(data.title);
+  const CardLevel = single ? GroupHeading : CardHeading;
 
   return (
     <StudioSection
@@ -107,53 +111,62 @@ export async function OfferCatalogueBlock({
       lede={data.lede}
       headingLevel={headingLevel}
     >
-      <div className="studio-offer-groups">
+      <div className={`studio-offer-groups${single ? ' studio-offer-groups--single' : ''}`}>
         {groups.map((group) => {
           const headingId = `${idBase}-${group.category}`;
           return (
             <section
               key={group.category}
               className="studio-offer-group"
-              aria-labelledby={headingId}
+              {...(single
+                ? { 'aria-label': group.title || OFFER_CATEGORY_LABELS[group.category] }
+                : { 'aria-labelledby': headingId })}
             >
-              <div className="studio-offer-group__head">
-                <GroupHeading id={headingId} className="studio-offer-group__title">
-                  {group.title || OFFER_CATEGORY_LABELS[group.category]}
-                </GroupHeading>
-                {group.lede ? <p className="studio-offer-group__lede">{group.lede}</p> : null}
-              </div>
+              {single ? null : (
+                <div className="studio-offer-group__head">
+                  <GroupHeading id={headingId} className="studio-offer-group__title">
+                    {group.title || OFFER_CATEGORY_LABELS[group.category]}
+                  </GroupHeading>
+                  {group.lede ? <p className="studio-offer-group__lede">{group.lede}</p> : null}
+                </div>
+              )}
               <ul className="studio-offer-list">
-                {group.cards.map((card) => (
-                  <li
-                    key={card.key}
-                    className={`studio-offer-card${
-                      card.status === 'unavailable' ? ' studio-offer-card--unavailable' : ''
-                    }`}
-                    data-offer-status={card.status ?? undefined}
-                  >
-                    <CardHeading className="studio-offer-card__title">
-                      <Link href={card.href} className="studio-offer-card__link">
-                        {card.title}
-                      </Link>
-                    </CardHeading>
-                    {card.summary ? (
-                      <p className="studio-offer-card__body">{card.summary}</p>
-                    ) : null}
-                    {card.status ? (
-                      <p className="studio-offer-card__status">
-                        {OFFERING_STATUS_LABELS[card.status]}
-                      </p>
-                    ) : null}
-                    <p className="studio-offer-card__foot">
-                      {showPrices && card.priceLabel ? (
-                        <span className="studio-offer-card__price">{card.priceLabel}</span>
+                {group.cards.map((card) => {
+                  const price = showPrices && card.priceLabel ? card.priceLabel : '';
+                  return (
+                    <li
+                      key={card.key}
+                      className={`studio-offer-card${
+                        card.status === 'unavailable' ? ' studio-offer-card--unavailable' : ''
+                      }`}
+                      data-offer-status={card.status ?? undefined}
+                    >
+                      <CardLevel className="studio-offer-card__title">
+                        <Link href={card.href} className="studio-offer-card__link">
+                          {card.title}
+                        </Link>
+                      </CardLevel>
+                      {card.summary ? (
+                        <p className="studio-offer-card__body">{card.summary}</p>
                       ) : null}
-                      <span className="studio-offer-card__more" aria-hidden="true">
+                      {card.status ? (
+                        <p className="studio-offer-card__status">
+                          {OFFERING_STATUS_LABELS[card.status]}
+                        </p>
+                      ) : null}
+                      {price && !card.status ? (
+                        // A fixed card (the gift voucher) has no status: its label is its tag.
+                        <p className="studio-offer-card__status">{price}</p>
+                      ) : null}
+                      {price && card.status ? (
+                        <p className="studio-offer-card__price">{price}</p>
+                      ) : null}
+                      <p className="studio-offer-card__more" aria-hidden="true">
                         Meer info &rarr;
-                      </span>
-                    </p>
-                  </li>
-                ))}
+                      </p>
+                    </li>
+                  );
+                })}
               </ul>
             </section>
           );

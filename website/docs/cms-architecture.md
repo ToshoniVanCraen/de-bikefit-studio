@@ -29,7 +29,7 @@ File ownership during parallel work comes from the work-block file (see
 | Area | Paths |
 | --- | --- |
 | Data | `src/db/cms-schema.ts` (the `cms_*` tables of the CMS and booking), `src/db/cms-mfa-schema.ts` (the four `cms_mfa_*` tables), `src/db/cms.ts` (driver), `drizzle/**`, `drizzle.config.ts` |
-| CMS core | `src/lib/cms/{auth,guard,session,password,permissions,blocks,block-primitives,blocks-aanbod,blocks-location,site-settings,content,offers-content,repo,repo-admin}.ts` |
+| CMS core | `src/lib/cms/{auth,guard,session,password,permissions,blocks,block-primitives,blocks-aanbod,blocks-location,blocks-sections,site-settings,content,offers-content,repo,repo-admin}.ts` |
 | Offer ("Aanbod") | `src/lib/offers/{catalogue,offering,offering-content,offer-catalogue,defaults}.ts` (plain), `src/lib/offers/{offering-store,repo}.ts` (server-only), `src/db/cms-offering-schema.ts`, `src/app/(studio)/aanbod/[slug]/page.tsx` + `src/components/studio/offer-detail.tsx`, `src/app/admin/(dashboard)/aanbod/**` + `src/components/admin/offering-form.tsx`, `src/lib/studio/seed-content/**` (seed + rollout content), `src/lib/studio/editorial-images.{ts,json}`, `scripts/cms-migrate-aanbod.mts` + `scripts/lib/aanbod-migrate.mts`, `scripts/lib/offerings-bootstrap.mts`, `scripts/cms-rollout-aanbod.mts` + `scripts/lib/aanbod-rollout{,-plan,-run}.mts`, the prices of 20 Oct 2026: `src/lib/offers/aanbod-prices.ts` + `scripts/cms-patch-aanbod-prijzen.mts` + `scripts/lib/aanbod-prices-{plan,patch}.mts` — see §14 |
 | Admin | `src/app/admin/**`, `src/components/admin/**`, `src/lib/cms/actions/**` (server actions + `sanitize.ts`), `src/app/api/cms/media/**` |
 | Public site | `src/app/(studio)/**`, `src/components/studio/**`, `src/lib/studio/**`, `src/app/sitemap.ts`, `src/app/robots.ts` |
@@ -891,14 +891,16 @@ repo call. A forged cookie gets past middleware and is rejected there.
 
 ## 5. Block registry
 
-`src/lib/cms/blocks.ts`. Sixteen block types: eleven derived from the real
+`src/lib/cms/blocks.ts`. Nineteen block types: eleven derived from the real
 prototype (`prototype/index.html`, `prototype/bikefit.html`) and copy decks
 (`content/index.html`, `content/about.html`, `content/booking.html`),
 `booking` for the online booking widget, `offerCatalogue`, `giftVoucher`
 and `team` for the 13 Oct 2026 redesign (defined in `blocks-aanbod.ts` and spread
 into the registry; the `offer` block was retired on 17 Oct 2026, §14; shared field schemas such as `imageRefSchema` live in
 `block-primitives.ts` and are re-exported from `blocks.ts`), and `location` for the
-studio's address and map (27 Oct 2026, defined in `blocks-location.ts` and spread in the same way).
+studio's address and map (27 Oct 2026, defined in `blocks-location.ts` and spread in the same way), and `welcome`,
+`chooser` and `photoStrip` for the site redesign (24 Nov 2026, `blocks-sections.ts`, which also holds `audience`, `faq` and `cta`
+with their extensions; the registry lists those three in their old place).
 
 ```ts
 import { blockRegistry, BLOCK_TYPES, defaultDataFor, validateBlock, validateBlocks } from '@/lib/cms/blocks';
@@ -912,21 +914,24 @@ defaultDataFor('hero')          // deep clone of the above
 
 | Type | Label | Source section |
 | --- | --- | --- |
-| `hero` | Hero | `.hero` (home) and `.page-head` (subpages) via `variant: 'full' \| 'pageHead'`. `titleEmphasis` reproduces the `<em>` in "Fiets met *comfort.*" |
+| `hero` | Hero | `.hero` (home) and `.page-head` (subpages) via `variant: 'full' \| 'pageHead'`. `titleEmphasis` reproduces the `<em>` in "Fiets met *comfort.*" Since 24 Nov 2026: `full` is the cream landing hero with `image` as a cover on the right under a cream veil (min. 620px); `pageHead` is the shared `PageHero` (`src/components/studio/page-hero.tsx`): copy left, `image` filling the right column (none: the copy alone on cream), and on a nested page that opens on it the breadcrumb above the eyebrow (`page.crumbs`, set by `page-view.tsx`; otherwise the breadcrumb keeps its own bar) |
 | `richText` | Tekst | free prose; `html` passes the allowlist sanitiser on every write (see *Rich-text sanitiser* below) |
-| `services` | Diensten | "Vier dingen, één positie" and "Vier manieren om te boeken" |
-| `process` | Werkwijze | "Hoe verloopt een bikefit?", 4 numbered steps |
-| `audience` | Voor wie | "Voor wie is dit?", 5 personas, `featured` for jeugd |
-| `faq` | Veelgestelde vragen | 8 Q&A; `emitStructuredData` drives FAQPage JSON-LD |
-| `cta` | Oproep | the accent callout, "Comfort is een keuze. Maak ze." |
-| `imageText` | Beeld + tekst | `#verhaal`, `#waarom`, `#aan-huis`, `#jeugd` — `imagePosition`, `variant`, optional `quote`/`bullets`/`facts` |
+| `services` | Diensten | "Vier dingen, één positie" and "Vier manieren om te boeken". Every card with a `label` → tiles under a 2px wine rule ("01 / Houding"); otherwise white cards (heading, body, duration as the small tag, the link as "Meer info →") |
+| `process` | Werkwijze | "Hoe verloopt een bikefit?", 4 numbered steps (white bordered cards, big wine number) |
+| `audience` | Voor wie | "Voor wie is dit?", 5 personas, `featured` for jeugd. Optional `image` per item (24 Nov 2026): when at least one item has a picture the block is a grid of photo tiles (white card, picture, number, title, text; three columns), otherwise plain tiles (wine rule, number, title, text; as many columns as items up to four). Old data has no images and renders as plain tiles |
+| `faq` | Veelgestelde vragen | 8 Q&A; `emitStructuredData` drives FAQPage JSON-LD. Groups (24 Nov 2026): `items` stays one flat list; an item may carry `group` (heading text) and `groupAnchor` (id of that heading, lower-case words and hyphens, e.g. `beginners`). Consecutive items with the same `group` sit under one heading; the id is the first `groupAnchor` typed in the run, else the slug of the heading (`groupFaqItems()`, `src/lib/studio/faq-groups.ts`). `openFirst` opens the first question of a `collapsible` list. The JSON-LD reads the flat list, so every question appears once, grouped or not |
+| `cta` | Oproep | the callout band, "Comfort is een keuze. Maak ze.": `accent` and `dark` are the wine band, `gray` the cream one. Optional `image` (24 Nov 2026) gives a wine band the picture behind the wine gradient (ignored on `gray`); `size` `auto` (default) is compact when there is no `body`, `regular` and `compact` force a look, so stored data renders in the new look unchanged. Buttons: light and outlined light on wine, primary and ghost on cream |
+| `imageText` | Beeld + tekst | `#verhaal`, `#waarom`, `#aan-huis`, `#jeugd` — `imagePosition`, `variant`, optional `quote`/`bullets`/`facts`. Since 24 Nov 2026: with an image the photo (4:5) beside the copy, bullets as the "ticks" list, and with a `quote` the team look (wider copy, the quote italic wine with a rule); without an image the copy alone as prose with the quote as the italic wine lead line (no decorative panel any more) |
 | `pricing` | Prijzen | **no amounts exist anywhere in the source material** — see below |
-| `contact` | Contact | phone, city, "Op afspraak". The street address is a setting (Instellingen → Contact), not a default of this block: the `location` block shows it. Its `mapEmbedUrl` loads a frame at once, without a choice from the visitor, so leave it empty |
+| `contact` | Contact | phone, city, "Op afspraak" (equal columns under a 1px ink rule, label over a value in the display face). The street address is a setting (Instellingen → Contact), not a default of this block: the `location` block shows it. Its `mapEmbedUrl` loads a frame at once, without a choice from the visitor, so leave it empty |
 | `testimonial` | Ervaringen | 4 reviews from the copy deck, all marked placeholder |
 | `offerCatalogue` | Aanbod (overzicht) | grouped overview (Bikefit, Begeleiding, Overige); owns only its title, per-group title/lede and `extraCards` (fixed cards that are not offerings: the gift voucher) — the offering cards are read from Beheer → Aanbod at render time (`listPublishedOffers`), so nothing is duplicated (§14) |
 | `giftVoucher` | Cadeaubon (bestelformulier) | the gift voucher page `/cadeaubon`: page head (owns the `<h1>`, with the `intro` and the one-line `validityNote`) + the order form (suggested amounts next to "Ander bedrag" with the free amount field, personal message, contact details, button "Bestel nu"). Owns only copy and the suggestions (`eyebrow`, `title`, `intro`, `formTitle`, `sentTitle`, `sentText`, `validityNote` (default "Een cadeaubon is een jaar geldig na aankoop."), `amounts`: at most six `{ cents, caption }`, € 1 to € 5.000, default € 75 / € 150 / € 275 "Volledige bikefit"; both default in the schema, so content saved before 27 Oct 2026 shows them; `summary` and `sortOrder` are kept for old content); a suggestion only fills the amount field and the order is validated as before; fields, rules and sending are code in `src/lib/gift-voucher/` (server action → `sendEmail` to the order inbox from `/admin/email` / env `GIFT_VOUCHER_RECIPIENT`, never `contact.email`; success only when Resend accepted it). Its card on `/aanbod` is an `extraCards` entry of that page's catalogue block ("Bedrag naar keuze"); it is never a booking target. Ops: `booking-runbook.md` §12 |
-| `team` | Team | profiles: name, role, bio paragraphs (verified text only), image; without an image the initials are drawn. `internalNote` is never rendered and names the person's open register rows; interim profiles end with "Een uitgebreid profiel volgt binnenkort." |
+| `team` | Team | profiles as founder rows (portrait 3:4 left, name, role, bio; several members repeat the rows, alternating sides): name, role, bio paragraphs (verified text only), image; without an image the initials are drawn. Optional block `cta` (24 Nov 2026): one button under the bio of a single profile, under the whole list for several. `internalNote` is never rendered and names the person's open register rows; interim profiles end with "Een uitgebreid profiel volgt binnenkort." |
 | `booking` | Afspraak boeken | the booking widget on `/afspraak` (service → provider → day → slot → details → confirmation). Carries copy and a filter only: `serviceIds` (empty = every active service), `showProviderChoice` (AND-ed with the `booking.showProviderChoice` setting), `successTitle`, `successText` (empty → `booking.confirmationText`). Services, providers and live availability are read at render time through `@/lib/booking/content`, so nothing in the block goes stale. |
+| `welcome` | Welkom (beginners) | "Nieuw op de fiets?" (24 Nov 2026): cream band, two columns (stacked under 1080px). `eyebrow`, `title` and `titleEmphasis` (second title line, italic accent), `body`, `primaryCta`, `secondaryCta` and `items` (2 to 6 `{ title, body }`, the white check-mark rows). Anchor `#welkom` |
+| `chooser` | Keuzehulp | "Welke dienst past bij mij?" (24 Nov 2026): `variant` (`default` or `gray`), `eyebrow`, `title`, `lede`, `choices` (2 to 4 `{ label, title, body, linkLabel, href, featured }`; `label` is the small line over the title, `featured` the wine card). Each card is one link (`StudioLink`); `href` and `linkLabel` take copy tokens (`{{telefoon-href}}`, `Bel {{telefoon}}`), which `BlockRenderer` resolves like every string of a block. Anchor `#keuzehulp` is a contract: other pages link to `/aanbod#keuzehulp` and `/#keuzehulp`. Grid 4, 2 under 1080px, 1 under 720px |
+| `photoStrip` | Foto's | photos (24 Nov 2026): `layout` `strip` (home strip: first figure wider, caption bottom left, slow hover zoom), `gallery` (optional `eyebrow` and `title`, equal photos) or `wide` (one full-bleed band, first image only, a real `<img>` with alt); `variant`; `images` (1 to 6 `{ image, caption, focus }`, `focus` an optional `object-position` of two percentages such as `50% 55%`, validated by `FOCUS_PATTERN` in `src/lib/studio/photo-focus.ts`). A slot without a picture is skipped. Anchor `#fotos` |
 | `location` | Locatie | "Waar vind je ons?": the studio's address as text (an `<address>`), an optional `note` under it ("Parking beschikbaar voor de deur."), a "Route plannen" link to Google Maps and a small map. Owns only copy (`variant`, `eyebrow`, `title`, `intro`, `note`, `showMap`, `mapLabel`, `routeLabel`); the address is not a field: it is read from Instellingen → Contact, the same setting the footer and the JSON-LD postal address use, so it is edited in one place. Without a street line it renders nothing. The map follows the consent rule below. Last block of `/afspraak` in the seed |
 
 Most blocks share `variant: 'default' | 'gray' | 'dark'`, matching the
@@ -952,7 +957,8 @@ staging runbook).
 
 Toshoni asked for a section with the exact address and a small Google Maps map with the location
 pinned, on the appointment page (`/afspraak`; `/contact` redirects there), and for the same address in
-the footer. `components/studio/blocks/location.tsx` prints the address from
+the footer. `components/studio/blocks/location.tsx` (since 24 Nov 2026 the design's three-column contact grid
+Adres / Parking / Route above the map) prints the address from
 `getSiteSettings().contact` (`addressLines`, `postalCode`, `city`), the same source as the footer, so
 the address is edited in one place (Instellingen → Contact) and never typed into a block or a
 component. It adds the optional `note` ("Parking beschikbaar voor de deur."; empty shows nothing) and a
@@ -1558,6 +1564,21 @@ raw values as `--color-ds-*` in `@theme`, the semantic tier as `--ds-*` on
 `.studio-root`, and every component rule prefixed `studio-` and scoped under
 `.studio-root`. The webshop's own tokens and classes are untouched.
 
+Redesign of 24 Nov 2026: the palette moved to Toshoni's design (wine
+`--color-ds-wine-*`, ink and muted `--color-ds-cocoa-*`, page / cream / sand /
+line `--color-ds-blush-*`); the semantic names stayed, so components did not
+change their references. New semantic tokens: `--ds-color-surface-card`,
+`--ds-color-border-card`, `--ds-color-border-hairline`, `--ds-color-rule`,
+`--ds-color-fg-on-photo`, `--ds-color-ghost-on-dark-hover`, the photo overlays
+`--ds-overlay-hero(-narrow)` and `--ds-overlay-callout`, `--ds-font-display-italic`
+(Barlow Condensed italic 800, its own `next/font` face) and type sizes per role
+(`--ds-text-card-title`, `-tile-title`, `-lead`, `-contact-value`, `-final`, …).
+Layout: a 1240px wrap with 32px gutters (20px at ≤720px), sections 110px (72px),
+header 92px, breakpoints 1080px and 720px; the ring motif is gone. The legacy
+burgundy / bone / cream primitives and the `@theme` Tailwind aliases
+(`bg-ds-surface-inverse`, …) keep their values: only the admin chrome and the
+staging gate use them. Token reference: `prototype/design-system/DESIGN-SYSTEM.md`.
+
 ### 12.4 Rendering and caching
 
 Every CMS-backed route is `export const dynamic = 'force-dynamic'`. The data
@@ -1640,6 +1661,20 @@ offering and service (`src/lib/offers/corrections-2026-10-27.ts`), for example
 sentence joined by a dash, the contact facts as tokens on every page, the privacy statement naming
 Google Maps), applied by `cms:patch-aanbod-correcties` (steps, expected dry-run lines and rollback:
 `staging-runbook.md` §24). A field an editor changed is refused, never overwritten.
+
+**The redesign of 24 Nov 2026** changes the eight public pages (new sections, photographs, three
+blocks that change type) and the offerings' photographs. The seeds are the design
+(`seed-content/aanbod.ts`, `faq.ts`, `cadeaubon.ts`, `appointment.ts`, the new sections in
+`redesign-sections.ts`); existing databases get exactly the same blocks through
+`npm run cms:patch-site-redesign` (`staging-runbook.md` §27). Its changes are not typed by hand:
+`seed-content/site-redesign.ts` DERIVES them from the frozen pages before the redesign
+(`site-redesign-before.fixture.json`, the seeds after the patches of 27 to 31 Oct 2026; the October
+tests read it too, through `corrections-test-kit.ts`) and today's seeds, page by page, both read as
+the block schema returns them: a field that differs is a guarded `set`, a new block an `insertBlock`
+after the block before it, a block that changes type a `replaceBlock` (`seed-content/page-restructure.ts`,
+the block-level half of the engine, which guards a replacement by the old block's whole data). The
+self-test proves that a patched database equals a freshly seeded one, block for block (section 17e).
+Since then a page's "frozen before" state for the October patches is that fixture, not the seeds.
 
 **Guard against literal facts and dashes.** `src/lib/studio/content-facts.test.ts` fails when a seed
 module (the FAQ and the legal texts included), a default offering, a default booking service, a block
@@ -1869,8 +1904,18 @@ buffer, location) is written by the same admin form; bookings keep referencing i
 `cms` + `cms:offerings` + `booking`) and groups them (Bikefit, Begeleiding, Overige); its
 `extraCards` are fixed cards that are not offerings — the gift voucher under Overige, linking
 to `/cadeaubon`. `/aanbod/<slug>` is served by `src/app/(studio)/aanbod/[slug]/page.tsx` from
-the offering (`getPublishedOffer`, `src/components/studio/offer-detail.tsx`: breadcrumb, Service
-+ WebPage + BreadcrumbList JSON-LD, the same template for every offering), without a CMS page;
+the offering (`getPublishedOffer`, `src/components/studio/offer-detail.tsx`: Service + WebPage +
+BreadcrumbList JSON-LD, the same template for every offering), without a CMS page. Since the
+redesign of 24 Nov 2026 the page is a `PageHero` (breadcrumb line, eyebrow, h1, intro, action,
+the offering's photograph) over two columns (`studio-offer-detail.css`): left the Duur / Kostprijs /
+Boeken bar, the status notes, Doel, Inhoud, Mogelijke extra's and, for an enquiry offering, the
+form (`#aanvraag`); right a sticky side panel with the same photograph (decorative there), the
+same three facts, the action and the way back. The catalogue cards (`studio-aanbod.css`) show the
+status as a small tag, the price in wine only where the block shows prices, and a fixed card's
+own label as its tag; a catalogue with one group under a section title (`/bikefit`) renders
+plain cards without the left column. The photograph of an offering is `cms_offerings.image`:
+`DEFAULT_OFFERS` (`src/lib/offers/defaults.ts`, `OFFER_IMAGE_SLOTS`) only fills a row that is
+still missing, so a changed default reaches an existing database through a patch;
 an unknown or hidden slug falls through to a CMS page, a redirect or 404 like the catch-all. The
 sitemap lists the pages and the shown offerings. There is no `offer` block any more; the gift
 voucher page moved to `/cadeaubon` (`/aanbod/cadeaubon` is a 301). Pagina's therefore shows

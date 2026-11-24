@@ -6,6 +6,7 @@ import {
   GIFT_VOUCHER_VALIDITY_NOTE,
 } from '@/lib/gift-voucher/amounts';
 import { AANBOD_PAGES, MAIN_MENU } from './aanbod';
+import { PRE_REDESIGN } from './corrections-test-kit';
 import { CADEAUBON_CARD, CADEAUBON_PAGE, CADEAUBON_PATH } from './cadeaubon';
 import {
   CADEAUBON_HOME_BLOCK,
@@ -38,8 +39,13 @@ const LEGACY_VOUCHER_DATA = {
   sentText: '',
 };
 
+/**
+ * The page as the seeds defined it after this promotion, before the redesign of 24 Nov 2026
+ * (the frozen definition: the redesign put a photograph behind the home section and placed new
+ * sections before the catalogue, `site-redesign.test.ts`).
+ */
 function seedPage(slug: string) {
-  const page = AANBOD_PAGES.find((entry) => entry.slug === slug);
+  const page = PRE_REDESIGN.pages.find((entry) => entry.slug === slug);
   if (!page) throw new Error(`no seed page "${slug}"`);
   return page;
 }
@@ -182,7 +188,9 @@ describe('home page', () => {
   });
 
   it('turns the previous home page into the seed page, once', () => {
-    const previous = home.blocks.filter((block) => block !== CADEAUBON_HOME_BLOCK);
+    const previous = home.blocks.filter(
+      (block) => block.data.title !== CADEAUBON_HOME_BLOCK.data.title,
+    );
     expect(previous).toHaveLength(home.blocks.length - 1);
     const patched = insertHomeBlock(previous, CADEAUBON_PROMO.home);
     expect(patched).toEqual(home.blocks);

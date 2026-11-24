@@ -9,6 +9,7 @@ import {
 } from './block-primitives';
 import { aanbodBlockRegistry } from './blocks-aanbod';
 import { locationBlockRegistry } from './blocks-location';
+import { audienceBlock, ctaBlock, faqBlock, sectionsBlockRegistry } from './blocks-sections';
 
 /**
  * Content-block registry.
@@ -112,55 +113,6 @@ export const processSchema = z.object({
       }),
     )
     .default([]),
-});
-
-/** `audience` — "Voor wie is dit?", the five rider personas. */
-export const audienceSchema = z.object({
-  variant: sectionVariantSchema,
-  eyebrow,
-  title: z.string().default(''),
-  lede,
-  items: z
-    .array(
-      z.object({
-        number: z.string().default(''),
-        title: z.string().min(1),
-        body: z.string().default(''),
-        /** The copy deck gives the "Jonge fietsers" entry extra room. */
-        featured: z.boolean().default(false),
-      }),
-    )
-    .default([]),
-});
-
-/**
- * `faq` — "Veelgestelde vragen". The copy deck flags these answers as SEO
- * content, so `emitStructuredData` drives FAQPage JSON-LD in Worker C.
- */
-export const faqSchema = z.object({
-  variant: sectionVariantSchema,
-  eyebrow,
-  title: z.string().default(''),
-  lede,
-  collapsible: z.boolean().default(false),
-  emitStructuredData: z.boolean().default(true),
-  items: z
-    .array(
-      z.object({
-        question: z.string().min(1),
-        answer: z.string().min(1),
-      }),
-    )
-    .default([]),
-});
-
-/** `cta` — the accent callout band ("Comfort is een keuze. Maak ze."). */
-export const ctaSchema = z.object({
-  variant: z.enum(['accent', 'dark', 'gray']).default('accent'),
-  title: z.string().min(1),
-  body: z.string().default(''),
-  primaryCta: optionalLinkSchema,
-  secondaryCta: optionalLinkSchema,
 });
 
 /**
@@ -402,118 +354,9 @@ export const blockRegistry = {
     },
   },
 
-  audience: {
-    label: 'Voor wie',
-    description: 'Doelgroepen, bv. “Voor wie is dit?”.',
-    schema: audienceSchema,
-    defaultData: {
-      variant: 'gray',
-      eyebrow: 'Voor wie',
-      title: 'Voor wie is dit?',
-      lede: 'Of je nu zeven of zeventig bent, koerst of pendelt, een weekendrijder of een doordeweekse toerist: iedereen verdient het om te genieten van alles wat een fiets te bieden heeft.',
-      items: [
-        {
-          number: '01',
-          title: 'Jonge fietsers',
-          body: 'Kinderen groeien snel: een fiets die vandaag past, klopt volgend seizoen al niet meer. We volgen de pasvorm op terwijl ze groeien. Betaalbaar, duidelijk, op hun tempo.',
-          featured: true,
-        },
-        {
-          number: '02',
-          title: 'Wielertoeristen',
-          body: 'Lange dagen, zware tassen, verre horizonten: een pasvorm waar je op kilometer 200 nog op kan rekenen, maakt van de tocht wat ze hoort te zijn.',
-          featured: false,
-        },
-        {
-          number: '03',
-          title: 'Recreatieve fietsers',
-          body: 'Voor de weekendrit die fris moet eindigen, niet stijf en pijnlijk de ochtend erna.',
-          featured: false,
-        },
-        {
-          number: '04',
-          title: 'Woon-werkfietsers',
-          body: 'Vijf dagen per week, weer of geen weer. Een pasvorm die het volhoudt naast de koude handen en de natte broek.',
-          featured: false,
-        },
-        {
-          number: '05',
-          title: 'Beginners en ervaren fietsers',
-          body: 'Je eerste kilometers of al jaren onderweg: we bekijken wat jij nodig hebt.',
-          featured: false,
-        },
-      ],
-    },
-  },
-
-  faq: {
-    label: 'Veelgestelde vragen',
-    description: 'Vraag-en-antwoordlijst; genereert FAQPage-structured data.',
-    schema: faqSchema,
-    defaultData: {
-      variant: 'default',
-      eyebrow: 'Goed om te weten',
-      title: 'Veelgestelde vragen',
-      lede: '',
-      collapsible: false,
-      emitStructuredData: true,
-      items: [
-        {
-          question: 'Waarom is een bikefit belangrijk?',
-          answer:
-            'Een fiets die niet bij jouw lichaam past, kost je op drie manieren: pijn, verloren kracht, en kortere ritten. Een bikefit lijnt de fiets uit op jou, niet omgekeerd, zodat elke rit beter voelt en je langer gezond blijft op de fiets.',
-        },
-        {
-          question: 'Hoe vaak moet ik een bikefit laten doen?',
-          answer:
-            'Voor de meeste volwassenen om de 18 tot 24 maanden, of telkens als er iets verandert. Een nieuwe fiets, een blessure, een grote verandering in gewicht of soepelheid, of een nieuw doel zijn allemaal goede redenen om terug te komen. Voor kinderen vaker: zij groeien, de pasvorm groeit niet mee.',
-        },
-        {
-          question: 'Hoe verloopt een bikefit?',
-          answer:
-            'We beginnen met een gesprek over jouw lichaam, je doelen en je klachten. Daarna kijken we naar jou op de fiets: houding, trapbeweging, zadelpositie, bewegingspatronen. We passen stap voor stap aan, met feedback na elke aanpassing, tot alles klopt. Je vertrekt met begrip waarom jouw fiets staat zoals ze staat.',
-        },
-        {
-          question: 'Kan een bikefit ook bij mij thuis?',
-          answer:
-            'Ja, voor groepen, clubs en gezinnen komen we op locatie. Voor de meeste individuele fits werken we liever in de studio, omdat we daar meer controle hebben, maar als je niet naar ons kan komen, komen wij naar jou. Neem contact op en we bekijken het samen.',
-        },
-        {
-          question: 'Wat breng ik mee voor een bikefit?',
-          answer:
-            'Je fiets (proper en in werkende staat), de schoenen en fietskleding waarin je écht rijdt, en eventuele notities over wat je dwars zit. Neem ook je eigen pedalen mee, zeker bij Time-pedalen of de nieuwste Shimano-pedalen: niet elk systeem hebben we in de studio. Meer hebben we niet nodig. De rest doen wij.',
-        },
-        {
-          question: 'Hoe lang duurt een bikefit?',
-          answer:
-            'Dat hangt af van de fit die je kiest. De duur staat bij elke fit op haar eigen pagina onder Aanbod: Bikefit – huidige fiets en Bikefit – aankoop nieuwe fiets.',
-        },
-        {
-          question: 'Moet ik nieuwe onderdelen kopen?',
-          answer:
-            'Soms. Vaak niet. We werken altijd eerst met wat je al hebt; als een zadel, stuurpen of paar cleats echt niet bij jouw lichaam past, zeggen we het, met uitleg waarom, zonder druk.',
-        },
-        {
-          question: 'Doen jullie ook e-bikes?',
-          answer:
-            'Ja. De principes blijven dezelfde: het lichaam van de fietser moet bij de fiets passen. We fitten koers-, gravel-, mountain-, stads-, toer- en e-bikes.',
-        },
-      ],
-    },
-  },
-
-  cta: {
-    label: 'Oproep',
-    description: 'Accentband met één duidelijke actie.',
-    schema: ctaSchema,
-    defaultData: {
-      variant: 'accent',
-      title: 'Comfort is een keuze. Maak ze.',
-      body: '',
-      primaryCta: { label: 'Boek je bikefit →', href: '/afspraak', external: false },
-      secondaryCta: null,
-    },
-  },
+  audience: audienceBlock,
+  faq: faqBlock,
+  cta: ctaBlock,
 
   imageText: {
     label: 'Beeld + tekst',
@@ -669,9 +512,11 @@ export const blockRegistry = {
     },
   },
 
+  // `audience`, `faq`, `cta` (above) and `welcome`, `chooser`, `photoStrip`: see `blocks-sections.ts`.
   // `offerCatalogue`, `giftVoucher`, `team`: see `blocks-aanbod.ts`; `location`: see `blocks-location.ts`.
   ...aanbodBlockRegistry,
   ...locationBlockRegistry,
+  ...sectionsBlockRegistry,
 } as const satisfies Record<string, BlockDefinition>;
 
 export type BlockType = keyof typeof blockRegistry;

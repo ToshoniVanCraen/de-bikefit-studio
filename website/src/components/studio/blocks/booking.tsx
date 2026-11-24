@@ -7,16 +7,29 @@ import {
 } from '@/lib/offers/catalogue';
 import type { OfferCatalogue } from '@/lib/offers/offer-catalogue';
 import { resolveCopy } from '@/lib/studio/copy-token-lookup';
+import { editorialImage } from '@/lib/studio/editorial-images';
 import { BookingWidget } from '../booking/booking-widget';
 import { BookingHeadingLevel } from '../booking/heading-level';
 import { loadBookingOptions, type BookingOptions } from '../booking/load';
 import { OfferEnquiry } from '../booking/offer-enquiry';
 import type { BookingWidgetProps } from '../booking/types';
-import { StudioSection } from './section';
+import { StudioButtonLink } from '../link';
+import { PageHero } from '../page-hero';
+import { sectionClass, StudioSection } from './section';
 import type { BlockProps } from './types';
+
+/** The photograph beside the booking page's title (redesign of 24 Nov 2026), and its eyebrow default. */
+const HERO_SLOT = 'band-wisselen' as const;
+const HERO_EYEBROW = 'Afspraak maken';
 
 /**
  * `booking` — the online booking widget.
+ *
+ * When the block owns the page's `<h1>` (`/afspraak`) it opens with the page
+ * hero of the redesign: eyebrow, the block's title as the `<h1>`, its lede, a
+ * ghost button with the studio's phone number (Instellingen → Contact) and a
+ * photograph; the widget sits in the section below it. Anywhere else the block
+ * keeps a plain section head.
  *
  * A server component: it reads services, providers and rules through
  * `@/lib/booking/content` (cached; live availability is fetched later by the
@@ -123,16 +136,46 @@ export async function BookingBlock({
     headingLevel,
   };
 
+  const ownsHeading = headingLevel === 1;
+  const hero = (title: string, lede: string) => (
+    <PageHero
+      eyebrow={data.eyebrow || HERO_EYEBROW}
+      title={title}
+      headingLevel={1}
+      intro={lede}
+      actions={
+        phoneLabel && phoneHref ? (
+          <StudioButtonLink href={phoneHref} variant="ghost" arrow={false}>
+            {phoneLabel}
+          </StudioButtonLink>
+        ) : null
+      }
+      image={editorialImage(HERO_SLOT)}
+      locale={locale}
+    />
+  );
+
   if (selection.kind === 'offer' && selection.serviceIds.length === 0) {
-    return (
-      <StudioSection {...section} eyebrow="" title="Je afspraak aanvragen">
-        <OfferEnquiry
-          offer={selection.offer}
-          phoneLabel={phoneLabel}
-          phoneHref={phoneHref}
-          email={email}
-          titleTag={innerHeading}
-        />
+    const enquiry = (
+      <OfferEnquiry
+        offer={selection.offer}
+        phoneLabel={phoneLabel}
+        phoneHref={phoneHref}
+        email={email}
+        titleTag={innerHeading}
+      />
+    );
+    const enquiryTitle = 'Je afspraak aanvragen';
+    return ownsHeading ? (
+      <>
+        {hero(enquiryTitle, '')}
+        <section className={sectionClass(data.variant)} id={section.anchor}>
+          <div className="studio-section__inner">{enquiry}</div>
+        </section>
+      </>
+    ) : (
+      <StudioSection {...section} eyebrow="" title={enquiryTitle}>
+        {enquiry}
       </StudioSection>
     );
   }
@@ -193,27 +236,36 @@ export async function BookingBlock({
     };
   }
 
-  return (
+  const body = props ? (
+    <BookingHeadingLevel tag={innerHeading}>
+      <BookingWidget {...props} />
+    </BookingHeadingLevel>
+  ) : (
+    <div className="studio-booking__fallback">
+      <p>
+        Online boeken lukt op dit moment niet.
+        {phoneLabel && phoneHref ? (
+          <>
+            {' '}
+            Bel ons op <a href={phoneHref}>{phoneLabel}</a> en we zoeken samen een moment.
+          </>
+        ) : (
+          ' Probeer het later opnieuw.'
+        )}
+      </p>
+    </div>
+  );
+
+  return ownsHeading ? (
+    <>
+      {hero(title, lede)}
+      <section className={sectionClass(data.variant)} id={section.anchor}>
+        <div className="studio-section__inner">{body}</div>
+      </section>
+    </>
+  ) : (
     <StudioSection {...section} title={title} lede={lede}>
-      {props ? (
-        <BookingHeadingLevel tag={innerHeading}>
-          <BookingWidget {...props} />
-        </BookingHeadingLevel>
-      ) : (
-        <div className="studio-booking__fallback">
-          <p>
-            Online boeken lukt op dit moment niet.
-            {phoneLabel && phoneHref ? (
-              <>
-                {' '}
-                Bel ons op <a href={phoneHref}>{phoneLabel}</a> en we zoeken samen een moment.
-              </>
-            ) : (
-              ' Probeer het later opnieuw.'
-            )}
-          </p>
-        </div>
-      )}
+      {body}
     </StudioSection>
   );
 }

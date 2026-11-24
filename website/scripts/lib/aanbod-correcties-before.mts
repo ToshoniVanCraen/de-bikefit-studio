@@ -13,9 +13,8 @@
  * seeds gained removed (the location block, the voucher section, the voucher
  * block's new fields, the new card text).
  */
-import { CADEAUBON_PAGE } from '@/lib/studio/seed-content/cadeaubon';
 import { CONTACT_EDITS } from '@/lib/studio/seed-content/corrections-2026-10-27';
-import { inverse, seedBlocks, stored } from '@/lib/studio/seed-content/corrections-test-kit';
+import { inverse, seedBlocks } from '@/lib/studio/seed-content/corrections-test-kit';
 import {
   cleanupBlocks,
   type CleanupBlock,
@@ -45,7 +44,8 @@ export type PageFixture = {
 
 /** One page of an existing database before 27 Oct 2026, and what it becomes. */
 export function pageFixture(slug: string): PageFixture {
-  const target = slug === promo.voucherPage.slug ? stored(CADEAUBON_PAGE.blocks) : seedBlocks(slug);
+  // The seeds as they were before the redesign of 24 Nov 2026 (the frozen definition, voucher page included).
+  const target = seedBlocks(slug);
 
   let old = target;
   for (const pageSpec of specs.filter((entry) => entry.slug === slug).reverse()) {

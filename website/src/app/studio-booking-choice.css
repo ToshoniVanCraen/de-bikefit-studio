@@ -21,7 +21,7 @@
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
     gap: var(--ds-space-xs);
     padding-left: var(--ds-space-md);
-    border-left: 2px solid var(--ds-color-accent);
+    border-left: 3px solid var(--ds-color-accent);
   }
   /* `display: grid` would otherwise beat the `hidden` attribute. */
   .studio-booking__suboptions[hidden] {
@@ -34,9 +34,9 @@
     font-size: var(--ds-text-micro);
     text-transform: uppercase;
     letter-spacing: 0.14em;
-    color: var(--ds-color-fg-subtle);
+    color: var(--ds-color-fg-muted);
   }
   .studio-booking__option--sub .studio-booking__option-title {
-    font-size: var(--ds-text-small);
+    font-size: 17px;
   }
 }

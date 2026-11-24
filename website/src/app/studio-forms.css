@@ -1,0 +1,251 @@
+/* ============================================================================
+   FORM SKIN: offer enquiry, gift voucher, review (redesign, 24 Nov 2026)
+   ----------------------------------------------------------------------------
+   Imported by `globals.css`. The design's `.form`: a white panel with a
+   hairline, titles in condensed caps, small letterspaced labels, inputs with a
+   wine focus outline, and the amounts as pill radios whose checked state is
+   wine. The fields themselves (`studio-booking__input`, `__label`, `__hint`,
+   `__error`, ...) are shared with the booking widget and live in the booking
+   block of `globals.css`; this file only adds the panel and what is specific
+   to these forms. The doubled `.studio-booking.studio-form` wins over the
+   widget's own `.studio-booking`, which loads later in the layer.
+   ========================================================================== */
+@layer components {
+  .studio-booking.studio-form {
+    max-width: none;
+    padding: 36px;
+    background: var(--ds-color-surface-raised);
+    border: 1px solid var(--ds-color-border);
+  }
+  .studio-form .studio-booking__enquiry-title {
+    margin-bottom: var(--ds-space-sm);
+    font-family: var(--ds-font-display);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0;
+    font-size: 26px;
+    line-height: 1.05;
+  }
+  /* The intro under the panel title keeps the design's 32px above the first
+     group title (`.form h3:not(:first-child)`). */
+  .studio-form .studio-booking__enquiry-title + .studio-booking__reassure {
+    margin-bottom: var(--ds-space-lg);
+  }
+  .studio-form .studio-booking__enquiry-title + .studio-booking__form {
+    margin-top: var(--ds-space-lg);
+  }
+  /* The panel is the wrapper here; the form inside it is not a second box. */
+  .studio-form .studio-booking__form {
+    max-width: none;
+    gap: 0;
+    padding: 0;
+    background: none;
+    border: 0;
+  }
+  .studio-form .studio-booking__fieldset {
+    gap: 0;
+  }
+  .studio-form .studio-booking__fieldset + .studio-booking__fieldset {
+    margin-top: var(--ds-space-lg);
+  }
+  .studio-form .studio-booking__legend-title {
+    margin-bottom: var(--ds-space-sm);
+    font-weight: 800;
+    letter-spacing: 0;
+    font-size: 26px;
+    line-height: 1.05;
+  }
+  .studio-form .studio-booking__field,
+  .studio-form .studio-booking__row {
+    margin-top: var(--ds-space-sm);
+  }
+  .studio-form .studio-booking__row > .studio-booking__field {
+    margin-top: 0;
+  }
+  .studio-form .studio-booking__actions {
+    margin-top: var(--ds-space-md);
+  }
+  /* A confirmation inside the panel needs no second box. */
+  .studio-form .studio-booking__confirm {
+    padding: 0;
+    border-top: 0;
+  }
+
+  /* ---- context line and enquiry panel of the booking page --------------- */
+  .studio-booking__context {
+    margin-bottom: var(--ds-space-md);
+    padding: var(--ds-space-xs) var(--ds-space-sm);
+    background: var(--ds-color-surface);
+    border-left: 3px solid var(--ds-color-accent);
+    font-size: var(--ds-text-small);
+    color: var(--ds-color-fg);
+  }
+  .studio-booking__context a {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .studio-booking.studio-booking__enquiry {
+    max-width: 720px;
+    padding: var(--ds-space-xl);
+    background: var(--ds-color-surface-raised);
+    border: 1px solid var(--ds-color-border);
+  }
+  .studio-booking__enquiry-title {
+    margin-bottom: var(--ds-space-sm);
+    font-family: var(--ds-font-display);
+    font-weight: 800;
+    text-transform: uppercase;
+    font-size: var(--ds-text-prose-title);
+    line-height: var(--ds-leading-prose-title);
+  }
+  .studio-booking__enquiry-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ds-space-2xs) var(--ds-space-lg);
+    margin-top: var(--ds-space-lg);
+    font-size: var(--ds-text-small);
+  }
+  .studio-booking__enquiry-links a {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  /* ---- gift voucher ------------------------------------------------------ */
+  .studio-voucher .studio-booking__alert p + p {
+    margin-top: var(--ds-space-2xs);
+  }
+  /* The amounts as pill radios: the label is the pill, the real radio lies
+     invisibly over it, so a click anywhere chooses it and the browser keeps
+     the keyboard and screen reader behaviour of a radio group. */
+  .studio-voucher__choice {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ds-space-xs);
+    margin: 0;
+    padding: 0;
+    border: 0;
+    min-width: 0;
+  }
+  .studio-voucher__amounts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .studio-voucher__amount {
+    position: relative;
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: var(--ds-space-2xs);
+    padding: 12px 18px;
+    font-family: var(--ds-font-display);
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--ds-color-fg);
+    background: var(--ds-color-surface-raised);
+    border: 1px solid var(--ds-color-border);
+    cursor: pointer;
+    transition:
+      background var(--ds-transition-fast),
+      border-color var(--ds-transition-fast),
+      color var(--ds-transition-fast);
+  }
+  .studio-voucher__amount:hover {
+    border-color: var(--ds-color-accent);
+  }
+  .studio-voucher__amount:has(:checked) {
+    color: var(--ds-color-interactive-fg);
+    background: var(--ds-color-interactive);
+    border-color: var(--ds-color-interactive);
+  }
+  .studio-voucher__amount:has(:focus-visible) {
+    outline: 2px solid var(--ds-color-accent);
+    outline-offset: 3px;
+  }
+  .studio-voucher__amount-input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+  .studio-voucher__amount-title {
+    text-transform: uppercase;
+  }
+  .studio-voucher__amount-caption {
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .studio-voucher__amount-caption::before {
+    content: '· ';
+    content: '· ' / '';
+  }
+
+  /* ---- review ------------------------------------------------------------ */
+  .studio-form__pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .studio-form__pill {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    padding: 12px 18px;
+    font-family: var(--ds-font-display);
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    background: var(--ds-color-surface-raised);
+    border: 1px solid var(--ds-color-border);
+    cursor: pointer;
+  }
+  .studio-form__pill:hover {
+    border-color: var(--ds-color-accent);
+  }
+  .studio-form__pill:has(:checked) {
+    color: var(--ds-color-interactive-fg);
+    background: var(--ds-color-interactive);
+    border-color: var(--ds-color-interactive);
+  }
+  .studio-form__pill:has(:focus-visible) {
+    outline: 2px solid var(--ds-color-accent);
+    outline-offset: 3px;
+  }
+  .studio-form__pill input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+  .studio-booking__check {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--ds-space-xs);
+    font-size: var(--ds-text-body);
+    cursor: pointer;
+  }
+  .studio-booking__check input {
+    flex: none;
+    width: 1.15em;
+    height: 1.15em;
+    margin-top: 0.25em;
+    accent-color: var(--ds-color-accent);
+  }
+
+  @media (max-width: 560px) {
+    .studio-booking.studio-form,
+    .studio-booking.studio-booking__enquiry {
+      padding: var(--ds-space-md);
+    }
+  }
+}

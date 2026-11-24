@@ -112,7 +112,7 @@ export function OfferEnquiryForm({
 
   if (sentTo) {
     return (
-      <div className="studio-booking studio-voucher" ref={rootRef}>
+      <div className="studio-booking studio-form" ref={rootRef}>
         <div className="studio-booking__confirm" role="status">
           <Heading className="studio-booking__confirm-title" tabIndex={-1} data-sent-heading>
             Je aanvraag is verstuurd
@@ -134,7 +134,7 @@ export function OfferEnquiryForm({
   });
 
   return (
-    <div className="studio-booking studio-voucher" ref={rootRef}>
+    <div className="studio-booking studio-form" ref={rootRef}>
       <Heading className="studio-booking__enquiry-title">Vraag {offerTitle} aan</Heading>
       <p className="studio-booking__reassure">
         Deze dienst plannen we samen in. Laat je gegevens en je vraag achter, dan nemen we contact
@@ -157,18 +157,20 @@ export function OfferEnquiryForm({
             aria-describedby={errors.audience ? `${formId}-audience-error` : undefined}
           >
             <legend className="studio-booking__legend-title">Voor wie?</legend>
-            {audiences.map((audience) => (
-              <label key={audience} className="studio-booking__label">
-                <input
-                  type="radio"
-                  name="audience"
-                  value={audience}
-                  checked={values.audience === audience}
-                  onChange={() => update('audience', audience)}
-                />{' '}
-                {AUDIENCE_LABELS[audience]}
-              </label>
-            ))}
+            <div className="studio-form__pills">
+              {audiences.map((audience) => (
+                <label key={audience} className="studio-form__pill">
+                  <input
+                    type="radio"
+                    name="audience"
+                    value={audience}
+                    checked={values.audience === audience}
+                    onChange={() => update('audience', audience)}
+                  />
+                  {AUDIENCE_LABELS[audience]}
+                </label>
+              ))}
+            </div>
             {errors.audience ? (
               <p className="studio-booking__error" id={`${formId}-audience-error`}>
                 {errors.audience}

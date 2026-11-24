@@ -18,7 +18,10 @@ import * as legal from './seed-content/legal';
 import * as locationSection from './seed-content/location-section';
 import * as navigation from './seed-content/navigation';
 import * as pageCleanup from './seed-content/page-cleanup';
+import * as pageRestructure from './seed-content/page-restructure';
+import * as redesignSections from './seed-content/redesign-sections';
 import * as shared from './seed-content/shared';
+import * as siteRedesign from './seed-content/site-redesign';
 
 /**
  * What the content guards read (27 Oct 2026): every visitor-facing text that lives in code, with
@@ -133,7 +136,10 @@ export const SEED_MODULES: Record<string, Record<string, unknown>> = {
   'location-section.ts': locationSection,
   'navigation.ts': navigation,
   'page-cleanup.ts': pageCleanup,
+  'page-restructure.ts': pageRestructure,
+  'redesign-sections.ts': redesignSections,
   'shared.ts': shared,
+  'site-redesign.ts': siteRedesign,
 };
 
 /** The e-mail templates (the customer's mails and the two internal ones). */

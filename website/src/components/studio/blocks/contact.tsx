@@ -6,7 +6,10 @@ import { StudioSection } from './section';
 import type { BlockProps } from './types';
 
 /**
- * `contact` — the studio's contact details.
+ * `contact` — the studio's contact details. Look (24 Nov 2026, design
+ * `.contact-grid`): equal columns under a 1px ink rule, a small label over a
+ * value in the display face (Telefoon / E-mail / Waar / Wanneer), stacked at
+ * 720px and below.
  *
  * Every field is rendered only when it has a value, so a row without data
  * simply does not appear: the page never invents one, and neither does the

@@ -250,3 +250,33 @@ describe('replaceAll: an exact string in every field of every block', () => {
     expect(JSON.stringify(blocks)).toBe(snapshot);
   });
 });
+
+describe('replaceItem on entries the schema gained fields on (24 Nov 2026)', () => {
+  const faq: Selector = { label: 'faq', type: 'faq' };
+  const old = { question: 'Vraag?', answer: 'Oud antwoord.' };
+  const next = { question: 'Vraag?', answer: 'Nieuw antwoord.' };
+  const edit: CleanupEdit = {
+    kind: 'replaceItem',
+    select: faq,
+    field: 'items',
+    from: old,
+    to: next,
+  };
+  const page = (items: unknown[]): CleanupBlock[] => [{ type: 'faq', data: { items } }];
+
+  it('recognises the old and the new entry with the group fields the FAQ schema adds, and keeps them', () => {
+    const stored = [{ ...old, group: '', groupAnchor: '' }];
+    const result = cleanupBlocks({ slug: 'x', edits: [edit] }, page(stored));
+    expect(result.conflicts).toEqual([]);
+    expect(result.next[0].data.items).toEqual([{ ...next, group: '', groupAnchor: '' }]);
+    const again = cleanupBlocks({ slug: 'x', edits: [edit] }, result.next);
+    expect(again.conflicts).toEqual([]);
+    expect(again.changes).toEqual([]);
+  });
+
+  it('still refuses an entry whose own text an editor changed', () => {
+    const edited = [{ ...old, answer: 'Van de redactie.', group: '', groupAnchor: '' }];
+    const result = cleanupBlocks({ slug: 'x', edits: [edit] }, page(edited));
+    expect(result.conflicts).toEqual([expect.stringContaining('faq.items: no entry equals')]);
+  });
+});

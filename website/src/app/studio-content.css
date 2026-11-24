@@ -1,0 +1,406 @@
+/* Contact, rich text, breadcrumb, footer, 404 and the responsive section of the
+   design system (split out of globals.css). */
+@layer components {
+  /* ---- contact --------------------------------------------------------- */
+  /* Columns of equal width under a 1px ink rule: a small label over a value
+     in the display face (Telefoon / Waar / Wanneer). */
+  .studio-contact {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    column-gap: var(--ds-space-md);
+    border-top: 1px solid var(--ds-color-rule);
+  }
+  /* The design's `.contact h2` keeps 40px above the rule. */
+  .studio-section__title + .studio-contact {
+    margin-top: var(--ds-space-xl);
+  }
+  .studio-contact > div {
+    padding: 28px 0;
+  }
+  .studio-section--dark .studio-contact {
+    border-top-color: var(--ds-color-fg-inverse);
+  }
+  .studio-contact__label {
+    font-family: var(--ds-font-display);
+    font-size: var(--ds-text-micro);
+    text-transform: uppercase;
+    letter-spacing: var(--ds-tracking-eyebrow);
+    color: var(--ds-color-fg-muted);
+    margin-bottom: 6px;
+  }
+  .studio-section--dark .studio-contact__label {
+    color: var(--ds-color-fg-inverse-soft);
+  }
+  .studio-contact__value {
+    font-family: var(--ds-font-display);
+    font-weight: 700;
+    font-size: var(--ds-text-contact-value);
+    line-height: var(--ds-leading-heading);
+    overflow-wrap: anywhere;
+  }
+  .studio-contact__value a:hover {
+    color: var(--ds-color-accent);
+  }
+  .studio-section--dark .studio-contact__value a:hover {
+    color: var(--ds-color-fg-inverse);
+    text-decoration: underline;
+  }
+
+  /* ---- rich text ------------------------------------------------------- */
+  /* Prose (design `.prose`): 760px wide, 18px between paragraphs; a
+     paragraph with class `lead` (imageText's first paragraph) becomes the
+     italic wine line. */
+  .studio-rich {
+    max-width: var(--ds-container-prose);
+  }
+  .studio-split .studio-rich {
+    max-width: none;
+  }
+  .studio-rich h2 {
+    font-family: var(--ds-font-display);
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: var(--ds-text-prose-title);
+    line-height: var(--ds-leading-prose-title);
+    letter-spacing: -0.01em;
+    margin: var(--ds-space-xl) 0 20px;
+  }
+  .studio-rich h3 {
+    font-family: var(--ds-font-display);
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: var(--ds-text-heading-sm);
+    line-height: var(--ds-leading-heading);
+    margin: var(--ds-space-lg) 0 var(--ds-space-2xs);
+  }
+  .studio-rich > :first-child {
+    margin-top: 0;
+  }
+  .studio-rich p {
+    margin-bottom: 18px;
+  }
+  .studio-rich p:last-child {
+    margin-bottom: 0;
+  }
+  .studio-rich :is(p.lead, .studio-lead) {
+    font-family: var(--ds-font-display-italic);
+    font-weight: 800;
+    font-style: italic;
+    font-size: var(--ds-text-lead);
+    line-height: var(--ds-leading-lead);
+    text-transform: uppercase;
+    color: var(--ds-color-accent);
+    border-left: 0;
+    padding-left: 0;
+    margin: 28px 0;
+  }
+  .studio-rich ul {
+    list-style: none;
+    margin: var(--ds-space-sm) 0 var(--ds-space-md);
+  }
+  .studio-rich ul li {
+    position: relative;
+    padding: 8px 0 8px 32px;
+  }
+  .studio-rich ul li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 20px;
+    width: 16px;
+    height: 1px;
+    background: currentColor;
+  }
+  .studio-rich ol {
+    list-style: decimal;
+    margin: var(--ds-space-sm) 0 var(--ds-space-md);
+    padding-left: 1.5em;
+  }
+  /* A quote in rich text is the design's lead line (`.prose .lead`): the
+     sanitiser keeps no class, so the seeded lead on /bikefit is a blockquote.
+     Same type as `p.lead` above, no rule. */
+  .studio-rich blockquote {
+    font-family: var(--ds-font-display-italic);
+    font-style: italic;
+    font-weight: 800;
+    font-size: var(--ds-text-lead);
+    line-height: var(--ds-leading-lead);
+    text-transform: uppercase;
+    color: var(--ds-color-accent);
+    margin: 28px 0;
+  }
+  .studio-rich a {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .studio-rich a:hover {
+    color: var(--ds-color-accent);
+  }
+  .studio-rich--invert {
+    color: var(--ds-color-fg-inverse-soft);
+  }
+  .studio-rich--invert :is(h2, h3, strong) {
+    color: var(--ds-color-fg-inverse);
+  }
+  .studio-rich--invert :is(p.lead, .studio-lead, blockquote),
+  .studio-rich--invert a:hover {
+    color: var(--ds-color-fg-inverse);
+  }
+
+  /* Facts (imageText `facts`): label and value rows in a white panel. */
+  .studio-facts {
+    margin-bottom: 28px;
+    background: var(--ds-color-surface-card);
+    color: var(--ds-color-fg);
+    border: 1px solid var(--ds-color-border);
+  }
+  .studio-facts > div {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--ds-space-md);
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--ds-color-border);
+    font-size: var(--ds-text-card-body);
+  }
+  .studio-facts > div:last-child {
+    border-bottom: 0;
+  }
+  .studio-facts > div > :first-child {
+    font-family: var(--ds-font-display);
+    font-size: var(--ds-text-meta);
+    letter-spacing: var(--ds-tracking-eyebrow);
+    text-transform: uppercase;
+    color: var(--ds-color-fg-muted);
+  }
+  .studio-facts > div > :last-child {
+    font-weight: 600;
+    text-align: right;
+  }
+
+  /* ---- breadcrumb ------------------------------------------------------ */
+  /* The design's `.crumbs` line: inside the page hero above the eyebrow, or
+     on its own cream bar when a nested page does not open on a page hero. */
+  .studio-breadcrumb-bar {
+    padding: var(--ds-space-md) var(--ds-gutter) 0;
+    background: var(--ds-color-surface);
+  }
+  .studio-breadcrumb {
+    max-width: var(--ds-container-max);
+    margin-inline: auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0 var(--ds-space-2xs);
+    font-family: var(--ds-font-display);
+    font-size: var(--ds-text-micro);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--ds-color-fg-muted);
+  }
+  .studio-breadcrumb a:hover {
+    color: var(--ds-color-accent);
+  }
+
+  /* ---- footer ---------------------------------------------------------- */
+  /* Wine-deep, four columns (logo | Contact | Juridisch | Volg ons), a bottom
+     bar under a hairline: copyright left, the website right. */
+  .studio-footer {
+    background: var(--ds-color-surface-footer);
+    color: var(--ds-color-fg-inverse-muted);
+    padding: 72px var(--ds-gutter) 32px;
+    font-size: var(--ds-text-card-body);
+  }
+  .studio-footer__grid {
+    max-width: var(--ds-container-max);
+    margin-inline: auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) repeat(3, minmax(0, 1fr));
+    gap: var(--ds-space-xl);
+    margin-bottom: 56px;
+  }
+  .studio-footer__col h2 {
+    font-family: var(--ds-font-display);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: var(--ds-text-small);
+    line-height: var(--ds-leading-body);
+    letter-spacing: var(--ds-tracking-eyebrow);
+    color: var(--ds-color-fg-inverse);
+    margin-bottom: var(--ds-space-sm);
+  }
+  .studio-footer__col li {
+    margin-bottom: var(--ds-space-2xs);
+    overflow-wrap: anywhere;
+  }
+  .studio-footer__col a:hover {
+    color: var(--ds-color-fg-inverse);
+  }
+  .studio-footer__bottom {
+    max-width: var(--ds-container-max);
+    margin-inline: auto;
+    padding-top: var(--ds-space-md);
+    border-top: 1px solid var(--ds-color-border-footer);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--ds-space-xs);
+    font-size: var(--ds-text-micro);
+  }
+
+  /* ---- 404 ------------------------------------------------------------- */
+  .studio-notfound {
+    padding: var(--ds-section-padding-block) var(--ds-gutter);
+    /* On the wrap, so the copy starts at the same left edge as every page. */
+    max-width: var(--ds-wrap-max);
+    margin-inline: auto;
+  }
+  .studio-notfound .studio-pagehead__title {
+    margin-bottom: var(--ds-space-md);
+  }
+  /* The root 404 (no site chrome): the cream band fills the window. */
+  .studio-pagehero--notfound {
+    flex: 1;
+    display: flex;
+    align-items: center;
+  }
+  .studio-pagehero--notfound .studio-pagehero__inner {
+    flex: 1;
+  }
+
+  /* ---- responsive ------------------------------------------------------ */
+  @media (max-width: 1080px) {
+    /* The menu and the CTA give way to the "Menu" button, which opens the
+       links (and the CTA) as a panel under the header. */
+    .studio-nav > .studio-nav__cta {
+      display: none;
+    }
+    .studio-nav__toggle {
+      display: block;
+    }
+    .studio-nav__panel {
+      display: none;
+    }
+    .studio-nav__panel[data-open='true'] {
+      display: block;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      max-height: calc(100dvh - var(--ds-header-height));
+      overflow-y: auto;
+      background: var(--ds-color-bg);
+      border-bottom: 1px solid var(--ds-color-border);
+      padding: var(--ds-space-sm) var(--ds-gutter) var(--ds-space-md);
+    }
+    .studio-nav__menu {
+      flex-direction: column;
+      gap: 0;
+    }
+    /* 44px rows: the design's 14px gaps, as tap targets. */
+    .studio-nav__menu a {
+      display: flex;
+      align-items: center;
+      min-height: 44px;
+    }
+    .studio-nav__panel .studio-nav__cta {
+      display: inline-flex;
+      margin-top: var(--ds-space-sm);
+    }
+    .studio-feature-grid,
+    .studio-cards,
+    .studio-steps {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .studio-footer__grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 720px) {
+    .studio-hero {
+      min-height: auto;
+    }
+    .studio-hero__photo img {
+      object-position: 70% center;
+    }
+    .studio-hero__photo::after {
+      background: var(--ds-overlay-hero-narrow);
+    }
+    .studio-hero__title {
+      font-size: min(var(--ds-text-hero), 15vw);
+    }
+    .studio-pagehero--image .studio-pagehero__inner {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 0;
+      min-height: 0;
+    }
+    .studio-pagehero__copy {
+      padding: 48px 0 8px;
+    }
+    .studio-pagehero:not(.studio-pagehero--image) .studio-pagehero__copy {
+      padding-bottom: 48px;
+    }
+    .studio-pagehero--image .studio-pagehero__copy {
+      padding-bottom: 32px;
+    }
+    /* The photo bleeds to the viewport edges under the copy. */
+    .studio-pagehero__media {
+      min-height: 320px;
+      margin-inline: calc(-1 * var(--ds-gutter));
+    }
+    .studio-pagehero__title,
+    .studio-pagehead__title {
+      font-size: min(var(--ds-text-page-title), 13vw);
+    }
+    .studio-section__title {
+      font-size: min(var(--ds-text-display), 11vw);
+    }
+    .studio-split,
+    .studio-split--quote,
+    .studio-split--quote.studio-split--reverse {
+      grid-template-columns: minmax(0, 1fr);
+      gap: var(--ds-space-lg);
+    }
+    .studio-split--reverse > :first-child {
+      order: 0;
+    }
+    /* Stacked, the photo comes first, as in the design (its markup puts
+       `.split-img` before the copy). */
+    .studio-split > .studio-split__visual {
+      order: -1;
+    }
+    .studio-split__title {
+      font-size: min(var(--ds-text-split-title), 10vw);
+    }
+    .studio-feature-grid,
+    .studio-cards,
+    .studio-steps,
+    .studio-footer__grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .studio-contact {
+      grid-auto-flow: row;
+      grid-auto-columns: auto;
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .studio-contact > div + div {
+      padding-top: 0;
+    }
+    .studio-btn {
+      white-space: normal;
+    }
+    .studio-hero__actions .studio-btn,
+    .studio-pagehero__actions .studio-btn,
+    .studio-callout__actions .studio-btn,
+    .studio-stack .studio-btn {
+      justify-content: center;
+      text-align: center;
+    }
+    .studio-footer__bottom {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+  }
+}

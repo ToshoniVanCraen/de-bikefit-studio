@@ -4,7 +4,7 @@ import {
 } from '@/lib/gift-voucher/amounts';
 import { GIFT_VOUCHER_PAGE_SLUG } from '@/lib/gift-voucher/order';
 import { GIFT_VOUCHER_PRICE_LABEL } from '@/lib/offers/catalogue';
-import type { SeedPage } from './shared';
+import { CLOSING_CTA, type SeedPage } from './shared';
 
 /**
  * The gift voucher ("Cadeaubon", Toshoni, 13 Oct 2026): the page `/cadeaubon`
@@ -66,5 +66,8 @@ export const CADEAUBON_PAGE: SeedPage = {
         validityNote: GIFT_VOUCHER_VALIDITY_NOTE,
       },
     },
+    // The redesign of 24 Nov 2026: the page closes on the photo band like the others (the
+    // voucher block draws its own page hero and side photograph).
+    CLOSING_CTA,
   ],
 };

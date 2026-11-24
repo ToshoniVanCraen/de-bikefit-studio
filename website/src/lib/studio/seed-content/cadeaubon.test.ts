@@ -9,11 +9,11 @@ import { AANBOD_PAGES } from './aanbod';
 import { CADEAUBON_CARD, CADEAUBON_PAGE, CADEAUBON_PATH } from './cadeaubon';
 
 describe('cadeaubon page (seed)', () => {
-  it('lives at /cadeaubon with exactly one valid gift voucher block', () => {
+  it('lives at /cadeaubon with exactly one valid gift voucher block, then the closing band (24 Nov 2026)', () => {
     expect(GIFT_VOUCHER_PAGE_SLUG).toBe('cadeaubon');
     expect(CADEAUBON_PAGE.slug).toBe(GIFT_VOUCHER_PAGE_SLUG);
     expect(CADEAUBON_PATH).toBe('/cadeaubon');
-    expect(CADEAUBON_PAGE.blocks.map((block) => block.type)).toEqual(['giftVoucher']);
+    expect(CADEAUBON_PAGE.blocks.map((block) => block.type)).toEqual(['giftVoucher', 'cta']);
     for (const block of CADEAUBON_PAGE.blocks)
       expect(validateBlock(block.type, block.data).ok).toBe(true);
   });

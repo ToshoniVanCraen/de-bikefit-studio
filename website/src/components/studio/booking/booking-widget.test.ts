@@ -76,18 +76,18 @@ function firstPaint(partial: Partial<BookingWidgetProps>) {
     html,
     steps: [...html.matchAll(/data-step-heading="(\w+)"/g)].map((match) => match[1]),
     open: /data-state="active">[\s\S]*?data-step-heading="(\w+)"/.exec(html)?.[1] ?? null,
-    numbers: [...html.matchAll(/studio-booking__step-num" aria-hidden="true">(\d+)</g)].map(
-      (match) => match[1],
-    ),
+    numbers: [
+      ...html.matchAll(/studio-booking__step-num" aria-hidden="true">Stap (?:<!-- -->)?(\d+)</g),
+    ].map((match) => match[1]),
   };
 }
 
 describe('the booking widget with one provider', () => {
-  it('starts at the service: no "Bij wie?", the numbering starts at 01', () => {
+  it('starts at the service: no "Bij wie?", the numbering starts at "Stap 1"', () => {
     const paint = firstPaint({ providers: [rutger] });
     expect(paint.steps).toEqual(['service', 'when', 'details']);
     expect(paint.open).toBe('service');
-    expect(paint.numbers).toEqual(['01', '02', '03']);
+    expect(paint.numbers).toEqual(['1', '2', '3']);
     expect(paint.html).not.toContain('Bij wie?');
   });
 
@@ -103,7 +103,7 @@ describe('the booking widget with several providers', () => {
     const paint = firstPaint({});
     expect(paint.steps).toEqual(['provider', 'service', 'when', 'details']);
     expect(paint.open).toBe('provider');
-    expect(paint.numbers).toEqual(['01', '02', '03', '04']);
+    expect(paint.numbers).toEqual(['1', '2', '3', '4']);
     expect(paint.html).toContain('Bij wie?');
     expect(paint.html).toContain('Iedereen');
     expect(paint.html).toContain('Rutger');

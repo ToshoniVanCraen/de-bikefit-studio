@@ -4,6 +4,7 @@ import { resolveCopy } from '@/lib/studio/copy-token-lookup';
 import type { StudioLocale } from '@/lib/studio/locale';
 import { AudienceBlock } from './audience';
 import { BookingBlock } from './booking';
+import { ChooserBlock } from './chooser';
 import { ContactBlock } from './contact';
 import { CtaBlock } from './cta';
 import { FaqBlock } from './faq';
@@ -12,6 +13,7 @@ import { HeroBlock } from './hero';
 import { ImageTextBlock } from './image-text';
 import { LocationBlock } from './location';
 import { OfferCatalogueBlock } from './offer-catalogue';
+import { PhotoStripBlock } from './photo-strip';
 import { PricingBlock } from './pricing';
 import { ProcessBlock } from './process';
 import { RichTextBlock } from './rich-text';
@@ -19,6 +21,7 @@ import type { HeadingLevel } from './section';
 import { ServicesBlock } from './services';
 import { TeamBlock } from './team';
 import { TestimonialBlock } from './testimonial';
+import { WelcomeBlock } from './welcome';
 import type { BlockPageContext } from './types';
 
 /**
@@ -121,6 +124,12 @@ function StudioBlock({
       return <GiftVoucherBlock data={block.data} {...common} />;
     case 'team':
       return <TeamBlock data={block.data} {...common} />;
+    case 'welcome':
+      return <WelcomeBlock data={block.data} {...common} />;
+    case 'chooser':
+      return <ChooserBlock data={block.data} {...common} />;
+    case 'photoStrip':
+      return <PhotoStripBlock data={block.data} {...common} />;
     case 'location':
       return <LocationBlock data={block.data} {...common} />;
     default: {

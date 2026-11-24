@@ -3,8 +3,9 @@ import { PRIMARY_CTA } from '@/lib/studio/site';
 import { StudioNavBar } from './nav-bar';
 
 /**
- * The sticky header from `prototype/index.html`: logo, main menu and the
- * "Afspraak maken" button.
+ * The sticky header (24 Nov 2026 redesign, design `.header`): 92px on the page
+ * colour with a hairline under it; logo, main menu and the "Afspraak maken"
+ * button, a "Menu" panel at 1080px and below (`nav-bar.tsx`).
  *
  * The prototype's utility bar above it (city, phone, hours) was removed at
  * Toshoni's request (13 Oct 2026); the footer still shows the phone number,

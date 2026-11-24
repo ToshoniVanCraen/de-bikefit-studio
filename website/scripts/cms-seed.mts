@@ -21,6 +21,11 @@
  * and the redirects exactly as they are. If the page does not exist yet it is
  * created in full. It cannot be combined with `--only-missing`.
  *
+ * Since the redesign of 24 Nov 2026 the eight public pages are the design's composition (new
+ * sections in `src/lib/studio/seed-content/redesign-sections.ts`, the photographs of
+ * `editorial-images.ts`); an existing database gets the same blocks through
+ * `npm run cms:patch-site-redesign`, never through this script.
+ *
  * ---------------------------------------------------------------------------
  * COPY PROVENANCE — every string below is lifted from the source material.
  * Nothing is invented: no prices, no street address, no commercial claims, no
