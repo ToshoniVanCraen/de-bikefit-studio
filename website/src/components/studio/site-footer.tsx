@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import { Cookie } from 'lucide-react';
 import type { NavigationItem } from '@/lib/cms/blocks';
 import { LEGAL_LINKS } from '@/lib/studio/legal';
@@ -7,14 +8,18 @@ import { StudioLink } from './link';
 import { StudioLogo } from './logo';
 
 /**
- * The burgundy footer from `prototype/index.html`.
+ * The wine-deep footer (24 Nov 2026 redesign, design `.footer`): the logo,
+ * then Contact, then the footer menu's groups (the seed's "Juridisch"), then
+ * "Volg ons"; a bottom bar with the copyright on the left and the website
+ * (Instellingen → Contact) and the cookie control on the right.
  *
- * The brand column shows the lockup in its inverted colours (the cream mark
- * and the wordmark in the display face, `./logo.tsx`): the same text and
- * meaning for assistive technology as the header.
+ * The brand column shows only the lockup in its inverted colours (the cream
+ * mark and the wordmark in the display face, `./logo.tsx`): the same text and
+ * meaning for assistive technology as the header. The mission line that stood
+ * under it was dropped with the redesign (the design has none).
  *
- * Columns come from the `footer` menu's `group` field, in the order the editor
- * arranged them. The contact column is not a menu: it is rendered from
+ * Menu columns come from the `footer` menu's `group` field, in the order the
+ * editor arranged them. The contact column is not a menu: it is rendered from
  * `cms_site_settings.contact`, and every line is omitted when its value is
  * empty. The street, postal code and city printed here are the same settings
  * the `location` block on /afspraak shows (Halsesteenweg 406 a, 9403 Neigem
@@ -56,13 +61,43 @@ export function StudioSiteFooter({ chrome }: { chrome: StudioChrome }) {
     { label: 'Algemene voorwaarden', href: LEGAL_LINKS.terms },
   ].filter((link) => !menuHrefs.has(pathKey(link.href)));
   const instagramUrl = instagramProfile(settings.organization.sameAs);
+  const address = [
+    ...contact.addressLines.filter(Boolean),
+    [contact.postalCode, contact.city].filter(Boolean).join(' '),
+  ].filter(Boolean);
 
   return (
     <footer className="studio-footer">
       <div className="studio-footer__grid">
         <div className="studio-footer__col studio-footer__brand">
           <StudioLogo siteName={site.name} tone="dark" />
-          {site.mission ? <p>{site.mission}</p> : null}
+        </div>
+
+        <div className="studio-footer__col">
+          <h2>Contact</h2>
+          <ul>
+            {contact.phoneLabel && contact.phoneHref ? (
+              <li>
+                <a href={contact.phoneHref}>{contact.phoneLabel}</a>
+              </li>
+            ) : null}
+            {contact.email ? (
+              <li>
+                <a href={`mailto:${contact.email}`}>{contact.email}</a>
+              </li>
+            ) : null}
+            {address.length > 0 ? (
+              <li>
+                {address.map((line, index) => (
+                  <Fragment key={`${line}-${index}`}>
+                    {index > 0 ? <br /> : null}
+                    {line}
+                  </Fragment>
+                ))}
+              </li>
+            ) : null}
+            {contact.hours ? <li>{contact.hours}</li> : null}
+          </ul>
         </div>
 
         {groups.map((group) => (
@@ -79,30 +114,6 @@ export function StudioSiteFooter({ chrome }: { chrome: StudioChrome }) {
             </ul>
           </div>
         ))}
-
-        <div className="studio-footer__col">
-          <h2>Contact</h2>
-          <ul>
-            {contact.phoneLabel && contact.phoneHref ? (
-              <li>
-                <a href={contact.phoneHref}>{contact.phoneLabel}</a>
-              </li>
-            ) : null}
-            {contact.email ? (
-              <li>
-                <a href={`mailto:${contact.email}`}>{contact.email}</a>
-              </li>
-            ) : null}
-            {contact.addressLines.filter(Boolean).map((line) => (
-              <li key={line}>{line}</li>
-            ))}
-            {contact.postalCode || contact.city ? (
-              <li>{[contact.postalCode, contact.city].filter(Boolean).join(' ')}</li>
-            ) : null}
-            {contact.website ? <li>{contact.website}</li> : null}
-            {contact.hours ? <li>{contact.hours}</li> : null}
-          </ul>
-        </div>
 
         {instagramUrl ? (
           <div className="studio-footer__col studio-footer__social">
@@ -129,6 +140,7 @@ export function StudioSiteFooter({ chrome }: { chrome: StudioChrome }) {
         <span>
           &copy; {year} {site.name}
         </span>
+        {contact.website ? <span className="studio-footer__site">{contact.website}</span> : null}
         <span className="studio-footer__icons">
           <ConsentSettingsLink className="studio-footer__icon studio-footer__cookies">
             <Cookie aria-hidden="true" />

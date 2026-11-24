@@ -2023,3 +2023,198 @@ step 3 with
 against the verified Production URL, then re-audit row counts, `is_active`, provider links,
 subtitle and live pages. Keep the pre-apply snapshot until accepted. A code-only rollback is a
 separate Arend plan; do not silently promote a Preview deployment.
+
+## 27. Redesign van 24 november (pages and offering photographs; no migration, 24 Nov 2026)
+
+Toshoni's new design of 24 Nov 2026 (branch `feat/site-redesign`) re-skins the public site and
+recomposes its eight public pages. The look is code; the page composition is content, so it lives in
+the seeds (a fresh database, `cms:seed`) and reaches an existing database (staging, production)
+through **one guarded command**, `npm run cms:patch-site-redesign` (self-test section 17e). Its
+changes are not typed by hand: `src/lib/studio/seed-content/site-redesign.ts` derives them from the
+frozen pages before the redesign (`site-redesign-before.fixture.json`: the seeds after §24 to §26)
+and the seeds of the redesign, so a patched database and a freshly seeded one hold the same blocks
+(the self-test compares them block for block).
+
+| What | Before | After | By hand in Beheer |
+| --- | --- | --- | --- |
+| `/` | hero with the generated image; catalogue; voucher band; "Voor elke fietser"; "Jij blijft het vertrekpunt"; the grey team band; contact; closing band | + *Welkom (beginners)* and *Keuzehulp* after the hero, + *Foto's* (strip of three) after the catalogue; photographs on the hero, the voucher band, both splits and the closing band; the team band becomes a *Beeld + tekst* with the quote "Fietsliefhebber. Vader. Ondernemer." and a photograph (same title, the live sentence on experience and people skills, same button) | Pagina's → home |
+| `/aanbod` | page head, catalogue, closing band | page head with "Afspraak maken" and a photograph; + *Keuzehulp* (cream) after it; + one wide photograph before the closing band, which gets its photograph. The page head's subtitle is NOT touched (production keeps Toshoni's own text, §24) | Pagina's → aanbod |
+| `/voor-wie` | page head, audiences (grey, no photos), "Jonge fietsers groeien", accent band | page head with "Afspraak maken" and a photograph; + *Welkom (beginners)* (button to `/aanbod#keuzehulp`); the six audiences as photo tiles on white (texts unchanged); "Jonge fietsers groeien" dark with the photograph `renner-rug` (was Toshoni's photo `rutger-jeugd`); "Benieuwd wat bij jou past?" as the cream band | Pagina's → voor-wie |
+| `/bikefit` | opens on the split "Waarom is een bikefit belangrijk?" | a page hero with that title, its first paragraph, "Afspraak maken" and a photograph, then the rest as prose with the lead line (a *Rijke tekst*); photographs on "Meten om beter te kijken", "Kan een bikefit ook bij mij thuis?" (+ button "Neem contact op") and "Kinderen groeien…", the design's backgrounds and sides; closing band with a photograph | Pagina's → bikefit |
+| `/ons-team` | page head, profile, closing band | page head with a photograph; the profile with the photograph of Rutger climbing and "Afspraak maken"; + *Foto's* (gallery "Zolang ik me kan herinneren") | Pagina's → ons-team |
+| `/veelgestelde-vragen` | page head, eight questions, "Boek je bikefit" band | page head with the intro line ("… Bel ons gerust op {{telefoon}}.") and a photograph; the questions open and close, the first open, in two groups: "Nieuw op de fiets?" (five new questions, anchor `#beginners`, the welcome band links there) and "Over de bikefit" (the eight); + a wide photograph; the closing band "Afspraak maken" + phone with its photograph | Pagina's → veelgestelde-vragen |
+| `/cadeaubon` | the voucher block only | + the closing band (the block draws its own page hero and side photo since this build) | Pagina's → cadeaubon |
+| `/afspraak` | booking, "Voor je komt" (rich text), location | booking (draws its page hero since this build); "Voor je komt" becomes a split with a photograph on the page colour (the location section after it keeps the cream band) and the same texts as plain paragraphs (no sub-headings, the phone and e-mail as their tokens in text); location; + the closing band | Pagina's → afspraak |
+| Offerings | the generated default images (`bikefit-studio`, `flemish-cyclists`, `junior-coaching`) | each its photograph of the design (`OFFER_IMAGE_SLOTS` in `src/lib/offers/defaults.ts`), only where the stored image is one of those defaults (no media id) or empty; a photo an editor chose stays (`=` line) | Aanbod → foto |
+
+Never touched: menus, settings, services, providers, subscriptions, bookings, media, users,
+redirects, any other page, and every field the redesign does not change (titles, texts, meta
+descriptions). Every change names the value it expects: a field or block that holds the old value
+changes (`~`), one that already holds the target is left (`=`), anything else is an editor's change
+and blocks the whole run (`!`), never overwritten, no override flag. A block that changes type is
+replaced only when its whole content is still the old one. A page with unpublished draft edits
+blocks too.
+
+**Order, per environment** (staging first; production only after Toshoni's explicit go,
+CLAUDE.md §7):
+
+1. Optional Neon snapshot before the first write. The tool writes its own backup as well.
+2. **Deploy the build of the redesign** (release gate green, READY). It MUST be live before step 3:
+   the patch publishes the new block types (`welcome`, `chooser`, `photoStrip`), and a build that
+   does not know a block type counts a snapshot with it as unpublished (the page would go dark,
+   §24 step 4). Between steps 2 and 3 the old content renders in the new look; that is fine. No
+   migration.
+3. `cms:patch-site-redesign`: dry run, apply, dry run (below).
+4. Verify after the 5-minute cache window (below).
+
+1. **Dry run** (read-only; no session, no write call, no audit entry):
+
+   ```bash
+   DATABASE_URL='<pooled url>' npm run cms:patch-site-redesign
+   ```
+
+   On a database in the state of §26 (the eight pages as the seeds left them, the offerings with
+   their generated images) it prints, in this order (`<n>`: counts of this database):
+
+   ```text
+   → driver: neon-http (<host>)
+   → mode: dry run (nothing is written)
+   = would act as <e-mail of the admin the tool uses> (no session is created in a dry run)
+   ~ page / — 9 change(s) (+4 −1 ~5 block(s)), then publish
+       insert welcome "Weinig of geen fietservaring?" after hero "Meer plezier."
+       insert chooser "Welke dienst past bij mij?" after welcome "Weinig of geen fietservaring?"
+       insert photoStrip after offerCatalogue "Wat we voor je doen"
+       replace cta "Goede begeleiding begint bij de juiste mensen." with imageText "Goede begeleiding begint bij de juiste mensen."
+       hero "Meer plezier.".image: /images/editorial/flemish-cyclists-v1.webp → /images/editorial/zonsondergang-weg-v1.webp
+       cta "Geef fietsplezier cadeau".image: no image → /images/editorial/muur-ronse-bank-v1.webp
+       imageText "Voor elke fietser".image: /images/editorial/junior-coaching-v1.webp → /images/editorial/jonge-fietser-v1.webp
+       imageText "Jij blijft het vertrekpunt".image: /images/editorial/bikefit-studio-v1.webp → /images/editorial/renner-rug-v1.webp
+       cta "Comfort is een keuze. Maak ze.".image: no image → /images/editorial/zonsondergang-weg-v1.webp
+   ~ page /aanbod — 5 change(s) (+2 −0 ~2 block(s)), then publish
+       insert chooser "Welke dienst past bij mij?" after hero "Ons aanbod"
+       insert photoStrip after offerCatalogue
+       hero "Ons aanbod".image: no image → /images/editorial/samen-bergop-v1.webp
+       hero "Ons aanbod".primaryCta: none → "Afspraak maken →"
+       cta "Comfort is een keuze. Maak ze.".image: no image → /images/editorial/zonsondergang-weg-v1.webp
+   ~ page /voor-wie — 8 change(s) (+1 −0 ~4 block(s)), then publish
+       insert welcome "Weinig of geen fietservaring?" after hero "Voor elke fietser"
+       hero "Voor elke fietser".image: no image → /images/editorial/jonge-fietser-v1.webp
+       hero "Voor elke fietser".primaryCta: none → "Afspraak maken →"
+       audience.items: 6 → 6 item(s), 6 changed
+       audience.variant: "gray" → "default"
+       imageText "Jonge fietsers groeien".image: /images/editorial/rutger-jeugd-v1.webp → /images/editorial/renner-rug-v1.webp
+       imageText "Jonge fietsers groeien".variant: "default" → "dark"
+       cta "Benieuwd wat bij jou past?".variant: "accent" → "gray"
+   ~ page /bikefit — 13 change(s) (+2 −1 ~7 block(s)), then publish
+       replace imageText "Waarom is een bikefit belangrijk?" with hero "Waarom is een bikefit belangrijk?" + richText
+       imageText "Meten om beter te kijken".image: /images/editorial/bikefit-studio-v1.webp → /images/editorial/rutger-klim-v1.webp
+       services "Vier dingen, één positie".variant: "gray" → "default"
+       process "Hoe verloopt een bikefit?".variant: "default" → "gray"
+       imageText "Kan een bikefit ook bij mij thuis?".cta: none → "Neem contact op →"
+       imageText "Kan een bikefit ook bij mij thuis?".image: no image → /images/editorial/muur-ronse-duo-v1.webp
+       imageText "Kan een bikefit ook bij mij thuis?".imagePosition: "left" → "right"
+       imageText "Kan een bikefit ook bij mij thuis?".variant: "dark" → "default"
+       imageText "Kinderen groeien. De pasvorm groeit niet mee.".image: no image → /images/editorial/jonge-fietser-v1.webp
+       imageText "Kinderen groeien. De pasvorm groeit niet mee.".imagePosition: "right" → "left"
+       imageText "Kinderen groeien. De pasvorm groeit niet mee.".variant: "default" → "gray"
+       offerCatalogue "Onze bikefitdiensten".variant: "gray" → "default"
+       cta "Comfort is een keuze. Maak ze.".image: no image → /images/editorial/zonsondergang-weg-v1.webp
+   ~ page /ons-team — 5 change(s) (+1 −0 ~3 block(s)), then publish
+       insert photoStrip "Zolang ik me kan herinneren" after team
+       hero "Ons team".image: no image → /images/editorial/samen-bergop-v1.webp
+       team.cta: none → "Afspraak maken →"
+       team.members: 1 → 1 item(s), 1 changed
+       cta "Comfort is een keuze. Maak ze.".image: no image → /images/editorial/zonsondergang-weg-v1.webp
+   ~ page /veelgestelde-vragen — 9 change(s) (+1 −0 ~3 block(s)), then publish
+       insert photoStrip after faq
+       hero "Veelgestelde vragen".image: no image → /images/editorial/muur-ronse-bank-v1.webp
+       hero "Veelgestelde vragen".subtitle: "" → "Alles wat je wil weten voor je eerste bikefit. Staat je vra…"
+       faq.collapsible: "false" → "true"
+       faq.items: 8 → 13 item(s), 13 changed
+       faq.openFirst: "false" → "true"
+       cta "Comfort is een keuze. Maak ze.".image: no image → /images/editorial/zonsondergang-weg-v1.webp
+       cta "Comfort is een keuze. Maak ze.".primaryCta: "Boek je bikefit →" → "Afspraak maken →"
+       cta "Comfort is een keuze. Maak ze.".secondaryCta: none → "{{telefoon}}"
+   ~ page /cadeaubon — 1 change(s) (+1 −0 ~0 block(s)), then publish
+       insert cta "Comfort is een keuze. Maak ze." after giftVoucher "Cadeaubon"
+   ~ page /afspraak — 2 change(s) (+2 −1 ~0 block(s)), then publish
+       replace richText "Voor je komt" with imageText "Voor je komt"
+       insert cta "Comfort is een keuze. Maak ze." after location "Waar vind je ons?"
+   ~ offering bikefit-nieuwe-fiets — image: /images/editorial/bikefit-studio-v1.webp → /images/editorial/samen-bergop-v1.webp
+   ~ offering bikefit-huidige-fiets — image: /images/editorial/bikefit-studio-v1.webp → /images/editorial/rutger-klim-v1.webp
+   ~ offering bikefit-tweede-bezoek — image: /images/editorial/bikefit-studio-v1.webp → /images/editorial/muur-ronse-bank-v1.webp
+   ~ offering bikefit-tweede-fiets — image: /images/editorial/bikefit-studio-v1.webp → /images/editorial/band-wisselen-v1.webp
+   ~ offering voetanalyse — image: /images/editorial/bikefit-studio-v1.webp → /images/editorial/renner-rug-v1.webp
+   ~ offering zadelanalyse — image: /images/editorial/bikefit-studio-v1.webp → /images/editorial/rutger-klim-v1.webp
+   ~ offering afstellen-schoenplaatjes — image: /images/editorial/bikefit-studio-v1.webp → /images/editorial/renner-rug-v1.webp
+   ~ offering lactaattest — image: /images/editorial/flemish-cyclists-v1.webp → /images/editorial/samen-bergop-v1.webp
+   ~ offering coaching — image: /images/editorial/junior-coaching-v1.webp → /images/editorial/zonsondergang-weg-v1.webp
+   = guards: pages <n>, blocks <n>, offerings 9, variants <n>, services <n>, providers <n>, bookings <n>, menus <n>, settings <n>
+   → after the apply: blocks <n + 11> (+11)
+   → dry run: run again with --apply to write
+   ```
+
+   What varies by database, and is no reason to stop: the old image of an offering (the `~ offering`
+   line names it, `no image` when none was stored); an offering whose photo an editor chose prints
+   `= offering <slug> — kept as it is: the image <url> (an editor's choice)` (or `an image from the
+   media library`) and is not changed. On production the `/aanbod` subtitle is Toshoni's own text:
+   no line names it, because the redesign does not touch that field.
+
+   **Stop and report on any `!` line.** It names the page, the block, the field and both values,
+   for example `! page /veelgestelde-vragen: hero "Veelgestelde vragen".subtitle: expected "",
+   found "…" (edited since the rollout?)`, or for a block that changes type `! page /: cta "Goede
+   begeleiding begint bij de juiste mensen.": edited since it was published (body), not replaced`.
+   It means somebody changed that field in Beheer since the seeds; the run ends with `→ dry run:
+   blocked — fix the items marked ! first` and an `--apply` refuses before any write. Bring the
+   value and the decision to Toshoni; never edit the database or the patch to get past it. A page
+   with unpublished draft edits prints `! page <path>: has unpublished draft edits; publish or
+   discard them in /admin first …`.
+
+2. **Apply** (only after a clean dry run; same URL and host):
+
+   ```bash
+   DATABASE_URL='<pooled url>' npm run cms:patch-site-redesign -- --apply --expect-host '<host part of the DATABASE_URL>' --backup-dir '<private backup directory>'
+   ```
+
+   It plans again on the read-only handle (a blocked plan stops before any write: no session, no
+   backup, no audit entry), writes `✓ backup written: <dir>/site-redesign-patch-<time>.json`
+   BEFORE the first `~` line, writes per page (blocks that go, blocks that change, new blocks at
+   their place, then publish), then the offerings' images, and ends on
+
+   ```text
+   ✓ published pages and offer photographs verified on the public readers
+   ✓ row counts as planned (blocks <n + 11> (+11)); pages, offerings, menus, settings, services, providers and bookings unchanged
+   ✓ apply complete
+   → deployed sites pick this up within 5 minutes (cache fallback)
+   ```
+
+   with one audit entry `patch.site-redesign.apply` naming the backup. A failure halfway leaves
+   valid pages (each page is published only after its blocks are written); do not rerun blindly:
+   read the error, keep the FIRST backup, and restore from it if in doubt.
+
+3. **Dry run again**: `= page <path> — as in the redesign` for the eight pages,
+   `= offering <slug> — photograph as in the redesign` (or the `kept as it is` line), and
+   `= dry run: nothing to do`.
+
+**Verify** (after the 5-minute cache window, on the deployment of the environment): every page opens
+on its hero with a photograph; home shows "Nieuw op de fiets?", the keuzehulp (its last card calls
+the studio's number) and the photo strip; `/veelgestelde-vragen#beginners` lands on the group "Nieuw
+op de fiets?"; `/aanbod#keuzehulp` lands on the keuzehulp; the closing band shows "Afspraak maken"
+and the phone number over the sunset photograph on every page but `/voor-wie` (which closes on the
+cream "Benieuwd wat bij jou past?"); `/afspraak` shows the booking widget under its hero, "Voor je
+komt" with the photograph, the map section and the closing band; each `/aanbod/<slug>` page shows its
+new photograph; the header and footer are unchanged (menus untouched).
+
+**What the owner checks afterwards** (Toshoni, on staging first): the photographs and their crops,
+the welcome band and the five beginner questions (new copy from the design), "Voor je komt" without
+its two sub-headings (the split has plain paragraphs), the team photo instead of the portrait,
+`renner-rug` instead of his photo with a young rider on `/voor-wie`, and the `/aanbod` subtitle
+(production: his own text, untouched).
+
+**Rollback:** `npm run cms:patch-site-redesign -- --restore '<first backup.json>' --expect-host
+'<host>'` puts every page (row, draft blocks, published snapshot) and every offering image back as
+the backup holds them (audit `rollout.aanbod.restore` per page and one `patch.site-redesign.restore`).
+The build of the redesign renders the old blocks too, so a content rollback needs no code rollback.
+A code rollback to a build without the new block types after the apply would make the redesigned
+pages go dark: restore the content first, then roll back the code. Any production deployment,
+rollback or run needs its own explicit go.

@@ -104,6 +104,16 @@ const LABELS: Record<string, string> = {
   quoteAttribution: 'Citaat — wie',
   rotating: 'Roterend tonen',
   secondaryCta: 'Secundaire knop',
+  // `welcome`, `chooser`, `photoStrip`, `faq` groups, `cta` (redesign, 24 Nov 2026)
+  choices: 'Keuzekaarten (2 tot 4)',
+  focus: 'Focus van de foto (bv. 50% 55%; leeg = midden)',
+  group: 'Groep (kop boven opeenvolgende vragen; leeg = geen groep)',
+  groupAnchor: 'Anker van de groep (bv. beginners; zet het op de eerste vraag van de groep)',
+  images: 'Foto’s (1 tot 6)',
+  layout: 'Weergave (strook, galerij of breed)',
+  linkLabel: 'Linktekst onderaan de kaart',
+  openFirst: 'Eerste vraag open (bij inklapbaar)',
+  size: 'Grootte (auto = compact zonder tekst)',
   // `offerCatalogue`, `team` blocks
   bio: 'Bio (alinea’s, enkel gecontroleerde tekst)',
   category: 'Categorie',
@@ -163,7 +173,21 @@ const MULTILINE = new Set([
   'text',
 ]);
 
-function labelFor(name: string): string {
+/**
+ * Labels that differ per block type, for a field name the shared `LABELS` words
+ * for another block (`caption` is the voucher's amount caption; in `photoStrip`
+ * it is the text over a photo). Applied to every level of that block's form.
+ */
+const BLOCK_LABELS: Partial<Record<BlockType, Record<string, string>>> = {
+  chooser: {
+    label: 'Kleine regel boven de titel (bv. Ik koop een fiets)',
+    href: 'Link van de kaart',
+  },
+  photoStrip: { caption: 'Bijschrift (optioneel)' },
+};
+
+function labelFor(name: string, overrides?: Record<string, string>): string {
+  if (overrides?.[name]) return overrides[name];
   if (LABELS[name]) return LABELS[name];
   const spaced = name.replace(/([A-Z])/g, ' $1').toLowerCase();
   return spaced.charAt(0).toUpperCase() + spaced.slice(1);
@@ -215,9 +239,9 @@ function literalValue(schema: unknown): string | null {
   return value === undefined || value === null ? null : String(value);
 }
 
-function fieldSpec(name: string, schema: unknown): FieldSpec {
+function fieldSpec(name: string, schema: unknown, overrides?: Record<string, string>): FieldSpec {
   const { schema: inner, def, nullable, defaultValue } = unwrap(schema);
-  const label = labelFor(name);
+  const label = labelFor(name, overrides);
 
   if (inner === imageRefSchema) return { kind: 'image', name, label };
   if (inner === linkSchema) return { kind: 'link', name, label, nullable };
@@ -260,14 +284,14 @@ function fieldSpec(name: string, schema: unknown): FieldSpec {
         return { kind: 'textList', name, label, multiline: MULTILINE.has(name) };
       }
       if (element.def?.type === 'object') {
-        const fields = objectFields(element.def);
+        const fields = objectFields(element.def, overrides);
         return { kind: 'objectList', name, label, fields, defaultItem: defaultsFor(fields) };
       }
       return { kind: 'json', name, label };
     }
 
     case 'object':
-      return { kind: 'object', name, label, fields: objectFields(def) };
+      return { kind: 'object', name, label, fields: objectFields(def, overrides) };
 
     default:
       void defaultValue;
@@ -275,8 +299,8 @@ function fieldSpec(name: string, schema: unknown): FieldSpec {
   }
 }
 
-function objectFields(def: ZodDef): FieldSpec[] {
-  return Object.entries(def.shape ?? {}).map(([key, value]) => fieldSpec(key, value));
+function objectFields(def: ZodDef, overrides?: Record<string, string>): FieldSpec[] {
+  return Object.entries(def.shape ?? {}).map(([key, value]) => fieldSpec(key, value, overrides));
 }
 
 /** A fresh, schema-shaped value for one repeatable item. */
@@ -320,7 +344,7 @@ export function blockSpec(type: BlockType): BlockSpec {
     label: definition.label,
     description: definition.description,
     hint: definition.editorHint ?? '',
-    fields: def?.type === 'object' ? objectFields(def) : [],
+    fields: def?.type === 'object' ? objectFields(def, BLOCK_LABELS[type]) : [],
   };
 }
 

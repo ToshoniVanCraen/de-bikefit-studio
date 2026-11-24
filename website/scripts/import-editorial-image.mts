@@ -9,7 +9,10 @@
  *  1. reads the source file (never modified) and records its sha256;
  *  2. writes `public/images/editorial/<slot>-v<version>.webp`: EXIF-rotated,
  *     at most 2000 px on the long side, metadata stripped, WebP at the highest
- *     quality that stays under 450 KB (Next's optimiser serves smaller sizes);
+ *     quality that stays under 450 KB (Next's optimiser serves smaller sizes).
+ *     If even the lowest quality is too big, the long edge steps down (1600,
+ *     1280, 1024 px); if that does not fit either, the script fails and writes
+ *     nothing (no file, no manifest entry);
  *  3. records file, size, dimensions, provenance, prompt and alt in the
  *     manifest. Existing files are never overwritten: bump `--version`.
  *
@@ -26,9 +29,11 @@ import { createHash } from 'node:crypto';
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { basename, resolve } from 'node:path';
 
+import { encodeUnderLimit } from '@/lib/studio/image-encode';
+
 const MANIFEST = resolve('src/lib/studio/editorial-images.json');
 const OUTPUT_DIR = resolve('public/images/editorial');
-const MAX_EDGE = 2000;
+const EDGES = [2000, 1600, 1280, 1024];
 const MAX_BYTES = 450 * 1024;
 const QUALITIES = [82, 76, 70, 64, 58];
 
@@ -89,19 +94,34 @@ async function main() {
   );
   if (exists) throw new Error(`${file} already exists; pass --version ${version + 1}`);
 
-  let output: Buffer | null = null;
-  let info: { width: number; height: number; size: number } | null = null;
-  for (const quality of QUALITIES) {
-    const result = await sharp(source)
-      .rotate()
-      .resize({ width: MAX_EDGE, height: MAX_EDGE, fit: 'inside', withoutEnlargement: true })
-      .webp({ quality, effort: 5 })
-      .toBuffer({ resolveWithObject: true });
-    output = result.data;
-    info = { width: result.info.width, height: result.info.height, size: result.info.size };
-    if (result.info.size <= MAX_BYTES) break;
+  const outcome = await encodeUnderLimit(
+    async (edge, quality) => {
+      const result = await sharp(source)
+        .rotate()
+        .resize({ width: edge, height: edge, fit: 'inside', withoutEnlargement: true })
+        .webp({ quality, effort: 5 })
+        .toBuffer({ resolveWithObject: true });
+      return {
+        data: result.data,
+        width: result.info.width,
+        height: result.info.height,
+        size: result.info.size,
+      };
+    },
+    { edges: EDGES, qualities: QUALITIES, maxBytes: MAX_BYTES },
+  );
+  if (!outcome.ok) {
+    const best = outcome.smallest;
+    throw new Error(
+      `${slot}: still over ${Math.round(MAX_BYTES / 1024)} KB at the smallest setting` +
+        (best
+          ? ` (${Math.round(best.size / 1024)} KB at ${best.edge} px, quality ${best.quality})`
+          : '') +
+        '. Nothing was written. Simplify or crop the source (flat areas, less grain) and retry.',
+    );
   }
-  if (!output || !info) throw new Error('could not encode the image');
+  const output = outcome.result.data;
+  const info = outcome.result;
 
   await mkdir(OUTPUT_DIR, { recursive: true });
   await writeFile(target, output, { flag: 'wx' });

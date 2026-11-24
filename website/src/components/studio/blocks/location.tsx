@@ -2,15 +2,16 @@ import { getSiteSettings } from '@/lib/cms/content';
 import { LOCATION_DEFAULTS } from '@/lib/cms/blocks-location';
 import { LEGAL_LINKS } from '@/lib/studio/legal';
 import { studioPlace } from '@/lib/studio/location';
-import { StudioButtonLink } from '../link';
+import { StudioLink } from '../link';
 import { LocationMap } from './location-map';
 import { StudioSection } from './section';
 import type { BlockProps } from './types';
 
 /**
- * `location`: where the studio is. The exact address as text, a line under it
- * (parking), a plain link to plan the route and, unless the editor switched it
- * off, the Google Maps map with the location pinned.
+ * `location`: where the studio is. The design's contact grid (redesign of 24
+ * Nov 2026): three columns under a 1px rule, Adres, Parking (the note) and
+ * Route (a plain link to plan the route), and under it, unless the editor
+ * switched it off, the Google Maps map with the location pinned.
  *
  * The address is read from Instellingen → Contact (`getSiteSettings`, cached),
  * the same source as the footer, and never typed into a component or a block. A
@@ -52,28 +53,35 @@ export async function LocationBlock({
       <div
         className={data.showMap ? 'studio-location studio-location--with-map' : 'studio-location'}
       >
-        <div className="studio-location__details">
-          <p className="studio-location__label">Adres</p>
-          <address className="studio-location__address">
-            {place.lines.map((line, index) => (
-              <span key={`${index}-${line}`} className="studio-location__line">
-                {line}
-              </span>
-            ))}
-            {place.postalCity ? (
-              <span className="studio-location__line">{place.postalCity}</span>
-            ) : null}
-          </address>
-          {note ? <p className="studio-location__note">{note}</p> : null}
-          <p className="studio-location__route">
-            <StudioButtonLink
-              href={place.routeUrl}
-              variant={data.variant === 'dark' ? 'ghost-on-dark' : 'outline'}
-            >
-              {routeLabel}
-              <span className="sr-only"> (opent Google Maps in een nieuw tabblad)</span>
-            </StudioButtonLink>
-          </p>
+        <div className="studio-location__grid">
+          <div className="studio-location__cell">
+            <p className="studio-location__label">Adres</p>
+            <address className="studio-location__address">
+              {place.lines.map((line, index) => (
+                <span key={`${index}-${line}`} className="studio-location__line">
+                  {line}
+                </span>
+              ))}
+              {place.postalCity ? (
+                <span className="studio-location__line">{place.postalCity}</span>
+              ) : null}
+            </address>
+          </div>
+          {note ? (
+            <div className="studio-location__cell">
+              <p className="studio-location__label">Parking</p>
+              <p className="studio-location__value">{note}</p>
+            </div>
+          ) : null}
+          <div className="studio-location__cell">
+            <p className="studio-location__label">Route</p>
+            <p className="studio-location__value">
+              <StudioLink href={place.routeUrl} className="studio-location__route">
+                {routeLabel} <span aria-hidden="true">&rarr;</span>
+                <span className="sr-only"> (opent Google Maps in een nieuw tabblad)</span>
+              </StudioLink>
+            </p>
+          </div>
         </div>
 
         {data.showMap ? (

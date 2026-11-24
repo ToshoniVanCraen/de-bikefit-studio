@@ -9,7 +9,9 @@ import type { BlockProps } from './types';
  * (`p`, `br`, `h2`–`h4`, lists, links, emphasis, `blockquote`; no attributes
  * except on links, no scripts or styles), then frozen into the published
  * snapshot. It is injected as-is so those headings, lists and links survive;
- * `.studio-rich` styles them.
+ * `.studio-rich` styles them as the design's `.prose` (24 Nov 2026): 760px
+ * wide, a quote as the italic wine line with a rule, list items with the
+ * short "ticks" rule.
  */
 export function RichTextBlock({ data, anchor, headingLevel }: BlockProps<'richText'>) {
   return (

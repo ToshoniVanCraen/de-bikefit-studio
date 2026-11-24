@@ -1,10 +1,22 @@
 import { LOCATION_BLOCK } from './location-section';
-import { BOOKING_PATH, EMAIL_TOKEN, PHONE_HREF_TOKEN, PHONE_TOKEN, type SeedPage } from './shared';
+import { photo } from './redesign-sections';
+import {
+  BOOKING_PATH,
+  CLOSING_CTA,
+  EMAIL_TOKEN,
+  PHONE_HREF_TOKEN,
+  PHONE_TOKEN,
+  type SeedPage,
+} from './shared';
 
 /**
  * `/afspraak` — the single place to book or ask (Toshoni's site review,
- * 13 Oct 2026). Plain data; used by `cms:seed` and, as the target state, by
- * `cms:patch-page-cleanup` (`page-cleanup.ts`).
+ * 13 Oct 2026). Plain data; used by `cms:seed`.
+ *
+ * Since the redesign of 24 Nov 2026 the booking block draws the page hero
+ * (photograph, phone button), "Voor je komt" is a split with a photograph
+ * (below), and the page closes on the photo band; `cms:patch-site-redesign`
+ * brings an existing database there (`site-redesign.ts`).
  *
  * The page opens on "Kies je moment" (the booking widget owns the `<h1>`),
  * then "Voor je komt" with the "Andere vraag?" line. The page head, "Vier
@@ -37,17 +49,24 @@ export const OTHER_QUESTION_HTML = [
  * the newest Shimano pedals, the studio cannot offer every system. The
  * corrections of that day swap exactly this paragraph (`corrections-2026-10-27.ts`).
  */
-export const BRING_PARAGRAPH_HTML =
-  '<p>Je fiets (proper en in werkende staat), de schoenen en fietskleding waarin je écht rijdt, en eventuele notities over wat je dwars zit. Neem ook je eigen pedalen mee, zeker bij Time-pedalen of de nieuwste Shimano-pedalen: niet elk systeem hebben we in de studio. Meer hebben we niet nodig. De rest doen wij.</p>';
+export const BRING_PARAGRAPH =
+  'Je fiets (proper en in werkende staat), de schoenen en fietskleding waarin je écht rijdt, en eventuele notities over wat je dwars zit. Neem ook je eigen pedalen mee, zeker bij Time-pedalen of de nieuwste Shimano-pedalen: niet elk systeem hebben we in de studio. Meer hebben we niet nodig. De rest doen wij.';
+export const BRING_PARAGRAPH_HTML = `<p>${BRING_PARAGRAPH}</p>`;
 
-const BEFORE_YOU_COME_HTML = [
-  '<h3>Breng het juiste mee</h3>',
-  BRING_PARAGRAPH_HTML,
-  '<h3>Reken op de tijd</h3>',
-  '<p>Reken op {{duur:volwassenenfit}} voor een bikefit voor volwassenen en {{duur:jeugdfit}} voor een jeugdfit. We haasten ons niet: als het klaar is, is het klaar.</p>',
-  `<p>Liever bellen, of vind je geen moment dat past? Bel <a href="${PHONE_HREF_TOKEN}">${PHONE_TOKEN}</a> en we zoeken samen een moment.</p>`,
-  OTHER_QUESTION_HTML,
-].join('');
+/**
+ * "Voor je komt" since the redesign of 24 Nov 2026: the design's split with a photograph
+ * (`imageText`, cream). That block has plain paragraphs, no sub-headings and no links, so the
+ * live texts below are its paragraphs: "Breng het juiste mee" and "Reken op de tijd" are no
+ * longer headings, and the phone number and the e-mail address are their tokens as text (the
+ * booking hero and the closing band of the page carry the phone link). The durations stay
+ * `{{duur:…}}` tokens.
+ */
+export const BEFORE_YOU_COME_PARAGRAPHS = [
+  BRING_PARAGRAPH,
+  'Reken op {{duur:volwassenenfit}} voor een bikefit voor volwassenen en {{duur:jeugdfit}} voor een jeugdfit. We haasten ons niet: als het klaar is, is het klaar.',
+  `Liever bellen, of vind je geen moment dat past? Bel ${PHONE_TOKEN} en we zoeken samen een moment.`,
+  `Andere vraag? Contacteer ons op ${EMAIL_TOKEN} of ${PHONE_TOKEN}.`,
+];
 
 export const AFSPRAAK_PAGE: SeedPage = {
   slug: BOOKING_PATH.slice(1),
@@ -74,15 +93,18 @@ export const AFSPRAAK_PAGE: SeedPage = {
       },
     },
     {
-      type: 'richText',
+      type: 'imageText',
       data: {
         variant: 'default',
         eyebrow: 'Goed om te weten',
         title: 'Voor je komt',
-        html: BEFORE_YOU_COME_HTML,
+        paragraphs: BEFORE_YOU_COME_PARAGRAPHS,
+        image: photo('renner-rug', 'Renner op training'),
+        imagePosition: 'left',
       },
     },
     LOCATION_BLOCK,
+    CLOSING_CTA,
   ],
 };
 

@@ -1,29 +1,45 @@
 import { OFFER_CATEGORY_LABELS, OFFER_INDEX_PATH } from '@/lib/offers/catalogue';
-import { editorialImage } from '@/lib/studio/editorial-images';
 import { CADEAUBON_CARD } from './cadeaubon';
 import { CADEAUBON_HOME_BLOCK } from './cadeaubon-promo';
 import {
   HERO_SUBTITLE,
   AANBOD_INTRO,
+  HOW_OFTEN_TEXT,
   JUNIOR_TEXT,
+  JUST_THE_RIDE_TEXT,
   MOTION_ANALYSIS_TEXT,
   STUDIO_EXTRAS_TEXT,
   TEAM_INTRO,
   TEAM_MEMBERS,
   TEAM_SELECTION_SENTENCE,
+  WHY_BIKEFIT_TEXT,
 } from './copy';
 import {
+  AUDIENCE_ITEMS,
+  chooserBlock,
+  HOME_PHOTO_STRIP,
+  photo,
+  TEAM_GALLERY,
+  welcomeBlock,
+  widePhoto,
+} from './redesign-sections';
+import {
   BOOKING_PATH,
+  CLOSING_CTA,
   CONTACT_BLOCK,
   INSPECTION_CARDS,
-  PHONE_HREF_TOKEN,
-  PHONE_TOKEN,
   PROCESS_STEPS,
-  type SeedBlock,
   type SeedPage,
 } from './shared';
 
 /**
+ * The redesign of 24 Nov 2026 (Toshoni's design export): every page opens on a hero with a real
+ * photograph, home gains "Nieuw op de fiets?", the keuzehulp and a photo strip, `/voor-wie` the
+ * welcome band and photo tiles, `/ons-team` a gallery, and the pages close on the photo band. The
+ * new sections are `redesign-sections.ts`; `cms:patch-site-redesign` brings an existing database
+ * to exactly these pages (`site-redesign.ts`). The live copy stays where the design repeats an
+ * older wording.
+ *
  * The redesigned public site of 13 Oct 2026: the offer overview ("Aanbod"),
  * audiences ("Voor wie"), the bikefit page and the team — plus the menus and
  * the redirects. Plain data, no I/O. The offerings themselves are not pages
@@ -58,16 +74,8 @@ import {
  *     the catalogue) is `cadeaubon-promo.ts`.
  */
 
-const CALLOUT: SeedBlock = {
-  type: 'cta',
-  data: {
-    variant: 'accent',
-    title: 'Comfort is een keuze. Maak ze.',
-    body: '',
-    primaryCta: { label: 'Afspraak maken →', href: BOOKING_PATH, external: false },
-    secondaryCta: { label: PHONE_TOKEN, href: PHONE_HREF_TOKEN, external: false },
-  },
-};
+/** The page heads' button of the redesign (24 Nov 2026), as on the header. */
+export const BOOKING_BUTTON = { label: 'Afspraak maken →', href: BOOKING_PATH, external: false };
 
 export const OFFER_GROUPS = [
   {
@@ -115,9 +123,12 @@ const HOME: SeedPage = {
         subtitle: HERO_SUBTITLE,
         primaryCta: { label: 'Afspraak maken →', href: BOOKING_PATH, external: false },
         secondaryCta: { label: 'Bekijk ons aanbod', href: OFFER_INDEX_PATH, external: false },
-        image: editorialImage('flemish-cyclists'),
+        // Redesign of 24 Nov 2026: the sunset road instead of the generated image.
+        image: photo('zonsondergang-weg'),
       },
     },
+    welcomeBlock('#keuzehulp'),
+    chooserBlock('default'),
     {
       type: 'offerCatalogue',
       data: {
@@ -131,8 +142,13 @@ const HOME: SeedPage = {
         cta: { label: 'Bekijk het volledige aanbod', href: OFFER_INDEX_PATH, external: false },
       },
     },
-    // The gift voucher for the year-end period (Toshoni, 27 Oct 2026), see `cadeaubon-promo.ts`.
-    CADEAUBON_HOME_BLOCK,
+    HOME_PHOTO_STRIP,
+    // The gift voucher for the year-end period (Toshoni, 27 Oct 2026, `cadeaubon-promo.ts`),
+    // since the redesign over the photograph of the bench in Ronse.
+    {
+      type: CADEAUBON_HOME_BLOCK.type,
+      data: { ...CADEAUBON_HOME_BLOCK.data, image: photo('muur-ronse-bank') },
+    },
     {
       type: 'imageText',
       data: {
@@ -150,7 +166,7 @@ const HOME: SeedPage = {
           'Woon-werkverkeer en e-bike',
         ],
         cta: { label: 'Voor wie is dit?', href: '/voor-wie', external: false },
-        image: editorialImage('junior-coaching'),
+        image: photo('jonge-fietser'),
         imagePosition: 'left',
       },
     },
@@ -162,22 +178,27 @@ const HOME: SeedPage = {
         title: 'Jij blijft het vertrekpunt',
         paragraphs: [MOTION_ANALYSIS_TEXT],
         cta: { label: 'Zo verloopt een bikefit', href: '/bikefit', external: false },
-        image: editorialImage('bikefit-studio'),
+        image: photo('renner-rug', 'Renner van achteren, houding op de fiets'),
         imagePosition: 'right',
       },
     },
+    // The team band became the team split of the design (24 Nov 2026): the live selection
+    // sentence (experience and people skills, 27 Oct 2026), the design's quote and photograph.
     {
-      type: 'cta',
+      type: 'imageText',
       data: {
         variant: 'gray',
+        eyebrow: 'Ons team',
         title: 'Goede begeleiding begint bij de juiste mensen.',
-        body: TEAM_SELECTION_SENTENCE,
-        primaryCta: { label: 'Maak kennis met ons team', href: '/ons-team', external: false },
-        secondaryCta: null,
+        paragraphs: [TEAM_SELECTION_SENTENCE],
+        quote: 'Fietsliefhebber. Vader. Ondernemer.',
+        cta: { label: 'Maak kennis met ons team', href: '/ons-team', external: false },
+        image: photo('rutger-klim'),
+        imagePosition: 'left',
       },
     },
     CONTACT_BLOCK,
-    CALLOUT,
+    CLOSING_CTA,
   ],
 };
 
@@ -199,10 +220,12 @@ const AANBOD: SeedPage = {
         title: 'Ons aanbod',
         titleEmphasis: '',
         subtitle: AANBOD_INTRO,
-        primaryCta: null,
+        primaryCta: BOOKING_BUTTON,
         secondaryCta: null,
+        image: photo('samen-bergop'),
       },
     },
+    chooserBlock('gray'),
     {
       type: 'offerCatalogue',
       data: {
@@ -217,7 +240,8 @@ const AANBOD: SeedPage = {
         cta: null,
       },
     },
-    CALLOUT,
+    widePhoto(photo('muur-ronse-bank', 'Fietser op een bank voor de koersmuur in Ronse')),
+    CLOSING_CTA,
   ],
 };
 
@@ -240,75 +264,43 @@ const VOOR_WIE: SeedPage = {
         titleEmphasis: '',
         subtitle:
           'Of je nu zeven of zeventig bent, koerst of pendelt, een weekendrijder of een doordeweekse toerist: iedereen verdient het om te genieten van alles wat een fiets te bieden heeft.',
-        primaryCta: null,
+        primaryCta: BOOKING_BUTTON,
         secondaryCta: null,
+        image: photo('jonge-fietser'),
       },
     },
+    welcomeBlock('/aanbod#keuzehulp'),
     {
       type: 'audience',
       data: {
-        variant: 'gray',
+        // Photo tiles on white since the redesign (24 Nov 2026).
+        variant: 'default',
         // No section heading: the audiences follow the page head directly.
         eyebrow: '',
         title: '',
         lede: '',
-        items: [
-          {
-            number: '01',
-            title: 'Jonge fietsers',
-            body: 'Kinderen groeien snel: een fiets die vandaag past, klopt volgend seizoen al niet meer. We volgen de pasvorm op terwijl ze groeien.',
-            featured: true,
-          },
-          {
-            number: '02',
-            title: 'Beginners en ervaren fietsers',
-            body: 'Je eerste kilometers of al jaren onderweg: we bekijken wat jij nodig hebt.',
-            featured: false,
-          },
-          {
-            number: '03',
-            title: 'Recreatief en competitief',
-            body: 'Voor de weekendrit die fris moet eindigen, niet stijf en pijnlijk de ochtend erna, en voor wie een sportief doel voor ogen heeft.',
-            featured: false,
-          },
-          {
-            number: '04',
-            title: 'Koers, gravel en mountainbike',
-            body: 'De principes blijven dezelfde: het lichaam van de fietser moet bij de fiets passen. We fitten koers-, gravel-, mountain-, stads-, toer- en e-bikes.',
-            featured: false,
-          },
-          {
-            number: '05',
-            title: 'Woon-werk en e-bike',
-            body: 'Vijf dagen per week, weer of geen weer. Een pasvorm die het volhoudt naast de koude handen en de natte broek, ook op een e-bike.',
-            featured: false,
-          },
-          {
-            number: '06',
-            title: 'Wielertoeristen',
-            body: 'Lange dagen, zware tassen, verre horizonten: een pasvorm waar je op kilometer 200 nog op kan rekenen, maakt van de tocht wat ze hoort te zijn.',
-            featured: false,
-          },
-        ],
+        items: AUDIENCE_ITEMS,
       },
     },
     {
       type: 'imageText',
       data: {
-        variant: 'default',
+        // The dark split of the design (24 Nov 2026), with its photograph (Toshoni's photo with a
+        // young rider of 20 Oct 2026, `rutger-jeugd`, made way for it).
+        variant: 'dark',
         eyebrow: 'Jeugd',
         title: 'Jonge fietsers groeien',
         paragraphs: [JUNIOR_TEXT],
         cta: { label: 'Bekijk het aanbod', href: OFFER_INDEX_PATH, external: false },
-        // Toshoni, 20 Oct 2026: his own photo with a young rider, instead of the AI image.
-        image: editorialImage('rutger-jeugd'),
+        image: photo('renner-rug', 'Renner op training'),
         imagePosition: 'right',
       },
     },
     {
       type: 'cta',
       data: {
-        variant: 'accent',
+        // The cream band of the design (24 Nov 2026).
+        variant: 'gray',
         title: 'Benieuwd wat bij jou past?',
         body: '',
         primaryCta: { label: 'Bekijk het aanbod →', href: OFFER_INDEX_PATH, external: false },
@@ -328,23 +320,32 @@ const BIKEFIT: SeedPage = {
   metaDescription:
     'Wat een bikefit is, hoe hij verloopt en hoe we 3D-bewegingsanalyse gebruiken. Bikefit bij aankoop of op je huidige fiets, voet- en zadelanalyse en schoenplaatjes, in Ninove.',
   structuredDataType: 'WebPage',
-  // No page head: the page opens on "Waarom een bikefit" (Toshoni, 19 Oct 2026; the head's
-  // button pointed at an anchor that no longer exists). Like /afspraak since 13 Oct.
+  // Since the redesign (24 Nov 2026) the page opens on a page hero with "Waarom is een bikefit
+  // belangrijk?" (its first paragraph and a photograph), then the rest as prose with the lead line;
+  // from 19 Oct to 24 Nov it opened on that text as a split section without a head.
   blocks: [
     {
-      type: 'imageText',
+      type: 'hero',
       data: {
-        variant: 'default',
+        variant: 'pageHead',
         eyebrow: 'Waarom een bikefit',
         title: 'Waarom is een bikefit belangrijk?',
-        paragraphs: [
-          'Een fiets die niet bij jouw lichaam past, kost je op drie manieren: pijn, verloren kracht, en kortere ritten. Een bikefit lijnt de fiets uit op jou, niet omgekeerd, zodat elke rit beter voelt en je langer gezond blijft op de fiets.',
-          'Voor de meeste volwassenen is dat om de 18 tot 24 maanden zinvol, of telkens als er iets verandert: een nieuwe fiets, een blessure, een grote verandering in gewicht of soepelheid, of een nieuw doel. Voor kinderen vaker: zij groeien, de pasvorm groeit niet mee.',
-        ],
-        quote:
-          'Geen pijn. Geen lichaam dat eerder opgeeft dan de weg. Geen fiets die tegen je vecht. Gewoon de rit.',
-        image: editorialImage('flemish-cyclists'),
-        imagePosition: 'right',
+        titleEmphasis: '',
+        subtitle: WHY_BIKEFIT_TEXT,
+        primaryCta: BOOKING_BUTTON,
+        secondaryCta: null,
+        image: photo('renner-rug', 'Renner van achteren, houding op de fiets'),
+      },
+    },
+    {
+      type: 'richText',
+      data: {
+        variant: 'default',
+        eyebrow: '',
+        title: '',
+        // The design's lead line (`.prose .lead`) is the rich text's quote: the sanitiser keeps
+        // no class attribute, and `.studio-rich blockquote` is the italic wine line.
+        html: `<p>${HOW_OFTEN_TEXT}</p><blockquote>${JUST_THE_RIDE_TEXT}</blockquote>`,
       },
     },
     {
@@ -354,14 +355,14 @@ const BIKEFIT: SeedPage = {
         eyebrow: '3D-bewegingsanalyse',
         title: 'Meten om beter te kijken',
         paragraphs: [MOTION_ANALYSIS_TEXT, STUDIO_EXTRAS_TEXT],
-        image: editorialImage('bikefit-studio'),
+        image: photo('rutger-klim', 'Fietser bergop'),
         imagePosition: 'left',
       },
     },
     {
       type: 'services',
       data: {
-        variant: 'gray',
+        variant: 'default',
         eyebrow: 'Wat we bekijken',
         title: 'Vier dingen, één positie',
         lede: 'We kijken naar jou op de fiets: houding, trapbeweging, zadelpositie en bewegingspatronen. Daaruit bouwen we stap voor stap jouw positie op.',
@@ -372,7 +373,7 @@ const BIKEFIT: SeedPage = {
     {
       type: 'process',
       data: {
-        variant: 'default',
+        variant: 'gray',
         eyebrow: 'Werkwijze',
         title: 'Hoe verloopt een bikefit?',
         lede: 'Een gesprek, een blik op jou en je fiets, en stap voor stap aanpassen tot alles klopt. We haasten ons niet: als het klaar is, is het klaar.',
@@ -382,20 +383,22 @@ const BIKEFIT: SeedPage = {
     {
       type: 'imageText',
       data: {
-        variant: 'dark',
+        variant: 'default',
         eyebrow: 'Op locatie',
         title: 'Kan een bikefit ook bij mij thuis?',
         paragraphs: [
           'Ja, voor groepen, clubs en gezinnen komen we op locatie. Voor de meeste individuele fits werken we liever in de studio, omdat we daar meer controle hebben.',
           'Maar als je niet naar ons kan komen, komen wij naar jou. Neem contact op en we bekijken het samen.',
         ],
-        imagePosition: 'left',
+        cta: { label: 'Neem contact op →', href: BOOKING_PATH, external: false },
+        image: photo('muur-ronse-duo'),
+        imagePosition: 'right',
       },
     },
     {
       type: 'imageText',
       data: {
-        variant: 'default',
+        variant: 'gray',
         eyebrow: 'Jonge fietsers',
         title: 'Kinderen groeien. De pasvorm groeit niet mee.',
         paragraphs: [
@@ -407,13 +410,14 @@ const BIKEFIT: SeedPage = {
           'Vaker terugkomen dan volwassenen, want zij groeien door',
         ],
         cta: { label: 'Meer voor jonge fietsers', href: '/voor-wie', external: false },
-        imagePosition: 'right',
+        image: photo('jonge-fietser'),
+        imagePosition: 'left',
       },
     },
     {
       type: 'offerCatalogue',
       data: {
-        variant: 'gray',
+        variant: 'default',
         eyebrow: 'Aanbod',
         title: 'Onze bikefitdiensten',
         lede: 'Kies de dienst die bij je vraag past. Twijfel je? Bel ons, dan kijken we samen.',
@@ -422,7 +426,7 @@ const BIKEFIT: SeedPage = {
         cta: { label: 'Bekijk het volledige aanbod', href: OFFER_INDEX_PATH, external: false },
       },
     },
-    CALLOUT,
+    CLOSING_CTA,
   ],
 };
 
@@ -446,6 +450,7 @@ const ONS_TEAM: SeedPage = {
         subtitle: TEAM_INTRO,
         primaryCta: null,
         secondaryCta: null,
+        image: photo('samen-bergop'),
       },
     },
     {
@@ -456,10 +461,16 @@ const ONS_TEAM: SeedPage = {
         eyebrow: '',
         title: '',
         lede: '',
-        members: TEAM_MEMBERS,
+        // The design's photograph of Rutger climbing (24 Nov 2026) instead of the portrait.
+        members: TEAM_MEMBERS.map((member) => ({
+          ...member,
+          image: photo('rutger-klim', `${member.name} bergop`),
+        })),
+        cta: BOOKING_BUTTON,
       },
     },
-    CALLOUT,
+    TEAM_GALLERY,
+    CLOSING_CTA,
   ],
 };
 

@@ -1,0 +1,772 @@
+{
+  "source": "seed definition of the eight public pages on feat/site-redesign before the redesign of 24 Nov 2026 (= staging and production after the patches of 27-31 Oct 2026)",
+  "pages": [
+    {
+      "slug": "",
+      "title": "Home",
+      "metaTitle": "De Bikefit Studio: meer plezier. Op jouw fiets.",
+      "metaDescription": "Bikefit, voet- en zadelanalyse, schoenplaatjes, inspanningstest en coaching in Ninove. Persoonlijke fietsbegeleiding, in de studio of bij jou thuis.",
+      "blocks": [
+        {
+          "type": "hero",
+          "data": {
+            "variant": "full",
+            "eyebrow": "De Bikefit Studio",
+            "title": "Meer plezier.",
+            "titleEmphasis": "Op jouw fiets.",
+            "subtitle": "Van een fiets die beter past tot begeleiding die met je meegroeit. We luisteren naar jouw verhaal en helpen je op weg, in de studio of bij jou thuis.",
+            "primaryCta": {
+              "label": "Afspraak maken →",
+              "href": "/afspraak",
+              "external": false
+            },
+            "secondaryCta": {
+              "label": "Bekijk ons aanbod",
+              "href": "/aanbod",
+              "external": false
+            },
+            "image": {
+              "mediaId": null,
+              "url": "/images/editorial/flemish-cyclists-v1.webp",
+              "alt": "Drie fietsers met helm rijden samen over een smalle landweg tussen de Vlaamse velden, met een kerktoren in de verte",
+              "decorative": false
+            }
+          }
+        },
+        {
+          "type": "offerCatalogue",
+          "data": {
+            "variant": "default",
+            "eyebrow": "Aanbod",
+            "title": "Wat we voor je doen",
+            "lede": "Eén vertrekpunt: jij en je fiets.",
+            "groups": [
+              {
+                "category": "bikefit",
+                "title": "Bikefit",
+                "lede": "Je fiets, je zadel, je voeten en je schoenplaatjes, afgestemd op jou."
+              },
+              {
+                "category": "begeleiding",
+                "title": "Begeleiding",
+                "lede": "Inzicht en opvolging die met je meegroeit."
+              }
+            ],
+            "showPrices": false,
+            "cta": {
+              "label": "Bekijk het volledige aanbod",
+              "href": "/aanbod",
+              "external": false
+            }
+          }
+        },
+        {
+          "type": "cta",
+          "data": {
+            "variant": "accent",
+            "title": "Geef fietsplezier cadeau",
+            "body": "Kies een cadeaubon van € 75 of € 150, of van € 275 voor een volledige bikefit. Een cadeaubon is {{cadeaubon-geldigheid}} geldig na aankoop.",
+            "primaryCta": {
+              "label": "Bestel een cadeaubon",
+              "href": "/cadeaubon",
+              "external": false
+            },
+            "secondaryCta": null
+          }
+        },
+        {
+          "type": "imageText",
+          "data": {
+            "variant": "gray",
+            "eyebrow": "Voor wie",
+            "title": "Voor elke fietser",
+            "paragraphs": [
+              "Of je nu zeven of zeventig bent, koerst of pendelt, een weekendrijder of een doordeweekse toerist: iedereen verdient het om te genieten van alles wat een fiets te bieden heeft."
+            ],
+            "bullets": [
+              "Jong en minder jong",
+              "Beginners en ervaren fietsers",
+              "Recreatief en competitief",
+              "Koers, gravel en mountainbike",
+              "Woon-werkverkeer en e-bike"
+            ],
+            "cta": {
+              "label": "Voor wie is dit?",
+              "href": "/voor-wie",
+              "external": false
+            },
+            "image": {
+              "mediaId": null,
+              "url": "/images/editorial/junior-coaching-v1.webp",
+              "alt": "Een jonge fietser met helm luistert naar een coach langs een landweg, met een ouder en fiets op de achtergrond",
+              "decorative": false
+            },
+            "imagePosition": "left"
+          }
+        },
+        {
+          "type": "imageText",
+          "data": {
+            "variant": "dark",
+            "eyebrow": "Bikefit",
+            "title": "Jij blijft het vertrekpunt",
+            "paragraphs": [
+              "We gebruiken de nieuwste 3D-bewegingsanalyse om je houding en trapbeweging vanuit verschillende hoeken te bekijken. Die inzichten combineren we met jouw ervaring en de blik van onze fitter. Technologie helpt ons meten; jij blijft het vertrekpunt."
+            ],
+            "cta": {
+              "label": "Zo verloopt een bikefit",
+              "href": "/bikefit",
+              "external": false
+            },
+            "image": {
+              "mediaId": null,
+              "url": "/images/editorial/bikefit-studio-v1.webp",
+              "alt": "Een fietster rijdt op een fiets op een trainer in de studio terwijl een bikefitter naast haar haar houding bekijkt",
+              "decorative": false
+            },
+            "imagePosition": "right"
+          }
+        },
+        {
+          "type": "cta",
+          "data": {
+            "variant": "gray",
+            "title": "Goede begeleiding begint bij de juiste mensen.",
+            "body": "We kiezen ons team op ervaring en mensenkennis, en op de manier waarop iemand luistert.",
+            "primaryCta": {
+              "label": "Maak kennis met ons team",
+              "href": "/ons-team",
+              "external": false
+            },
+            "secondaryCta": null
+          }
+        },
+        {
+          "type": "contact",
+          "data": {
+            "variant": "default",
+            "eyebrow": "Contact",
+            "title": "Boek je bikefit",
+            "lede": "",
+            "phoneLabel": "{{telefoon}}",
+            "phoneHref": "{{telefoon-href}}",
+            "email": "",
+            "addressLines": ["{{adres}}"],
+            "city": "",
+            "hours": "Op afspraak",
+            "mapEmbedUrl": "",
+            "cta": null
+          }
+        },
+        {
+          "type": "cta",
+          "data": {
+            "variant": "accent",
+            "title": "Comfort is een keuze. Maak ze.",
+            "body": "",
+            "primaryCta": {
+              "label": "Afspraak maken →",
+              "href": "/afspraak",
+              "external": false
+            },
+            "secondaryCta": {
+              "label": "{{telefoon}}",
+              "href": "{{telefoon-href}}",
+              "external": false
+            }
+          }
+        }
+      ]
+    },
+    {
+      "slug": "aanbod",
+      "title": "Aanbod",
+      "metaTitle": "Ons aanbod: bikefit en begeleiding",
+      "metaDescription": "Bikefit bij aankoop of op je huidige fiets, voetanalyse, zadelanalyse, schoenplaatjes afstellen, inspanningstest en coaching in Ninove.",
+      "blocks": [
+        {
+          "type": "hero",
+          "data": {
+            "variant": "pageHead",
+            "eyebrow": "Aanbod",
+            "title": "Ons aanbod",
+            "titleEmphasis": "",
+            "subtitle": "Elke fietser is anders. Daarom werkt De Bikefit Studio uitsluitend met ervaren professionals. Samen zoeken we wat bij jou past: van je eerste kilometers tot een nieuw sportief doel. Persoonlijke fietsbegeleiding, dichtbij: in de studio, op locatie of, waar mogelijk, bij jou thuis.",
+            "primaryCta": null,
+            "secondaryCta": null
+          }
+        },
+        {
+          "type": "offerCatalogue",
+          "data": {
+            "variant": "default",
+            "eyebrow": "",
+            "title": "",
+            "lede": "",
+            "groups": [
+              {
+                "category": "bikefit",
+                "title": "Bikefit",
+                "lede": "Je fiets, je zadel, je voeten en je schoenplaatjes, afgestemd op jou."
+              },
+              {
+                "category": "begeleiding",
+                "title": "Begeleiding",
+                "lede": "Inzicht en opvolging die met je meegroeit."
+              },
+              {
+                "category": "overige",
+                "title": "Overige",
+                "lede": ""
+              }
+            ],
+            "extraCards": [
+              {
+                "category": "overige",
+                "title": "Cadeaubon",
+                "summary": "Fietsplezier cadeau doen, met € 75, € 150 of € 275. Geldig {{cadeaubon-geldigheid}} na aankoop.",
+                "priceLabel": "Bedrag naar keuze",
+                "href": "/cadeaubon"
+              }
+            ],
+            "showPrices": true,
+            "cta": null
+          }
+        },
+        {
+          "type": "cta",
+          "data": {
+            "variant": "accent",
+            "title": "Comfort is een keuze. Maak ze.",
+            "body": "",
+            "primaryCta": {
+              "label": "Afspraak maken →",
+              "href": "/afspraak",
+              "external": false
+            },
+            "secondaryCta": {
+              "label": "{{telefoon}}",
+              "href": "{{telefoon-href}}",
+              "external": false
+            }
+          }
+        }
+      ]
+    },
+    {
+      "slug": "voor-wie",
+      "title": "Voor wie",
+      "metaTitle": "Voor wie: elke fietser, op elke leeftijd",
+      "metaDescription": "Voor jong en minder jong, beginners en ervaren fietsers, recreatief en competitief, koers, gravel en mountainbike, woon-werk en e-bike. Extra aandacht voor de jeugd.",
+      "blocks": [
+        {
+          "type": "hero",
+          "data": {
+            "variant": "pageHead",
+            "eyebrow": "Voor wie",
+            "title": "Voor elke fietser",
+            "titleEmphasis": "",
+            "subtitle": "Of je nu zeven of zeventig bent, koerst of pendelt, een weekendrijder of een doordeweekse toerist: iedereen verdient het om te genieten van alles wat een fiets te bieden heeft.",
+            "primaryCta": null,
+            "secondaryCta": null
+          }
+        },
+        {
+          "type": "audience",
+          "data": {
+            "variant": "gray",
+            "eyebrow": "",
+            "title": "",
+            "lede": "",
+            "items": [
+              {
+                "number": "01",
+                "title": "Jonge fietsers",
+                "body": "Kinderen groeien snel: een fiets die vandaag past, klopt volgend seizoen al niet meer. We volgen de pasvorm op terwijl ze groeien.",
+                "featured": true
+              },
+              {
+                "number": "02",
+                "title": "Beginners en ervaren fietsers",
+                "body": "Je eerste kilometers of al jaren onderweg: we bekijken wat jij nodig hebt.",
+                "featured": false
+              },
+              {
+                "number": "03",
+                "title": "Recreatief en competitief",
+                "body": "Voor de weekendrit die fris moet eindigen, niet stijf en pijnlijk de ochtend erna, en voor wie een sportief doel voor ogen heeft.",
+                "featured": false
+              },
+              {
+                "number": "04",
+                "title": "Koers, gravel en mountainbike",
+                "body": "De principes blijven dezelfde: het lichaam van de fietser moet bij de fiets passen. We fitten koers-, gravel-, mountain-, stads-, toer- en e-bikes.",
+                "featured": false
+              },
+              {
+                "number": "05",
+                "title": "Woon-werk en e-bike",
+                "body": "Vijf dagen per week, weer of geen weer. Een pasvorm die het volhoudt naast de koude handen en de natte broek, ook op een e-bike.",
+                "featured": false
+              },
+              {
+                "number": "06",
+                "title": "Wielertoeristen",
+                "body": "Lange dagen, zware tassen, verre horizonten: een pasvorm waar je op kilometer 200 nog op kan rekenen, maakt van de tocht wat ze hoort te zijn.",
+                "featured": false
+              }
+            ]
+          }
+        },
+        {
+          "type": "imageText",
+          "data": {
+            "variant": "default",
+            "eyebrow": "Jeugd",
+            "title": "Jonge fietsers groeien",
+            "paragraphs": [
+              "Jonge fietsers groeien. Hun fiets groeit niet vanzelf mee. Daarom besteden we extra aandacht aan de jeugd, met betaalbare begeleiding en opvolging op maat. Of je nu miniem, aspirant, nieuweling of junior bent, er blijft ruimte om te groeien, bij te leren en vooral graag te fietsen."
+            ],
+            "cta": {
+              "label": "Bekijk het aanbod",
+              "href": "/aanbod",
+              "external": false
+            },
+            "image": {
+              "mediaId": null,
+              "url": "/images/editorial/rutger-jeugd-v1.webp",
+              "alt": "Rutger Roelandts in fietskledij naast zijn racefiets, met een jonge fietser naast hem en besneeuwde bergen op de achtergrond",
+              "decorative": false
+            },
+            "imagePosition": "right"
+          }
+        },
+        {
+          "type": "cta",
+          "data": {
+            "variant": "accent",
+            "title": "Benieuwd wat bij jou past?",
+            "body": "",
+            "primaryCta": {
+              "label": "Bekijk het aanbod →",
+              "href": "/aanbod",
+              "external": false
+            },
+            "secondaryCta": {
+              "label": "Afspraak maken",
+              "href": "/afspraak",
+              "external": false
+            }
+          }
+        }
+      ]
+    },
+    {
+      "slug": "bikefit",
+      "title": "De bikefit",
+      "metaTitle": "De bikefit: hoe het werkt",
+      "metaDescription": "Wat een bikefit is, hoe hij verloopt en hoe we 3D-bewegingsanalyse gebruiken. Bikefit bij aankoop of op je huidige fiets, voet- en zadelanalyse en schoenplaatjes, in Ninove.",
+      "blocks": [
+        {
+          "type": "imageText",
+          "data": {
+            "variant": "default",
+            "eyebrow": "Waarom een bikefit",
+            "title": "Waarom is een bikefit belangrijk?",
+            "paragraphs": [
+              "Een fiets die niet bij jouw lichaam past, kost je op drie manieren: pijn, verloren kracht, en kortere ritten. Een bikefit lijnt de fiets uit op jou, niet omgekeerd, zodat elke rit beter voelt en je langer gezond blijft op de fiets.",
+              "Voor de meeste volwassenen is dat om de 18 tot 24 maanden zinvol, of telkens als er iets verandert: een nieuwe fiets, een blessure, een grote verandering in gewicht of soepelheid, of een nieuw doel. Voor kinderen vaker: zij groeien, de pasvorm groeit niet mee."
+            ],
+            "quote": "Geen pijn. Geen lichaam dat eerder opgeeft dan de weg. Geen fiets die tegen je vecht. Gewoon de rit.",
+            "image": {
+              "mediaId": null,
+              "url": "/images/editorial/flemish-cyclists-v1.webp",
+              "alt": "Drie fietsers met helm rijden samen over een smalle landweg tussen de Vlaamse velden, met een kerktoren in de verte",
+              "decorative": false
+            },
+            "imagePosition": "right"
+          }
+        },
+        {
+          "type": "imageText",
+          "data": {
+            "variant": "dark",
+            "eyebrow": "3D-bewegingsanalyse",
+            "title": "Meten om beter te kijken",
+            "paragraphs": [
+              "We gebruiken de nieuwste 3D-bewegingsanalyse om je houding en trapbeweging vanuit verschillende hoeken te bekijken. Die inzichten combineren we met jouw ervaring en de blik van onze fitter. Technologie helpt ons meten; jij blijft het vertrekpunt.",
+              "In de studio kun je een ruime keuze aan zadels uittesten. Zo krijgt ook je zitvlak zijn juiste plaats."
+            ],
+            "image": {
+              "mediaId": null,
+              "url": "/images/editorial/bikefit-studio-v1.webp",
+              "alt": "Een fietster rijdt op een fiets op een trainer in de studio terwijl een bikefitter naast haar haar houding bekijkt",
+              "decorative": false
+            },
+            "imagePosition": "left"
+          }
+        },
+        {
+          "type": "services",
+          "data": {
+            "variant": "gray",
+            "eyebrow": "Wat we bekijken",
+            "title": "Vier dingen, één positie",
+            "lede": "We kijken naar jou op de fiets: houding, trapbeweging, zadelpositie en bewegingspatronen. Daaruit bouwen we stap voor stap jouw positie op.",
+            "columns": 4,
+            "cards": [
+              {
+                "label": "01 / Houding",
+                "title": "Je houding",
+                "body": "Hoe je op de fiets zit bepaalt veel: comfort, kracht, en hoe lang je het volhoudt zonder klachten."
+              },
+              {
+                "label": "02 / Trapbeweging",
+                "title": "Je trapbeweging",
+                "body": "Hoe je rondtrapt: heupen, knieën, voeten, en waar er iets vastloopt in die beweging."
+              },
+              {
+                "label": "03 / Zadel",
+                "title": "Zadelpositie",
+                "body": "Hoogte, hoek en horizontale plaats van je zadel, met feedback na elke aanpassing."
+              },
+              {
+                "label": "04 / Patronen",
+                "title": "Bewegingspatronen",
+                "body": "Gewoontes die je lichaam heeft aangeleerd. We brengen ze in kaart en leggen uit wat ze je kosten."
+              }
+            ]
+          }
+        },
+        {
+          "type": "process",
+          "data": {
+            "variant": "default",
+            "eyebrow": "Werkwijze",
+            "title": "Hoe verloopt een bikefit?",
+            "lede": "Een gesprek, een blik op jou en je fiets, en stap voor stap aanpassen tot alles klopt. We haasten ons niet: als het klaar is, is het klaar.",
+            "steps": [
+              {
+                "number": "01",
+                "title": "Gesprek",
+                "body": "We beginnen met een gesprek over jouw lichaam, je doelen en je klachten."
+              },
+              {
+                "number": "02",
+                "title": "Kijken",
+                "body": "Daarna kijken we naar jou op de fiets: houding, trapbeweging, zadelpositie, bewegingspatronen."
+              },
+              {
+                "number": "03",
+                "title": "Aanpassen",
+                "body": "Heb je je fiets al, dan passen we ze ter plaatse aan: stap voor stap, met feedback na elke aanpassing, tot alles klopt."
+              },
+              {
+                "number": "04",
+                "title": "Naar huis",
+                "body": "Je vertrekt met je analyse en advies op papier. Koop je een nieuwe fiets, dan weet je precies welke maten en afstelling bij jou passen. Heb je de fiets al, dan rij je naar huis op een fiets die bij jouw lichaam past, en begrijp je waarom ze staat zoals ze staat."
+              }
+            ]
+          }
+        },
+        {
+          "type": "imageText",
+          "data": {
+            "variant": "dark",
+            "eyebrow": "Op locatie",
+            "title": "Kan een bikefit ook bij mij thuis?",
+            "paragraphs": [
+              "Ja, voor groepen, clubs en gezinnen komen we op locatie. Voor de meeste individuele fits werken we liever in de studio, omdat we daar meer controle hebben.",
+              "Maar als je niet naar ons kan komen, komen wij naar jou. Neem contact op en we bekijken het samen."
+            ],
+            "imagePosition": "left"
+          }
+        },
+        {
+          "type": "imageText",
+          "data": {
+            "variant": "default",
+            "eyebrow": "Jonge fietsers",
+            "title": "Kinderen groeien. De pasvorm groeit niet mee.",
+            "paragraphs": [
+              "Een fiets die vandaag past, klopt volgend seizoen al niet meer, en een lichaam in groei went aan alles wat je het oplegt. Voor jonge wedstrijdrijders die al echt uren op het zadel zitten, kost een slechte pasvorm niet alleen watts op koersdag; ze legt gewoontes vast die nog jaren later meegaan.",
+              "We volgen de pasvorm op terwijl ze groeien."
+            ],
+            "bullets": [
+              "Aandacht voor groei en veranderende lichaamsverhoudingen",
+              "Vaker terugkomen dan volwassenen, want zij groeien door"
+            ],
+            "cta": {
+              "label": "Meer voor jonge fietsers",
+              "href": "/voor-wie",
+              "external": false
+            },
+            "imagePosition": "right"
+          }
+        },
+        {
+          "type": "offerCatalogue",
+          "data": {
+            "variant": "gray",
+            "eyebrow": "Aanbod",
+            "title": "Onze bikefitdiensten",
+            "lede": "Kies de dienst die bij je vraag past. Twijfel je? Bel ons, dan kijken we samen.",
+            "groups": [
+              {
+                "category": "bikefit",
+                "title": "Bikefit",
+                "lede": "Je fiets, je zadel, je voeten en je schoenplaatjes, afgestemd op jou."
+              }
+            ],
+            "showPrices": false,
+            "cta": {
+              "label": "Bekijk het volledige aanbod",
+              "href": "/aanbod",
+              "external": false
+            }
+          }
+        },
+        {
+          "type": "cta",
+          "data": {
+            "variant": "accent",
+            "title": "Comfort is een keuze. Maak ze.",
+            "body": "",
+            "primaryCta": {
+              "label": "Afspraak maken →",
+              "href": "/afspraak",
+              "external": false
+            },
+            "secondaryCta": {
+              "label": "{{telefoon}}",
+              "href": "{{telefoon-href}}",
+              "external": false
+            }
+          }
+        }
+      ]
+    },
+    {
+      "slug": "ons-team",
+      "title": "Ons team",
+      "metaTitle": "Ons team",
+      "metaDescription": "Goede begeleiding begint bij de juiste mensen. Maak kennis met het team van De Bikefit Studio in Ninove.",
+      "blocks": [
+        {
+          "type": "hero",
+          "data": {
+            "variant": "pageHead",
+            "eyebrow": "Ons team",
+            "title": "Ons team",
+            "titleEmphasis": "",
+            "subtitle": "Goede begeleiding begint bij de juiste mensen. We kiezen ons team op ervaring en mensenkennis, en op de manier waarop iemand luistert. Je krijgt een aanpak die bij jou past, met heldere uitleg en aandacht voor jouw doelen.",
+            "primaryCta": null,
+            "secondaryCta": null
+          }
+        },
+        {
+          "type": "team",
+          "data": {
+            "variant": "default",
+            "eyebrow": "",
+            "title": "",
+            "lede": "",
+            "members": [
+              {
+                "name": "Rutger Roelandts",
+                "role": "Oprichter",
+                "bio": [
+                  "Ik zit op een fiets zolang ik me kan herinneren. Negentien jaar competitie, en een heel leven daarbuiten gewoon fietsen: naar school, naar het werk, het heuvelland in op zondag.",
+                  "Daarom heb ik De Bikefit Studio opgericht. Iedereen verdient het om te genieten van alles wat een fiets te bieden heeft. Mijn werk is ervoor te zorgen dat jouw fiets je dat ook toelaat."
+                ],
+                "image": {
+                  "mediaId": null,
+                  "url": "/images/team/rutger-roelandts-v1.webp",
+                  "alt": "Rutger Roelandts in fietskledij naast zijn racefiets, met een jonge fietser naast hem en besneeuwde bergen op de achtergrond",
+                  "decorative": false
+                },
+                "internalNote": "Register T-01–T-04. Bio: Rutgers eigen tekst uit content/about.html §1 (eerder gepubliceerd op /over-ons), ingekort; akkoord van Rutger nodig. Rol “Oprichter” volgt uit die tekst. Kwalificaties: niets vermeld. Foto: eigen foto, aangeleverd door Toshoni op 20 okt 2026 (public/images/team, zie docs/editorial-images.md)."
+              }
+            ]
+          }
+        },
+        {
+          "type": "cta",
+          "data": {
+            "variant": "accent",
+            "title": "Comfort is een keuze. Maak ze.",
+            "body": "",
+            "primaryCta": {
+              "label": "Afspraak maken →",
+              "href": "/afspraak",
+              "external": false
+            },
+            "secondaryCta": {
+              "label": "{{telefoon}}",
+              "href": "{{telefoon-href}}",
+              "external": false
+            }
+          }
+        }
+      ]
+    },
+    {
+      "slug": "veelgestelde-vragen",
+      "title": "Veelgestelde vragen",
+      "metaTitle": "Veelgestelde vragen over een bikefit",
+      "metaDescription": "Waarom een bikefit, hoe vaak, hoe lang hij duurt, wat je meebrengt, of het ook aan huis kan en of we e-bikes doen: kort en eerlijk beantwoord.",
+      "blocks": [
+        {
+          "type": "hero",
+          "data": {
+            "variant": "pageHead",
+            "eyebrow": "Goed om te weten · Ninove",
+            "title": "Veelgestelde vragen",
+            "titleEmphasis": "",
+            "subtitle": "",
+            "primaryCta": null,
+            "secondaryCta": null
+          }
+        },
+        {
+          "type": "faq",
+          "data": {
+            "variant": "default",
+            "eyebrow": "",
+            "title": "",
+            "lede": "",
+            "collapsible": false,
+            "emitStructuredData": true,
+            "items": [
+              {
+                "question": "Waarom is een bikefit belangrijk?",
+                "answer": "Een fiets die niet bij jouw lichaam past, kost je op drie manieren: pijn, verloren kracht, en kortere ritten. Een bikefit lijnt de fiets uit op jou, niet omgekeerd, zodat elke rit beter voelt en je langer gezond blijft op de fiets."
+              },
+              {
+                "question": "Hoe vaak moet ik een bikefit laten doen?",
+                "answer": "Voor de meeste volwassenen om de 18 tot 24 maanden, of telkens als er iets verandert. Een nieuwe fiets, een blessure, een grote verandering in gewicht of soepelheid, of een nieuw doel zijn allemaal goede redenen om terug te komen. Voor kinderen vaker: zij groeien, de pasvorm groeit niet mee."
+              },
+              {
+                "question": "Hoe verloopt een bikefit?",
+                "answer": "We beginnen met een gesprek over jouw lichaam, je doelen en je klachten. Daarna kijken we naar jou op de fiets: houding, trapbeweging, zadelpositie, bewegingspatronen. We passen stap voor stap aan, met feedback na elke aanpassing, tot alles klopt. Je vertrekt met begrip waarom jouw fiets staat zoals ze staat."
+              },
+              {
+                "question": "Kan een bikefit ook bij mij thuis?",
+                "answer": "Ja, voor groepen, clubs en gezinnen komen we op locatie. Voor de meeste individuele fits werken we liever in de studio, omdat we daar meer controle hebben, maar als je niet naar ons kan komen, komen wij naar jou. Neem contact op en we bekijken het samen."
+              },
+              {
+                "question": "Wat breng ik mee voor een bikefit?",
+                "answer": "Je fiets (proper en in werkende staat), de schoenen en fietskleding waarin je écht rijdt, en eventuele notities over wat je dwars zit. Neem ook je eigen pedalen mee, zeker bij Time-pedalen of de nieuwste Shimano-pedalen: niet elk systeem hebben we in de studio. Meer hebben we niet nodig. De rest doen wij."
+              },
+              {
+                "question": "Hoe lang duurt een bikefit?",
+                "answer": "Dat hangt af van de fit die je kiest. De duur staat bij elke fit op haar eigen pagina onder Aanbod: Bikefit – huidige fiets en Bikefit – aankoop nieuwe fiets."
+              },
+              {
+                "question": "Moet ik nieuwe onderdelen kopen?",
+                "answer": "Soms. Vaak niet. We werken altijd eerst met wat je al hebt; als een zadel, stuurpen of paar cleats echt niet bij jouw lichaam past, zeggen we het, met uitleg waarom, zonder druk."
+              },
+              {
+                "question": "Doen jullie ook e-bikes?",
+                "answer": "Ja. De principes blijven dezelfde: het lichaam van de fietser moet bij de fiets passen. We fitten koers-, gravel-, mountain-, stads-, toer- en e-bikes."
+              }
+            ]
+          }
+        },
+        {
+          "type": "cta",
+          "data": {
+            "variant": "accent",
+            "title": "Comfort is een keuze. Maak ze.",
+            "body": "",
+            "primaryCta": {
+              "label": "Boek je bikefit →",
+              "href": "/afspraak",
+              "external": false
+            },
+            "secondaryCta": null
+          }
+        }
+      ]
+    },
+    {
+      "slug": "cadeaubon",
+      "title": "Cadeaubon",
+      "metaTitle": "Cadeaubon",
+      "metaDescription": "Bestel een cadeaubon van De Bikefit Studio: € 75, € 150 of € 275 (een volledige bikefit), of een bedrag naar keuze. Geldig {{cadeaubon-geldigheid}} na aankoop.",
+      "blocks": [
+        {
+          "type": "giftVoucher",
+          "data": {
+            "sortOrder": 0,
+            "eyebrow": "Aanbod",
+            "title": "Cadeaubon",
+            "summary": "Fietsplezier cadeau doen, met € 75, € 150 of € 275. Geldig {{cadeaubon-geldigheid}} na aankoop.",
+            "intro": "Geef iemand fietsplezier cadeau. Je kiest zelf het bedrag en schrijft er een persoonlijke boodschap bij. Na je bestelling sturen we je een factuur en een betaallink.",
+            "formTitle": "Bestel je cadeaubon",
+            "sentTitle": "Je bestelling is verstuurd",
+            "sentText": "",
+            "amounts": [
+              {
+                "cents": 7500,
+                "caption": ""
+              },
+              {
+                "cents": 15000,
+                "caption": ""
+              },
+              {
+                "cents": 27500,
+                "caption": "Volledige bikefit"
+              }
+            ],
+            "validityNote": "Een cadeaubon is {{cadeaubon-geldigheid}} geldig na aankoop."
+          }
+        }
+      ]
+    },
+    {
+      "slug": "afspraak",
+      "title": "Een afspraak maken",
+      "metaTitle": "Een afspraak maken",
+      "metaDescription": "Boek je bikefit in Ninove online: kies je fit, een dag en een uur. Liever bellen? {{telefoon}}. Breng je fiets, schoenen, pedalen en fietskleding mee.",
+      "blocks": [
+        {
+          "type": "booking",
+          "data": {
+            "variant": "default",
+            "eyebrow": "",
+            "title": "Kies je moment",
+            "lede": "Kies je fit, bij wie en wanneer. Je krijgt meteen een bevestiging per e-mail.",
+            "serviceIds": [],
+            "showProviderChoice": true,
+            "successTitle": "Je afspraak staat vast",
+            "successText": ""
+          }
+        },
+        {
+          "type": "richText",
+          "data": {
+            "variant": "default",
+            "eyebrow": "Goed om te weten",
+            "title": "Voor je komt",
+            "html": "<h3>Breng het juiste mee</h3><p>Je fiets (proper en in werkende staat), de schoenen en fietskleding waarin je écht rijdt, en eventuele notities over wat je dwars zit. Neem ook je eigen pedalen mee, zeker bij Time-pedalen of de nieuwste Shimano-pedalen: niet elk systeem hebben we in de studio. Meer hebben we niet nodig. De rest doen wij.</p><h3>Reken op de tijd</h3><p>Reken op {{duur:volwassenenfit}} voor een bikefit voor volwassenen en {{duur:jeugdfit}} voor een jeugdfit. We haasten ons niet: als het klaar is, is het klaar.</p><p>Liever bellen, of vind je geen moment dat past? Bel <a href=\"{{telefoon-href}}\">{{telefoon}}</a> en we zoeken samen een moment.</p><h3>Andere vraag?</h3><p>Contacteer ons op <a href=\"mailto:{{e-mail}}\">{{e-mail}}</a> of <a href=\"{{telefoon-href}}\">{{telefoon}}</a>.</p>"
+          }
+        },
+        {
+          "type": "location",
+          "data": {
+            "variant": "gray",
+            "eyebrow": "Locatie",
+            "title": "Waar vind je ons?",
+            "intro": "",
+            "note": "Parking beschikbaar voor de deur.",
+            "showMap": true,
+            "mapLabel": "Kaart tonen",
+            "routeLabel": "Route plannen"
+          }
+        }
+      ]
+    }
+  ]
+}

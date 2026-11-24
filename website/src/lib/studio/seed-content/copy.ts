@@ -27,6 +27,18 @@ export const MOTION_ANALYSIS_TEXT =
   'We gebruiken de nieuwste 3D-bewegingsanalyse om je houding en trapbeweging vanuit verschillende hoeken te bekijken. Die inzichten combineren we met jouw ervaring en de blik van onze fitter. Technologie helpt ons meten; jij blijft het vertrekpunt.';
 
 /**
+ * "Waarom is een bikefit belangrijk?" on `/bikefit` (prototype/bikefit.html, without dashes since
+ * 27 Oct 2026): the page hero's text since the redesign of 24 Nov 2026, then the prose below it
+ * with the lead line.
+ */
+export const WHY_BIKEFIT_TEXT =
+  'Een fiets die niet bij jouw lichaam past, kost je op drie manieren: pijn, verloren kracht, en kortere ritten. Een bikefit lijnt de fiets uit op jou, niet omgekeerd, zodat elke rit beter voelt en je langer gezond blijft op de fiets.';
+export const HOW_OFTEN_TEXT =
+  'Voor de meeste volwassenen is dat om de 18 tot 24 maanden zinvol, of telkens als er iets verandert: een nieuwe fiets, een blessure, een grote verandering in gewicht of soepelheid, of een nieuw doel. Voor kinderen vaker: zij groeien, de pasvorm groeit niet mee.';
+export const JUST_THE_RIDE_TEXT =
+  'Geen pijn. Geen lichaam dat eerder opgeeft dan de weg. Geen fiets die tegen je vecht. Gewoon de rit.';
+
+/**
  * The studio's own means, named by Toshoni on 19 Oct 2026 (register E-03, E-04).
  * On 27 Oct 2026 he had the 3D-printed insoles taken off the website; the
  * saddles stay.

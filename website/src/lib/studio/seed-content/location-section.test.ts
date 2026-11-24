@@ -80,13 +80,14 @@ describe('LOCATION_BLOCK', () => {
 });
 
 describe('/afspraak', () => {
-  it('ends with the location section, after "Voor je komt"', () => {
+  it('has the location section after "Voor je komt", then the closing band (redesign of 24 Nov 2026)', () => {
     expect(AFSPRAAK_PAGE.blocks.map((block) => block.type)).toEqual([
       'booking',
-      'richText',
+      'imageText',
       'location',
+      'cta',
     ]);
-    expect(AFSPRAAK_PAGE.blocks.at(-1)).toBe(LOCATION_BLOCK);
+    expect(AFSPRAAK_PAGE.blocks.at(-2)).toBe(LOCATION_BLOCK);
   });
 
   it('still validates as a whole page', () => {

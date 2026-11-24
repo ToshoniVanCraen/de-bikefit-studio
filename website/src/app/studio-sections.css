@@ -1,0 +1,346 @@
+/* ============================================================================
+   SECTIONS OF THE SITE REDESIGN (24 Nov 2026), studio-welcome / studio-chooser
+   / studio-photos / studio-tile(s) / studio-photo-tile / studio-founder(s),
+   plus the extensions of the callout (photo, compact) and the faq (groups).
+   ----------------------------------------------------------------------------
+   Imported by `globals.css` BEFORE its own rules, inside the same cascade
+   layer: where this file must refine a primitive of `globals.css` (callout,
+   section) the selector carries one extra class. Only `--ds-*` / `--color-ds-*`
+   tokens, no colour literals; square corners, hairlines, condensed caps.
+   Breakpoints as in the design: 1080px and 720px. Hover lifts and zooms only
+   run when the visitor has not asked for reduced motion.
+   ========================================================================== */
+@layer components {
+  /* ---- welcome ("Nieuw op de fiets?") ------------------------------------ */
+  .studio-section.studio-welcome {
+    padding-block: 88px;
+  }
+  .studio-welcome__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--ds-space-3xl);
+    align-items: center;
+  }
+  .studio-welcome__title {
+    font-family: var(--ds-font-display);
+    font-weight: 800;
+    font-size: clamp(36px, 4.5vw, 54px);
+    line-height: 1;
+    letter-spacing: -0.01em;
+    text-transform: uppercase;
+    margin-bottom: 18px;
+  }
+  .studio-welcome__title em {
+    display: block;
+    font-style: italic;
+    color: var(--ds-color-accent);
+  }
+  .studio-welcome__body {
+    font-size: 17px;
+    margin-bottom: var(--ds-space-md);
+    max-width: 60ch;
+  }
+  .studio-welcome__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ds-space-xs);
+  }
+  .studio-welcome__list {
+    list-style: none;
+    display: grid;
+    gap: var(--ds-space-xs);
+    margin: 0;
+    padding: 0;
+  }
+  .studio-welcome__item {
+    position: relative;
+    background: var(--ds-color-surface-raised);
+    border: 1px solid var(--ds-color-border);
+    color: var(--ds-color-fg);
+    padding: 18px 20px 18px 56px;
+  }
+  .studio-welcome__item::before {
+    content: '';
+    position: absolute;
+    left: 20px;
+    top: 22px;
+    width: 16px;
+    height: 9px;
+    border-left: 3px solid var(--ds-color-accent);
+    border-bottom: 3px solid var(--ds-color-accent);
+    transform: rotate(-45deg);
+  }
+  .studio-welcome__item-title {
+    display: block;
+    font-family: var(--ds-font-display);
+    font-size: 19px;
+    font-weight: 700;
+    line-height: 1.2;
+    text-transform: uppercase;
+  }
+  .studio-welcome__item-body {
+    display: block;
+    font-size: 15px;
+    color: var(--ds-color-fg-muted);
+  }
+
+  /* ---- chooser ("Keuzehulp") --------------------------------------------- */
+  .studio-section.studio-chooser {
+    padding-block: 96px;
+  }
+  .studio-chooser .studio-section__lede {
+    margin-bottom: 0;
+    max-width: 640px;
+  }
+  .studio-chooser__grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--ds-space-sm);
+    margin-top: 36px;
+  }
+  .studio-chooser__grid--2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .studio-chooser__grid--3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .studio-choice {
+    display: flex;
+    flex-direction: column;
+    background: var(--ds-color-surface-raised);
+    border: 1px solid var(--ds-color-border);
+    color: var(--ds-color-fg);
+    padding: 26px;
+    text-decoration: none;
+    transition:
+      border-color var(--ds-transition-fast),
+      transform var(--ds-transition-fast);
+  }
+  .studio-choice:hover {
+    border-color: var(--ds-color-accent);
+  }
+  .studio-choice:focus-visible {
+    outline: 2px solid var(--ds-color-accent);
+    outline-offset: 2px;
+  }
+  .studio-choice__label {
+    display: block;
+    font-family: var(--ds-font-display);
+    font-size: var(--ds-text-micro);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ds-color-fg-muted);
+    margin-bottom: var(--ds-space-2xs);
+  }
+  .studio-choice__title {
+    font-family: var(--ds-font-display);
+    font-size: 25px;
+    font-weight: 800;
+    line-height: 1.05;
+    text-transform: uppercase;
+    margin-bottom: var(--ds-space-xs);
+  }
+  .studio-choice__body {
+    font-size: 15px;
+    color: var(--ds-color-fg-muted);
+    margin-bottom: 18px;
+  }
+  .studio-choice__link {
+    margin-top: auto;
+    font-family: var(--ds-font-display);
+    font-size: var(--ds-text-small);
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ds-color-accent);
+  }
+  .studio-choice--featured {
+    background: var(--ds-color-surface-inverse);
+    border-color: var(--ds-color-surface-inverse);
+    color: var(--ds-color-fg-inverse);
+  }
+  .studio-choice--featured:hover {
+    border-color: var(--ds-color-border-inverse);
+  }
+  .studio-choice--featured:focus-visible {
+    outline-color: var(--ds-color-accent);
+  }
+  .studio-choice--featured :is(.studio-choice__label, .studio-choice__body) {
+    color: var(--ds-color-fg-inverse-soft);
+  }
+  .studio-choice--featured .studio-choice__link {
+    color: var(--ds-color-fg-inverse);
+  }
+
+  /* ---- photos (strip, gallery, wide) ------------------------------------- */
+  .studio-section.studio-photos--strip {
+    padding-top: 0;
+  }
+  .studio-photos__head + .studio-photos__grid {
+    margin-top: var(--ds-space-lg);
+  }
+  .studio-photos__grid {
+    display: grid;
+    gap: var(--ds-space-xs);
+  }
+  .studio-photos--strip .studio-photos__grid {
+    grid-template-columns: 1.2fr repeat(2, 1fr);
+  }
+  .studio-photos--strip .studio-photos__grid[data-count='1'] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .studio-photos--strip .studio-photos__grid[data-count='2'] {
+    grid-template-columns: 1.2fr 1fr;
+  }
+  .studio-photos--strip
+    .studio-photos__grid:is([data-count='4'], [data-count='5'], [data-count='6']) {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+  .studio-photos--gallery .studio-photos__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .studio-photos__figure {
+    position: relative;
+    overflow: hidden;
+    margin: 0;
+    height: 440px;
+    background: var(--ds-color-border);
+  }
+  .studio-photos--gallery .studio-photos__figure {
+    height: 360px;
+  }
+  .studio-photos--wide .studio-photos__figure {
+    height: 460px;
+  }
+  .studio-photos__figure img {
+    object-fit: cover;
+    object-position: var(--photo-focus, 50% 50%);
+  }
+  /* A caption sits on the photo: a faint neutral shade at the bottom keeps it
+     readable on a light picture without tinting the photo (the design has
+     only the caption's text shadow). */
+  .studio-photos__figure--captioned::after {
+    content: '';
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 35%;
+    background: linear-gradient(
+      to bottom,
+      transparent,
+      color-mix(in srgb, var(--color-ds-black) 30%, transparent)
+    );
+    pointer-events: none;
+  }
+  .studio-photos__caption {
+    position: absolute;
+    z-index: 1;
+    left: var(--ds-space-sm);
+    bottom: 14px;
+    font-family: var(--ds-font-display);
+    font-size: var(--ds-text-small);
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ds-color-fg-on-photo);
+    text-shadow: var(--ds-text-shadow-on-photo);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .studio-photos__figure img {
+      transition: transform 0.6s;
+    }
+    .studio-photos--strip .studio-photos__figure:hover img,
+    .studio-photos--gallery .studio-photos__figure:hover img {
+      transform: scale(1.04);
+    }
+    .studio-choice:hover {
+      transform: translateY(-2px);
+    }
+    .studio-photo-tile:hover {
+      transform: translateY(-2px);
+    }
+  }
+
+  /* ---- callout: photo ground and compact closing line --------------------- */
+  .studio-callout__photo {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+  }
+  .studio-callout__photo img {
+    object-fit: cover;
+  }
+  .studio-callout__photo::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--ds-color-surface-footer) 94%, transparent) 0%,
+      color-mix(in srgb, var(--ds-color-surface-inverse) 82%, transparent) 55%,
+      color-mix(in srgb, var(--ds-color-surface-inverse) 55%, transparent) 100%
+    );
+  }
+  /* The decorative ring of the plain band would draw over the photo. */
+  .studio-callout.studio-callout--photo::after {
+    display: none;
+  }
+  .studio-callout.studio-callout--compact {
+    padding-block: 56px;
+  }
+  .studio-callout.studio-callout--compact .studio-callout__title {
+    font-size: 36px;
+    font-weight: 800;
+    max-width: none;
+  }
+
+  /* ---- faq: groups and the plus/minus marker ------------------------------ */
+  .studio-faq__group {
+    font-family: var(--ds-font-display);
+    font-size: 15px;
+    font-weight: 400;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ds-color-accent);
+    margin: 0 0 var(--ds-space-3xs);
+    /* `#beginners` lands clear of the 92px sticky header. */
+    scroll-margin-top: calc(var(--ds-header-height) + var(--ds-space-lg));
+  }
+  .studio-faq__section:not(:first-child) > .studio-faq__group {
+    margin-top: var(--ds-space-2xl);
+  }
+  .studio-section--dark .studio-faq__group {
+    color: var(--ds-color-fg-inverse);
+  }
+  .studio-faq__summary {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 20px;
+    cursor: pointer;
+    list-style: none;
+  }
+  .studio-faq__summary::-webkit-details-marker {
+    display: none;
+  }
+  .studio-faq__summary .studio-faq__q {
+    margin-bottom: 0;
+  }
+  .studio-faq__summary::after {
+    content: '+';
+    flex: none;
+    color: var(--ds-color-accent);
+    font-family: var(--ds-font-display);
+    font-weight: 700;
+    font-size: 30px;
+    line-height: 0.8;
+  }
+  .studio-faq details[open] > .studio-faq__summary::after {
+    content: '\2013';
+  }
+  .studio-faq details[open] > .studio-faq__summary + .studio-faq__a {
+    margin-top: var(--ds-space-xs);
+  }
+  .studio-section--dark .studio-faq__summary::after {
+    color: var(--ds-color-fg-inverse);
+  }
+}

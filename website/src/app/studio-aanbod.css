@@ -1,166 +1,60 @@
 /* ============================================================================
-   OFFER, CATALOGUE, TEAM (13 Oct 2026) — additive, studio-offer* / studio-team*
+   OFFER CATALOGUE (13 Oct 2026, catalogue re-skinned 24 Nov 2026)
    ----------------------------------------------------------------------------
    Imported by `globals.css`. Same rules as the rest of the design system:
    only `--ds-*` / `--color-ds-*` tokens, every class prefixed `studio-`, and
    the semantic tokens only exist under `.studio-root`, so nothing here can
    reach the webshop. Square corners, hairlines, condensed caps.
+
+   The offer page (head, facts, side panel) is in `studio-offer-detail.css`,
+   the form skin (enquiry, voucher, review) in `studio-forms.css`.
    ========================================================================== */
 @layer components {
-  /* ---- offer page head -------------------------------------------------- */
-  .studio-offer-head__inner--media {
-    display: grid;
-    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
-    gap: var(--ds-space-3xl);
-    align-items: end;
-  }
-  .studio-offer-head__visual {
-    position: relative;
-    overflow: hidden;
-    aspect-ratio: 4 / 5;
-    max-height: 520px;
-    background:
-      linear-gradient(135deg, var(--ds-sheen-on-light), transparent 60%),
-      linear-gradient(180deg, var(--color-ds-bone-100), var(--color-ds-bone-300));
-  }
-  .studio-offer-head__visual img {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-  .studio-offer-head__facts {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--ds-space-xs) var(--ds-space-xl);
-    margin-top: var(--ds-space-lg);
-    padding-top: var(--ds-space-sm);
-    border-top: 1px solid var(--ds-color-border-strong);
-    max-width: 60ch;
-  }
-  .studio-offer-head__facts dt,
-  .studio-offer__label {
-    font-family: var(--ds-font-display);
-    font-size: var(--ds-text-micro);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.16em;
-    color: var(--ds-color-fg-subtle);
-  }
-  .studio-offer-head__facts dd {
-    font-size: var(--ds-text-lede);
-    color: var(--ds-color-fg);
-  }
-
-  /* ---- offer details ---------------------------------------------------- */
-  .studio-offer {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--ds-space-2xl) var(--ds-space-3xl);
-    max-width: 1080px;
-  }
-  .studio-offer__item {
-    border-top: 1px solid var(--ds-color-accent);
-    padding-top: var(--ds-space-md);
-  }
-  .studio-offer__item--goal {
-    grid-column: 1 / -1;
-  }
-  .studio-offer__label {
-    display: block;
-    margin-bottom: var(--ds-space-xs);
-  }
-  .studio-offer__goal {
-    font-family: var(--ds-font-display);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.01em;
-    font-size: var(--ds-text-callout);
-    line-height: var(--ds-leading-display);
-    max-width: 28ch;
-  }
-  .studio-offer__item p {
-    max-width: 60ch;
-  }
-  .studio-offer__list {
-    max-width: 60ch;
-  }
-  .studio-offer__list li {
-    position: relative;
-    padding-left: 28px;
-    margin-bottom: var(--ds-space-xs);
-  }
-  .studio-offer__list li::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: var(--ds-space-xs);
-    width: 14px;
-    height: 1px;
-    background: var(--ds-color-accent);
-  }
-  .studio-offer__note {
-    margin-top: var(--ds-space-sm);
-    font-size: var(--ds-text-small);
-    color: var(--ds-color-fg-muted);
-  }
-  .studio-offer__actions {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--ds-space-md) var(--ds-space-xl);
-    margin-top: var(--ds-space-3xl);
-  }
-  .studio-offer__back {
-    font-family: var(--ds-font-display);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    text-decoration: underline;
-    text-underline-offset: 4px;
-  }
-  .studio-offer__back:hover {
-    color: var(--ds-color-accent);
-  }
-
   /* ---- catalogue -------------------------------------------------------- */
+  /* One group = a 1px ink rule, the title and lede on the left (280px), the
+     cards on the right. Groups stack; each carries its own padding. */
   .studio-offer-groups {
-    display: grid;
-    gap: var(--ds-space-3xl);
+    display: block;
   }
   .studio-offer-group {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 3fr);
-    gap: var(--ds-space-lg) var(--ds-space-2xl);
-    padding-top: var(--ds-space-md);
-    border-top: 2px solid var(--ds-color-accent);
+    grid-template-columns: 280px minmax(0, 1fr);
+    gap: var(--ds-space-2xl);
+    padding: var(--ds-space-2xl) 0;
+    border-top: 1px solid var(--ds-color-fg);
   }
   .studio-section--dark .studio-offer-group {
     border-top-color: var(--ds-color-border-inverse);
   }
+  /* A catalogue with one group (/bikefit): no left column, the cards sit
+     straight under the section head. */
+  .studio-offer-groups--single .studio-offer-group {
+    display: block;
+    padding: 0;
+    border-top: 0;
+  }
   .studio-offer-group__title {
+    margin-bottom: var(--ds-space-xs);
     font-family: var(--ds-font-display);
     font-weight: 800;
     text-transform: uppercase;
-    letter-spacing: 0.01em;
-    font-size: var(--ds-text-callout);
+    letter-spacing: 0;
+    font-size: 42px;
     line-height: var(--ds-leading-display);
   }
   .studio-section--dark .studio-offer-group__title {
     color: var(--ds-color-fg-inverse);
   }
   .studio-offer-group__lede {
-    margin-top: var(--ds-space-xs);
+    font-size: 15px;
     color: var(--ds-color-fg-muted);
-    max-width: 32ch;
   }
   .studio-section--dark .studio-offer-group__lede {
     color: var(--ds-color-fg-inverse-muted);
   }
   .studio-offer-list {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: var(--ds-space-md);
     list-style: none;
     margin: 0;
@@ -170,17 +64,17 @@
     position: relative;
     display: flex;
     flex-direction: column;
-    gap: var(--ds-space-xs);
-    padding: var(--ds-space-lg);
+    min-height: 230px;
+    padding: 28px;
     background: var(--ds-color-surface-raised);
-    border: 1px solid var(--ds-color-border);
+    border: 1px solid color-mix(in srgb, var(--ds-color-border) 80%, transparent);
     transition:
       border-color var(--ds-transition-fast),
-      background var(--ds-transition-fast);
+      transform var(--ds-transition-fast);
   }
   .studio-offer-card:hover {
     border-color: var(--ds-color-accent);
-    background: var(--ds-color-surface-raised-hover);
+    transform: translateY(-2px);
   }
   .studio-offer-card:focus-within {
     outline: 2px solid var(--ds-color-accent);
@@ -191,16 +85,16 @@
     border-color: var(--ds-color-border-inverse-strong);
   }
   .studio-section--dark .studio-offer-card:hover {
-    background: var(--ds-color-surface-inverse-raised-hover);
     border-color: var(--ds-color-border-inverse);
   }
   .studio-offer-card__title {
+    margin-bottom: 10px;
     font-family: var(--ds-font-display);
-    font-weight: 600;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.02em;
-    font-size: var(--ds-text-heading-sm);
-    line-height: var(--ds-leading-heading);
+    letter-spacing: 0;
+    font-size: 21px;
+    line-height: 1.1;
   }
   .studio-section--dark .studio-offer-card__title {
     color: var(--ds-color-fg-inverse);
@@ -216,271 +110,87 @@
     outline: none;
   }
   .studio-offer-card__body {
+    margin-bottom: var(--ds-space-sm);
+    font-size: 15px;
     color: var(--ds-color-fg-muted);
   }
   .studio-section--dark .studio-offer-card__body {
     color: var(--ds-color-fg-inverse-muted);
   }
-  .studio-offer-card__foot {
-    margin-top: auto;
-    padding-top: var(--ds-space-sm);
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    gap: var(--ds-space-2xs) var(--ds-space-sm);
-    font-family: var(--ds-font-display);
-    font-size: var(--ds-text-micro);
-    text-transform: uppercase;
-    letter-spacing: 0.14em;
-  }
-  .studio-offer-card__price {
-    color: var(--ds-color-fg-subtle);
-  }
-  .studio-offer-card__more {
-    color: var(--ds-color-accent);
-    font-weight: 700;
-  }
-  .studio-section--dark .studio-offer-card__price {
-    color: var(--ds-color-fg-inverse-subtle);
-  }
-  .studio-section--dark .studio-offer-card__more {
-    color: var(--ds-color-fg-inverse);
-  }
-  /* Booking status (Beheer → Aanbod). "Tijdelijk niet online te boeken" greys
-     the card out; the text says it too, so colour is never the only signal. */
+  /* Booking status (Beheer → Aanbod), and the own tag of a fixed card
+     ("Bedrag naar keuze"): the small letterspaced tag of the design. */
   .studio-offer-card__status {
+    margin-bottom: var(--ds-space-md);
     font-family: var(--ds-font-display);
-    font-size: var(--ds-text-micro);
+    font-size: 12px;
     text-transform: uppercase;
-    letter-spacing: 0.14em;
+    letter-spacing: 0.12em;
     color: var(--ds-color-fg-muted);
   }
   .studio-section--dark .studio-offer-card__status {
     color: var(--ds-color-fg-inverse-muted);
   }
-  /* Greyed without opacity, so every text keeps its contrast. */
+  /* A card with a price: the status sits closer to it. */
+  .studio-offer-card__status:has(+ .studio-offer-card__price) {
+    margin-bottom: var(--ds-space-2xs);
+  }
+  .studio-offer-card__price {
+    margin-bottom: var(--ds-space-sm);
+    font-family: var(--ds-font-display);
+    font-weight: 700;
+    font-size: 16px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ds-color-accent);
+  }
+  .studio-section--dark .studio-offer-card__price {
+    color: var(--ds-color-fg-inverse);
+  }
+  .studio-offer-card__more {
+    margin-top: auto;
+    font-family: var(--ds-font-display);
+    font-weight: 600;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  .studio-section--dark .studio-offer-card__more {
+    color: var(--ds-color-fg-inverse);
+  }
+  /* Greyed without opacity, so every text keeps its contrast; the text says
+     it too, so colour is never the only signal. */
   .studio-offer-card--unavailable,
   .studio-offer-card--unavailable:hover {
     background: var(--ds-color-surface-alt);
     border-style: dashed;
     border-color: var(--ds-color-border-strong);
+    transform: none;
   }
   .studio-offer-card--unavailable .studio-offer-card__title {
     color: var(--ds-color-fg-muted);
   }
-  .studio-offer-head--unavailable .studio-offer-head__facts dd[data-offer-status] {
-    color: var(--ds-color-fg-muted);
-  }
-  .studio-offer-head .studio-btn:disabled,
-  .studio-offer__actions .studio-btn:disabled {
-    background: var(--ds-color-surface-alt);
-    border-color: var(--ds-color-border-strong);
-    color: var(--ds-color-fg-muted);
-    cursor: not-allowed;
-  }
-  .studio-offer__status-note {
-    max-width: 60ch;
-    margin-top: var(--ds-space-sm);
-    font-size: var(--ds-text-small);
-    color: var(--ds-color-fg-muted);
-  }
-  .studio-offer__enquiry {
-    margin-top: var(--ds-space-xl);
-    scroll-margin-top: var(--ds-space-xl);
-  }
-
-  /* ---- team ------------------------------------------------------------- */
-  /* auto-fill, not auto-fit: with one member (Rutger alone since 20 Oct 2026)
-     auto-fit collapsed the empty columns and the single card, portrait
-     included, stretched across the whole container on desktop. */
-  .studio-team {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
-    gap: var(--ds-space-2xl) var(--ds-space-xl);
-    list-style: none;
-    margin: 0;
-    padding: 0;
-  }
-  .studio-team__member {
-    display: flex;
-    flex-direction: column;
-    gap: var(--ds-space-xs);
-  }
-  .studio-team__portrait {
-    position: relative;
-    overflow: hidden;
-    aspect-ratio: 4 / 5;
-    width: 100%;
-    max-width: 420px;
-    margin-bottom: var(--ds-space-sm);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background:
-      linear-gradient(135deg, var(--ds-sheen-on-dark), transparent 60%),
-      linear-gradient(180deg, var(--color-ds-burgundy-600), var(--color-ds-burgundy-900));
-  }
-  /* Initials only: a calmer, shorter panel than a real portrait. */
-  .studio-team__portrait:not(:has(img)) {
-    aspect-ratio: 4 / 3;
-  }
-  .studio-team__portrait img {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-  .studio-team__initials {
-    font-family: var(--ds-font-display);
-    font-weight: 800;
-    font-size: var(--ds-text-hero);
-    line-height: 1;
-    letter-spacing: 0.02em;
-    color: var(--ds-color-fg-inverse);
-  }
-  .studio-team__name {
-    font-family: var(--ds-font-display);
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.02em;
-    font-size: var(--ds-text-heading-sm);
-    line-height: var(--ds-leading-heading);
-  }
-  .studio-team__role {
-    font-family: var(--ds-font-display);
-    font-size: var(--ds-text-micro);
-    text-transform: uppercase;
-    letter-spacing: 0.16em;
-    color: var(--ds-color-fg-subtle);
-  }
-  .studio-team__bio {
-    color: var(--ds-color-fg-muted);
-    max-width: 60ch;
-  }
-
-  /* ---- booking: offer context and enquiry ------------------------------ */
-  .studio-booking__context {
-    padding: var(--ds-space-sm) var(--ds-space-md);
-    border-bottom: 1px solid var(--ds-color-border);
-    background: var(--ds-color-surface);
-    font-size: var(--ds-text-small);
-  }
-  .studio-booking__context a {
-    text-decoration: underline;
-    text-underline-offset: 3px;
-  }
-  .studio-booking__enquiry {
-    max-width: 720px;
-    padding: var(--ds-space-xl) var(--ds-space-lg);
-  }
-  .studio-booking__enquiry-title {
-    font-family: var(--ds-font-display);
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.01em;
-    font-size: var(--ds-text-prose-title);
-    line-height: var(--ds-leading-prose-title);
-    margin-bottom: var(--ds-space-sm);
-  }
-  .studio-booking__enquiry-links {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--ds-space-2xs) var(--ds-space-lg);
-    margin-top: var(--ds-space-lg);
-    font-size: var(--ds-text-small);
-  }
-  .studio-booking__enquiry-links a {
-    text-decoration: underline;
-    text-underline-offset: 3px;
-  }
-
-  /* ---- photography in existing shells ---------------------------------- */
-  /* The hero and split panels were drawn without photos so far. With one:
-     cover-crop it, drop the decorative ring, and (hero) lay a bone veil over
-     the text side so the dark title keeps its contrast. */
-  .studio-hero__media:has(img) img {
-    object-fit: cover;
-    object-position: 70% 50%;
-  }
-  .studio-hero__media:has(img)::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    z-index: 1;
-    background: linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--ds-color-surface) 94%, transparent) 0%,
-      color-mix(in srgb, var(--ds-color-surface) 82%, transparent) 36%,
-      transparent 66%
-    );
-  }
-  .studio-hero__media:has(img)::after,
-  .studio-split__visual:has(img)::after {
-    display: none;
+  .studio-offer-groups + .studio-stack {
+    margin-top: var(--ds-space-md);
   }
 
   /* ---- responsive ------------------------------------------------------- */
-  @media (max-width: 900px) {
-    .studio-hero__media:has(img)::before {
-      background: linear-gradient(
-        0deg,
-        color-mix(in srgb, var(--ds-color-surface) 96%, transparent) 0%,
-        color-mix(in srgb, var(--ds-color-surface) 88%, transparent) 48%,
-        transparent 82%
-      );
-    }
-    .studio-offer-head__inner--media,
-    .studio-offer,
+  @media (max-width: 1080px) {
     .studio-offer-group {
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
+      gap: var(--ds-space-md);
     }
-    .studio-offer-head__visual {
-      aspect-ratio: 3 / 2;
-      max-height: none;
-    }
-    .studio-offer-group__lede {
-      max-width: 60ch;
-    }
-    .studio-offer__goal,
-    .studio-offer-group__title {
-      font-size: min(var(--ds-text-callout), 7vw);
+    .studio-offer-list {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
-  @media (max-width: 560px) {
-    .studio-offer-card,
-    .studio-booking__enquiry {
-      padding: var(--ds-space-md);
-    }
-    .studio-offer__actions {
-      flex-direction: column;
-      align-items: stretch;
-    }
-    .studio-offer__actions .studio-btn {
-      justify-content: center;
-      text-align: center;
+  @media (max-width: 720px) {
+    .studio-offer-list {
+      grid-template-columns: minmax(0, 1fr);
     }
   }
-}
-
-/* ---- gift voucher order form (`giftVoucher`, /cadeaubon) ---------------- */
-/* Reuses the booking form fields; only the panel spacing is its own, the
-   same as the enquiry panel. */
-@layer components {
-  /* Doubled class: `.studio-booking` (globals.css) loads later in the layer. */
-  .studio-booking.studio-voucher {
-    max-width: 720px;
-    padding: var(--ds-space-xl) var(--ds-space-lg);
-  }
-  .studio-voucher .studio-booking__confirm {
-    padding: 0;
-  }
-  .studio-voucher .studio-booking__alert p + p {
-    margin-top: var(--ds-space-2xs);
-  }
-  @media (max-width: 560px) {
-    .studio-booking.studio-voucher {
-      padding: var(--ds-space-md);
+  @media (prefers-reduced-motion: reduce) {
+    .studio-offer-card:hover {
+      transform: none;
     }
   }
 }

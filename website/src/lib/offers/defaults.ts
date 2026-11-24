@@ -91,15 +91,25 @@ const NOT_AN_EXTRA: DefaultOfferingExtras = {
   addonOptions: [],
 };
 
-/** The three temporary AI images (`docs/editorial-images.md`): one per category, the lactate test apart. */
-function offerImage(slug: string, category: Exclude<OfferCategory, 'overige'>) {
-  const slot: EditorialSlot =
-    slug === 'lactaattest'
-      ? 'flemish-cyclists'
-      : category === 'bikefit'
-        ? 'bikefit-studio'
-        : 'junior-coaching';
-  return editorialImage(slot);
+/**
+ * The photo of each offer page (redesign of 24 Nov 2026, the pairing of the design export): a real
+ * photograph from the editorial slots. This is only what `cms:bootstrap` writes for a row that is
+ * still missing: an existing row keeps the image stored in `cms_offerings.image`.
+ */
+const OFFER_IMAGE_SLOTS: Record<string, EditorialSlot> = {
+  'bikefit-nieuwe-fiets': 'samen-bergop',
+  'bikefit-huidige-fiets': 'rutger-klim',
+  'bikefit-tweede-bezoek': 'muur-ronse-bank',
+  'bikefit-tweede-fiets': 'band-wisselen',
+  voetanalyse: 'renner-rug',
+  zadelanalyse: 'rutger-klim',
+  'afstellen-schoenplaatjes': 'renner-rug',
+  lactaattest: 'samen-bergop',
+  coaching: 'zonsondergang-weg',
+};
+
+function offerImage(slug: string) {
+  return editorialImage(OFFER_IMAGE_SLOTS[slug] ?? 'zonsondergang-weg');
 }
 
 function offer(
@@ -117,7 +127,7 @@ function offer(
       priceText: content.priceText ?? '',
       extrasNote: OFFER_EXTRAS_NOTE,
       ctaLabel: '',
-      image: offerImage(content.slug, content.category),
+      image: offerImage(content.slug),
     },
     isListed: true,
     ...NOT_AN_EXTRA,

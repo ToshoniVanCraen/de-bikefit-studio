@@ -50,6 +50,10 @@ const ANCHOR_BY_TYPE: Partial<Record<BlockType, string>> = {
   giftVoucher: 'bestellen',
   team: 'team',
   location: 'locatie',
+  welcome: 'welkom',
+  // Other pages link to `/aanbod#keuzehulp` and `/#keuzehulp`: this id is a contract.
+  chooser: 'keuzehulp',
+  photoStrip: 'fotos',
 };
 
 export function sectionAnchors(blocks: readonly BlockInstance[]): Map<string, string> {

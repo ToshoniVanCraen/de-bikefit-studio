@@ -5,6 +5,7 @@
  * Provenance of the reused copy: `prototype/index.html`,
  * `prototype/bikefit.html` (see the header of `scripts/cms-seed.mts`).
  */
+import { editorialImage } from '@/lib/studio/editorial-images';
 
 export type SeedBlock = { type: string; data: Record<string, unknown> };
 
@@ -124,7 +125,28 @@ export const CONTACT_BLOCK: SeedBlock = {
   },
 };
 
-/** Closing band on the FAQ; books like the header's "Afspraak maken". */
+/**
+ * The closing band of the redesign (24 Nov 2026) on every page that ends on it in the design:
+ * "Comfort is een keuze. Maak ze." over the sunset photograph, "Afspraak maken" and the phone
+ * number (a token, so it follows Instellingen → Contact). The cta renderer treats the photo as
+ * a background (decorative), so the manifest's alt text is never read out.
+ */
+export const CLOSING_CTA: SeedBlock = {
+  type: 'cta',
+  data: {
+    variant: 'accent',
+    title: 'Comfort is een keuze. Maak ze.',
+    body: '',
+    primaryCta: { label: 'Afspraak maken →', href: BOOKING_PATH, external: false },
+    secondaryCta: { label: PHONE_TOKEN, href: PHONE_HREF_TOKEN, external: false },
+    image: editorialImage('zonsondergang-weg'),
+  },
+};
+
+/**
+ * Closing band on the FAQ until the redesign of 24 Nov 2026 (since then the FAQ ends on
+ * {@link CLOSING_CTA}); kept for the history of the patches that name it.
+ */
 export const CALLOUT_BLOCK: SeedBlock = {
   type: 'cta',
   data: {

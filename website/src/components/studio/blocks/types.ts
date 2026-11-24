@@ -1,5 +1,6 @@
 import type { BlockTypeData } from '@/lib/cms/blocks';
 import type { StudioLocale } from '@/lib/studio/locale';
+import type { PageHeroCrumb } from '../page-hero';
 import type { HeadingLevel } from './section';
 
 /**
@@ -14,6 +15,12 @@ export type BlockPageContext = {
   requestedService: string | null;
   /** `?extra=` (an extra's slug) after `parseServiceParam()`; only the booking block reads it. */
   requestedExtra?: string | null;
+  /**
+   * The visible breadcrumb of a nested page, set by `page-view.tsx` only when
+   * the page opens on a `hero` page head, which then prints it above its
+   * eyebrow (24 Nov 2026 redesign). Absent everywhere else.
+   */
+  crumbs?: readonly PageHeroCrumb[];
 };
 
 /** Every block renderer takes the same five things. */

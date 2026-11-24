@@ -87,7 +87,7 @@ export function ReviewForm({
 
   if (done) {
     return (
-      <div className="studio-booking" ref={rootRef}>
+      <div className="studio-booking studio-form" ref={rootRef}>
         <div className="studio-booking__confirm" role="status">
           <h2 className="studio-booking__confirm-title" tabIndex={-1} data-done-heading>
             Bedankt{firstName ? `, ${firstName}` : ''}!
@@ -99,7 +99,7 @@ export function ReviewForm({
   }
 
   return (
-    <div className="studio-booking" ref={rootRef}>
+    <div className="studio-booking studio-form" ref={rootRef}>
       <form
         className="studio-booking__form"
         noValidate
@@ -113,9 +113,13 @@ export function ReviewForm({
           data-invalid={errors.rating ? 'true' : undefined}
         >
           <legend className="studio-booking__legend-title">Hoe was het? *</legend>
-          <div role="radiogroup" aria-describedby={`${formId}-rating-hint`}>
+          <div
+            role="radiogroup"
+            className="studio-form__pills"
+            aria-describedby={`${formId}-rating-hint`}
+          >
             {REVIEW_RATINGS.map((value) => (
-              <label key={value} className="studio-booking__label">
+              <label key={value} className="studio-form__pill">
                 <input
                   type="radio"
                   name="rating"
@@ -169,7 +173,7 @@ export function ReviewForm({
         </div>
 
         <div className="studio-booking__field">
-          <label className="studio-booking__label">
+          <label className="studio-booking__check">
             <input
               type="checkbox"
               name="allowFirstName"

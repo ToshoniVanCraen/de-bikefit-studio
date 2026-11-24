@@ -1,0 +1,172 @@
+/* Studio semantic tier and element defaults (split out of globals.css).
+   Imported by `globals.css` after the component files: `.studio-root` maps the raw
+   `@theme` palette (kept in globals.css, Tailwind needs it in the entry file) onto
+   the `--ds-*` tokens every component reads. Unlayered, so source order is
+   irrelevant to the `@layer components` rules. */
+
+/* ---- Semantic tier + element defaults, scoped to the studio ------------- */
+.studio-root {
+  /* Colour: foreground */
+  --ds-color-fg: var(--color-ds-cocoa-900);
+  --ds-color-fg-muted: var(--color-ds-cocoa-600);
+  --ds-color-fg-subtle: var(--color-ds-cocoa-600);
+  --ds-color-fg-inverse: var(--color-ds-blush-50);
+  --ds-color-fg-inverse-soft: var(--color-ds-blush-100);
+  --ds-color-fg-inverse-muted: var(--color-ds-blush-200);
+  --ds-color-fg-inverse-subtle: var(--color-ds-blush-100);
+  /* Text and marks laid straight on a photograph (captions). */
+  --ds-color-fg-on-photo: var(--color-ds-white);
+  --ds-text-shadow-on-photo: 0 1px 8px color-mix(in srgb, var(--color-ds-black) 50%, transparent);
+  /* Colour: surfaces */
+  --ds-color-bg: var(--color-ds-blush-25);
+  --ds-color-surface: var(--color-ds-blush-100);
+  --ds-color-surface-alt: var(--color-ds-blush-300);
+  --ds-color-surface-raised: var(--color-ds-white);
+  --ds-color-surface-raised-hover: var(--color-ds-blush-50);
+  /* Cards, tiles, steps and forms: white on the page and on cream. */
+  --ds-color-surface-card: var(--color-ds-white);
+  --ds-color-surface-inverse: var(--color-ds-wine-700);
+  --ds-color-surface-inverse-raised: var(--color-ds-wine-800);
+  --ds-color-surface-inverse-raised-hover: color-mix(
+    in srgb,
+    var(--color-ds-wine-700) 94%,
+    var(--color-ds-white)
+  );
+  --ds-color-surface-footer: var(--color-ds-wine-800);
+  /* Colour: borders */
+  --ds-color-border: var(--color-ds-blush-300);
+  /* Form controls and other edges that must read as a boundary (3:1). */
+  --ds-color-border-strong: color-mix(
+    in srgb,
+    var(--color-ds-blush-300) 45%,
+    var(--color-ds-cocoa-600)
+  );
+  /* The card edge (line at 80%) and the header's hairline (line at 50%). */
+  --ds-color-border-card: color-mix(in srgb, var(--color-ds-blush-300) 80%, transparent);
+  --ds-color-border-hairline: color-mix(in srgb, var(--color-ds-blush-300) 50%, transparent);
+  /* The 1px ink rule above the contact grid and the offer groups. */
+  --ds-color-rule: var(--color-ds-cocoa-900);
+  --ds-color-border-inverse: color-mix(in srgb, var(--color-ds-blush-50) 45%, transparent);
+  --ds-color-border-inverse-strong: color-mix(in srgb, var(--color-ds-blush-50) 25%, transparent);
+  --ds-color-border-inverse-subtle: color-mix(in srgb, var(--color-ds-blush-100) 40%, transparent);
+  --ds-color-border-footer: color-mix(in srgb, var(--color-ds-blush-200) 25%, transparent);
+  /* Colour: interactive — wine IS the accent */
+  --ds-color-accent: var(--color-ds-wine-700);
+  --ds-color-accent-hover: var(--color-ds-wine-800);
+  --ds-color-interactive: var(--color-ds-wine-700);
+  --ds-color-interactive-hover: var(--color-ds-wine-800);
+  --ds-color-interactive-fg: var(--color-ds-blush-50);
+  --ds-color-interactive-inverse: var(--color-ds-blush-50);
+  --ds-color-interactive-inverse-hover: var(--color-ds-white);
+  --ds-color-interactive-inverse-fg: var(--color-ds-wine-700);
+  /* A ghost button on wine lightens the ground a touch on hover. */
+  --ds-color-ghost-on-dark-hover: color-mix(in srgb, var(--color-ds-white) 6%, transparent);
+  /* Overlays on photographs */
+  /* Landing hero: cream from the left, the photo shows on the right. */
+  --ds-overlay-hero: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--color-ds-blush-100) 97%, transparent) 0%,
+    color-mix(in srgb, var(--color-ds-blush-100) 88%, transparent) 35%,
+    color-mix(in srgb, var(--color-ds-blush-100) 15%, transparent) 62%,
+    color-mix(in srgb, var(--color-ds-blush-100) 0%, transparent) 100%
+  );
+  /* ≤720px the copy covers the photo: an even cream veil. */
+  --ds-overlay-hero-narrow: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-ds-blush-100) 95%, transparent),
+    color-mix(in srgb, var(--color-ds-blush-100) 80%, transparent)
+  );
+  /* Callout band over a photo (`.callout--photo`): wine, opening to the right. */
+  --ds-overlay-callout: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--color-ds-wine-800) 94%, transparent) 0%,
+    color-mix(in srgb, var(--color-ds-wine-700) 82%, transparent) 55%,
+    color-mix(in srgb, var(--color-ds-wine-700) 55%, transparent) 100%
+  );
+  /* The cookie bar's lift off the page. */
+  --ds-shadow-banner: 0 -8px 24px color-mix(in srgb, var(--color-ds-black) 18%, transparent);
+  /* Typography */
+  --ds-font-display: var(--font-ds-display);
+  --ds-font-body: var(--font-ds-body);
+  --ds-font-display-italic: var(--font-ds-display-italic);
+  --ds-text-meta: 12px;
+  --ds-text-eyebrow: 13px;
+  --ds-text-micro: 13px;
+  --ds-text-small: 14px;
+  --ds-text-nav: 14px;
+  --ds-text-card-body: 15px;
+  --ds-text-body: 16px;
+  --ds-text-lede: 17px;
+  --ds-text-heading-xs: 19px;
+  --ds-text-card-title: 21px;
+  --ds-text-heading-sm: 22px;
+  --ds-text-tagline: 24px;
+  --ds-text-heading-md: 24px;
+  --ds-text-tile-title: 26px;
+  --ds-text-lead: 28px;
+  --ds-text-contact-value: 28px;
+  --ds-text-split-title: 40px;
+  --ds-text-wordmark: 26px;
+  --ds-text-logo: 20px;
+  --ds-text-logo-kind: 11px;
+  --ds-text-numeral: 48px;
+  --ds-text-hero: clamp(56px, 8vw, 104px);
+  --ds-text-page-title: clamp(48px, 6.5vw, 88px);
+  --ds-text-display: clamp(40px, 5vw, 60px);
+  --ds-text-callout: 42px;
+  --ds-text-prose-title: clamp(36px, 4.5vw, 54px);
+  --ds-tracking-eyebrow: 0.14em;
+  --ds-tracking-button: 0.08em;
+  --ds-leading-wordmark: 1;
+  --ds-leading-hero: 0.95;
+  --ds-leading-display: 1;
+  --ds-leading-prose-title: 1;
+  --ds-leading-heading: 1.1;
+  --ds-leading-lead: 1.15;
+  --ds-leading-tagline: 1.2;
+  --ds-leading-body: 1.6;
+  /* Spacing */
+  --ds-space-4xs: 2px;
+  --ds-space-3xs: 4px;
+  --ds-space-2xs: 8px;
+  --ds-space-xs: 12px;
+  --ds-space-sm: 16px;
+  --ds-space-md: 24px;
+  --ds-space-lg: 32px;
+  --ds-space-xl: 40px;
+  --ds-space-2xl: 48px;
+  --ds-space-3xl: 64px;
+  --ds-space-4xl: 80px;
+  --ds-space-5xl: 100px;
+  /* The design's `.wrap`: 1240px including a 32px gutter on each side, so the
+     content column is 1176px; 20px gutters at ≤720px (see the media query
+     after this block). One wrap for every band: the header, hero and page hero
+     use `max-width: --ds-wrap-max` + `padding-inline: --ds-gutter`; sections,
+     callouts, breadcrumb and footer pad by the gutter and cap their inner box
+     at `--ds-container-max`, which is the wrap minus both gutters. Both give
+     the same left and right edge at every viewport width. */
+  --ds-gutter: 32px;
+  --ds-wrap-max: 1240px;
+  --ds-container-max: calc(var(--ds-wrap-max) - 2 * var(--ds-gutter));
+  --ds-container-narrow: 860px;
+  --ds-container-prose: 760px;
+  --ds-section-padding-block: 110px;
+  --ds-hero-padding-block: 80px;
+  --ds-header-height: 92px;
+  --ds-transition-fast: 0.2s ease;
+
+  font-family: var(--ds-font-body);
+  font-size: var(--ds-text-body);
+  line-height: var(--ds-leading-body);
+  color: var(--ds-color-fg);
+  background: var(--ds-color-bg);
+  overflow-wrap: break-word;
+  -webkit-font-smoothing: antialiased;
+}
+@media (max-width: 720px) {
+  .studio-root {
+    --ds-gutter: 20px;
+    --ds-section-padding-block: 72px;
+    --ds-text-callout: 34px;
+  }
+}

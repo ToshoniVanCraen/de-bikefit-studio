@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { validateBlock, validateNavigationItems } from '@/lib/cms/blocks';
 import { DEFAULT_OFFERS } from '@/lib/offers/defaults';
+import { editorialImage } from '@/lib/studio/editorial-images';
 import {
   AANBOD_PAGES,
   AANBOD_REDIRECTS,
@@ -41,9 +42,10 @@ describe('aanbod rollout pages', () => {
     expect(allText).not.toContain('"type":"offer"');
   });
 
-  it('home: the first section after the hero is the grouped offer, not "Voor wie"', () => {
-    const [hero, first] = page('').blocks;
+  it('home: after the hero, the welcome band and the keuzehulp (24 Nov 2026), then the grouped offer, not "Voor wie"', () => {
+    const [hero, welcome, chooser, first] = page('').blocks;
     expect(hero.type).toBe('hero');
+    expect([welcome.type, chooser.type]).toEqual(['welcome', 'chooser']);
     expect(hero.data.title).toBe('Meer plezier.');
     expect(hero.data.titleEmphasis).toBe('Op jouw fiets.');
     expect(first.type).toBe('offerCatalogue');
@@ -128,20 +130,26 @@ describe('aanbod rollout pages', () => {
       expect(text).toContain(audience);
     }
     expect(text).toContain('Jonge fietsers groeien. Hun fiets groeit niet vanzelf mee.');
-    expect(text).not.toMatch(/€|korting|gratis|\d+\s*%/i);
+    // The welcome band's "Je bent 100% welkom." is no price promise; the rest has none.
+    const offerText = JSON.stringify(
+      page('voor-wie').blocks.filter((block) => block.type !== 'welcome'),
+    );
+    expect(offerText).not.toMatch(/€|korting|gratis|\d+\s*%/i);
   });
 
-  it('/ons-team: Rutger alone since 20 Oct 2026, sourced bio, his own portrait or the initials, no invented credentials', () => {
+  it('/ons-team: Rutger alone since 20 Oct 2026, sourced bio, his own photograph or the initials, no invented credentials', () => {
     const team = page('ons-team').blocks.find((block) => block.type === 'team');
     const members = team?.data.members as typeof TEAM_MEMBERS;
     expect(members.map((member) => member.name)).toEqual(['Rutger Roelandts']);
     const [rutger] = members;
     expect(rutger.role).toBe('Oprichter');
     expect(rutger.bio).toHaveLength(2);
-    // A real photo under /images/team, never a media id or a generated image.
+    // A real photo of him, never a media id or a generated image: since the redesign of 24 Nov
+    // 2026 the design's photograph of him climbing (`rutger-klim`), named in its alt text.
     expect(rutger.image.mediaId).toBeNull();
     expect(rutger.image.decorative).toBe(false);
-    expect(rutger.image.url === null || rutger.image.url.startsWith('/images/team/')).toBe(true);
+    expect(rutger.image.url).toBe(editorialImage('rutger-klim').url);
+    expect(rutger.image.alt).toBe('Rutger Roelandts bergop');
     expect(allText).not.toMatch(/Robin|Goran|profiel volgt/);
   });
 

@@ -108,6 +108,11 @@
  *      state (first-seed /afspraak text; Toshoni Van Craen alone blocks before any
  *      write, applies with a replacement, or stays with --staging-retain-toshoni,
  *      which two providers refuse); all put back (`scripts/selftest/aanbod-correcties.mts`)
+ * 17e. site redesign (24 Nov 2026): from the pages of 31 Oct (frozen fixture) and the offerings
+ *      with their generated images, the dry run writes nothing, apply inserts, converts and
+ *      publishes, verified on the public readers (the `beginners` FAQ group), every page equal
+ *      to the fresh seed block for block, the editor's offering photo kept, idempotent, restore,
+ *      an editor's field blocks (`scripts/selftest/site-redesign.mts`)
  *  18. gift voucher: the order service on the database with `fetch` replaced (missing
  *      key/sender or a refusal is "not sent", only an accepted request is a
  *      success, no double mail, rate limit, the recipient is its own setting
@@ -623,6 +628,17 @@ async function main() {
   // 17d: the corrections of 27 Oct 2026 — settings, pages, copy, no guardian, Toshoni.
   const { aanbodCorrectiesSection } = await import('./selftest/aanbod-correcties.mjs');
   await aanbodCorrectiesSection({
+    db,
+    check,
+    section,
+    cookieJar,
+    backupDir: resolve(process.cwd(), DATA_DIR, 'rollout-backups'),
+    admin: user,
+  });
+
+  // 17e: the redesign of 24 Nov 2026 — the eight pages and the offering photographs.
+  const { siteRedesignSection } = await import('./selftest/site-redesign.mjs');
+  await siteRedesignSection({
     db,
     check,
     section,

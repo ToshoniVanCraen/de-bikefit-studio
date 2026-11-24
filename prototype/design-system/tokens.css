@@ -1,7 +1,16 @@
 /* ============================================================================
    DE BIKEFIT STUDIO — DESIGN TOKENS
    ----------------------------------------------------------------------------
-   SOURCE OF TRUTH: the brand banner reference
+   24 NOV 2026 REDESIGN: the palette, type sizes and layout rhythm below follow
+   the design export Toshoni delivered on 24 Nov 2026 (its `styles.css`):
+   wine #8A2337, wine-deep #6F1A2B, ink #2A161B, muted #6E565B, page #FDFBFB,
+   cream #F6E4E7, sand #FFF6F7, line #E8CDD2, footer text #F3D3D9, white cards.
+   The live site mirrors this file in `website/src/app/globals.css`
+   (`--color-ds-wine-*`, `--color-ds-cocoa-*`, `--color-ds-blush-*` and the
+   `.studio-root` semantic tier). The burgundy / bone / cream primitives of the
+   first system are kept below as LEGACY: the admin still paints with them.
+
+   ORIGINAL SOURCE (13 Oct 2026): the brand banner reference
    "WhatsApp Image 2026-09-22 at 21.45.35.jpeg"
    sha256 1e48e4ed415a9eda30b31aff4036f8f13b7716f3469c895f7ec8ef11082d9c0b
 
@@ -31,7 +40,21 @@
        ===================================================================== */
 
     --ds-white: #ffffff;
+    --ds-black: #000000;
     --ds-transparent: transparent;
+
+    /* ---- Palette of the 24 Nov 2026 redesign ---- */
+    --ds-wine-700: #8a2337;     /* buttons, dark sections, accents, emphasis   */
+    --ds-wine-800: #6f1a2b;     /* footer, button hover                        */
+    --ds-cocoa-900: #2a161b;    /* text on light                               */
+    --ds-cocoa-600: #6e565b;    /* secondary text on light                     */
+    --ds-blush-25: #fdfbfb;     /* page ground                                 */
+    --ds-blush-50: #fff6f7;     /* "sand": text and buttons on wine            */
+    --ds-blush-100: #f6e4e7;    /* "cream": light sections, hero, page hero    */
+    --ds-blush-200: #f3d3d9;    /* footer text                                 */
+    --ds-blush-300: #e8cdd2;    /* "line": hairlines, card edges               */
+
+    /* ---- LEGACY palette (13 Oct 2026; the admin still uses it) ---- */
 
     /* ---- Palette: burgundy (brand ground; 700 is the sampled reference) ---- */
     --ds-burgundy-900: #2c0e17; /* footer bed — deepest step                  */
@@ -114,23 +137,32 @@
     --ds-scale-neg-140: -140px;
 
     /* ---- Type scale: static steps (name == px value) ---- */
+    --ds-font-size-11: 11px;
     --ds-font-size-12: 12px;
     --ds-font-size-13: 13px;
     --ds-font-size-14: 14px;
     --ds-font-size-15: 15px;
     --ds-font-size-16: 16px;
+    --ds-font-size-17: 17px;
     --ds-font-size-18: 18px;
+    --ds-font-size-19: 19px;
     --ds-font-size-20: 20px;
+    --ds-font-size-21: 21px;
     --ds-font-size-22: 22px;
+    --ds-font-size-24: 24px;
     --ds-font-size-26: 26px;
+    --ds-font-size-28: 28px;
+    --ds-font-size-36: 36px;
+    --ds-font-size-40: 40px;
+    --ds-font-size-42: 42px;
     --ds-font-size-48: 48px;
 
-    /* ---- Type scale: fluid steps (clamp: min, preferred, max) ---- */
-    --ds-font-size-fluid-3xl: clamp(44px, 7vw, 104px);
-    --ds-font-size-fluid-2xl: clamp(40px, 6vw, 84px);
-    --ds-font-size-fluid-xl: clamp(32px, 4.4vw, 60px);
-    --ds-font-size-fluid-lg: clamp(26px, 3vw, 42px);
-    --ds-font-size-fluid-md: clamp(26px, 3.2vw, 40px);
+    /* ---- Type scale: fluid steps (clamp: min, preferred, max; 24 Nov 2026) ---- */
+    --ds-font-size-fluid-3xl: clamp(56px, 8vw, 104px);   /* landing hero      */
+    --ds-font-size-fluid-2xl: clamp(48px, 6.5vw, 88px);  /* page hero         */
+    --ds-font-size-fluid-xl: clamp(40px, 5vw, 60px);     /* section heading   */
+    --ds-font-size-fluid-lg: clamp(36px, 4.5vw, 54px);   /* `.h2`             */
+    --ds-font-size-fluid-md: clamp(26px, 3.2vw, 40px);   /* legacy            */
 
     /* ---- Letter-spacing (name == em value x100; n = negative) ---- */
     --ds-ls-n01: -0.01em;
@@ -185,45 +217,66 @@
        2. SEMANTIC TOKENS
        ===================================================================== */
 
-    /* ---- Colour: foreground on light ---- */
-    --ds-color-fg: var(--ds-ink-900);
-    --ds-color-fg-muted: var(--ds-ink-700);
-    --ds-color-fg-subtle: var(--ds-ink-500);
+    /* ---- Colour: foreground on light (24 Nov 2026) ---- */
+    --ds-color-fg: var(--ds-cocoa-900);                  /* 16:1 on page      */
+    --ds-color-fg-muted: var(--ds-cocoa-600);            /* 6.4:1 page, 5.5:1 cream */
+    --ds-color-fg-subtle: var(--ds-cocoa-600);
 
-    /* ---- Colour: foreground on burgundy ---- */
-    --ds-color-fg-inverse: var(--ds-cream-300);          /* 11.2:1 on ground  */
-    --ds-color-fg-inverse-soft: var(--ds-cream-250);     /*  9.5:1            */
-    --ds-color-fg-inverse-muted: var(--ds-rose-400);     /*  6.4:1            */
-    --ds-color-fg-inverse-subtle: var(--ds-mauve-400);   /*  4.6:1            */
+    /* ---- Colour: foreground on wine ---- */
+    --ds-color-fg-inverse: var(--ds-blush-50);           /* 8.3:1 on wine     */
+    --ds-color-fg-inverse-soft: var(--ds-blush-100);     /* 7.2:1             */
+    --ds-color-fg-inverse-muted: var(--ds-blush-200);    /* 6.4:1; 8.1:1 on the footer */
+    --ds-color-fg-inverse-subtle: var(--ds-blush-100);
+    --ds-color-fg-on-photo: var(--ds-white);             /* captions on photos */
 
     /* ---- Colour: surfaces ---- */
-    --ds-color-bg: var(--ds-bone-50);
-    --ds-color-surface: var(--ds-bone-100);
-    --ds-color-surface-alt: var(--ds-bone-200);
-    --ds-color-surface-raised: var(--ds-bone-75);
-    --ds-color-surface-raised-hover: var(--ds-bone-100);
-    --ds-color-surface-inverse: var(--ds-burgundy-700);
-    --ds-color-surface-inverse-raised: var(--ds-burgundy-600);
-    --ds-color-surface-inverse-raised-hover: var(--ds-burgundy-500);
-    --ds-color-surface-footer: var(--ds-burgundy-900);
+    --ds-color-bg: var(--ds-blush-25);
+    --ds-color-surface: var(--ds-blush-100);             /* the design's cream */
+    --ds-color-surface-alt: var(--ds-blush-300);         /* image placeholder  */
+    --ds-color-surface-raised: var(--ds-white);
+    --ds-color-surface-raised-hover: var(--ds-blush-50);
+    --ds-color-surface-card: var(--ds-white);            /* cards, steps, forms */
+    --ds-color-surface-inverse: var(--ds-wine-700);
+    --ds-color-surface-inverse-raised: var(--ds-wine-800);
+    --ds-color-surface-inverse-raised-hover: color-mix(in srgb, var(--ds-wine-700) 94%, var(--ds-white));
+    --ds-color-surface-footer: var(--ds-wine-800);
 
     /* ---- Colour: borders ---- */
-    --ds-color-border: var(--ds-bone-250);
-    --ds-color-border-strong: var(--ds-bone-400);
-    --ds-color-border-inverse: var(--ds-cream-300);
-    --ds-color-border-inverse-strong: var(--ds-burgundy-500);
-    --ds-color-border-inverse-subtle: var(--ds-mauve-500);
-    --ds-color-border-footer: var(--ds-burgundy-600);
+    --ds-color-border: var(--ds-blush-300);
+    --ds-color-border-strong: color-mix(in srgb, var(--ds-blush-300) 45%, var(--ds-cocoa-600)); /* form controls, 3:1 */
+    --ds-color-border-card: color-mix(in srgb, var(--ds-blush-300) 80%, transparent);
+    --ds-color-border-hairline: color-mix(in srgb, var(--ds-blush-300) 50%, transparent); /* header */
+    --ds-color-rule: var(--ds-cocoa-900);                /* contact grid, offer groups */
+    --ds-color-border-inverse: color-mix(in srgb, var(--ds-blush-50) 45%, transparent);
+    --ds-color-border-inverse-strong: color-mix(in srgb, var(--ds-blush-50) 25%, transparent);
+    --ds-color-border-inverse-subtle: color-mix(in srgb, var(--ds-blush-100) 40%, transparent);
+    --ds-color-border-footer: color-mix(in srgb, var(--ds-blush-200) 25%, transparent);
 
-    /* ---- Colour: interactive (burgundy IS the accent) ---- */
-    --ds-color-accent: var(--ds-burgundy-700);
-    --ds-color-accent-hover: var(--ds-burgundy-800);
-    --ds-color-interactive: var(--ds-burgundy-700);
-    --ds-color-interactive-hover: var(--ds-burgundy-800);
-    --ds-color-interactive-fg: var(--ds-cream-300);
-    --ds-color-interactive-inverse: var(--ds-cream-300);      /* cream button  */
+    /* ---- Colour: interactive (wine IS the accent) ---- */
+    --ds-color-accent: var(--ds-wine-700);
+    --ds-color-accent-hover: var(--ds-wine-800);
+    --ds-color-interactive: var(--ds-wine-700);
+    --ds-color-interactive-hover: var(--ds-wine-800);
+    --ds-color-interactive-fg: var(--ds-blush-50);
+    --ds-color-interactive-inverse: var(--ds-blush-50);       /* sand button   */
     --ds-color-interactive-inverse-hover: var(--ds-white);
-    --ds-color-interactive-inverse-fg: var(--ds-burgundy-700);
+    --ds-color-interactive-inverse-fg: var(--ds-wine-700);
+    --ds-color-ghost-on-dark-hover: color-mix(in srgb, var(--ds-white) 6%, transparent);
+
+    /* ---- Colour: overlays on photographs ---- */
+    --ds-overlay-hero: linear-gradient(90deg,
+        color-mix(in srgb, var(--ds-blush-100) 97%, transparent) 0%,
+        color-mix(in srgb, var(--ds-blush-100) 88%, transparent) 35%,
+        color-mix(in srgb, var(--ds-blush-100) 15%, transparent) 62%,
+        color-mix(in srgb, var(--ds-blush-100) 0%, transparent) 100%);
+    --ds-overlay-hero-narrow: linear-gradient(180deg,
+        color-mix(in srgb, var(--ds-blush-100) 95%, transparent),
+        color-mix(in srgb, var(--ds-blush-100) 80%, transparent));
+    --ds-overlay-callout: linear-gradient(90deg,
+        color-mix(in srgb, var(--ds-wine-800) 94%, transparent) 0%,
+        color-mix(in srgb, var(--ds-wine-700) 82%, transparent) 55%,
+        color-mix(in srgb, var(--ds-wine-700) 55%, transparent) 100%);
+    --ds-text-shadow-on-photo: 0 1px 8px color-mix(in srgb, var(--ds-black) 50%, transparent);
 
     /* ---- Colour: decorative washes (hero + split visuals) ---- */
     --ds-color-wash-veil-start: var(--ds-alpha-white-00);
@@ -267,23 +320,33 @@
     --ds-font-style-tagline: var(--ds-style-italic);
 
     /* ---- Typography: sizes by role ---- */
-    --ds-text-meta: var(--ds-font-size-12);        /* utility bar, footer rule  */
-    --ds-text-eyebrow: var(--ds-font-size-12);     /* kickers above headings    */
-    --ds-text-micro: var(--ds-font-size-13);       /* feature index label       */
-    --ds-text-small: var(--ds-font-size-14);       /* footer copy               */
-    --ds-text-nav: var(--ds-font-size-15);         /* primary nav, step copy    */
+    --ds-text-meta: var(--ds-font-size-12);        /* card tag, facts label     */
+    --ds-text-eyebrow: var(--ds-font-size-13);     /* kickers above headings    */
+    --ds-text-micro: var(--ds-font-size-13);       /* tile label, crumbs        */
+    --ds-text-small: var(--ds-font-size-14);       /* nav, link-arrow           */
+    --ds-text-nav: var(--ds-font-size-14);         /* primary nav               */
+    --ds-text-card-body: var(--ds-font-size-15);   /* card, tile, step copy; footer */
     --ds-text-body: var(--ds-font-size-16);        /* default body + buttons    */
-    --ds-text-lede: var(--ds-font-size-18);        /* intro paragraphs          */
-    --ds-text-heading-xs: var(--ds-font-size-20);
+    --ds-text-lede: var(--ds-font-size-17);        /* hero and page hero intro  */
+    --ds-text-heading-xs: var(--ds-font-size-19);
+    --ds-text-card-title: var(--ds-font-size-21);  /* card heading              */
     --ds-text-heading-sm: var(--ds-font-size-22);
-    --ds-text-tagline: var(--ds-font-size-22);     /* italic pull quote         */
-    --ds-text-wordmark: var(--ds-font-size-26);    /* footer CSS wordmark       */
+    --ds-text-heading-md: var(--ds-font-size-24);  /* step heading, FAQ question */
+    --ds-text-tagline: var(--ds-font-size-24);     /* italic pull quote         */
+    --ds-text-tile-title: var(--ds-font-size-26);  /* tile heading              */
+    --ds-text-wordmark: var(--ds-font-size-26);    /* CSS wordmark (admin)      */
+    --ds-text-logo: var(--ds-font-size-20);        /* "De Bikefit"              */
+    --ds-text-logo-kind: var(--ds-font-size-11);   /* "Studio"                  */
+    --ds-text-lead: var(--ds-font-size-28);        /* italic wine lead line     */
+    --ds-text-contact-value: var(--ds-font-size-28);
+    --ds-text-final: var(--ds-font-size-36);       /* closing callout line      */
+    --ds-text-split-title: var(--ds-font-size-40);
+    --ds-text-callout: var(--ds-font-size-42);     /* 34px at ≤720px            */
     --ds-text-numeral: var(--ds-font-size-48);     /* big step numbers          */
     --ds-text-hero: var(--ds-font-size-fluid-3xl);
     --ds-text-page-title: var(--ds-font-size-fluid-2xl);
     --ds-text-display: var(--ds-font-size-fluid-xl);
-    --ds-text-callout: var(--ds-font-size-fluid-lg);
-    --ds-text-prose-title: var(--ds-font-size-fluid-md);
+    --ds-text-prose-title: var(--ds-font-size-fluid-lg);
 
     /* ---- Typography: tracking by role ---- */
     --ds-tracking-display: var(--ds-ls-n01);       /* wordmark-level titles     */
@@ -295,16 +358,17 @@
     --ds-tracking-button: var(--ds-ls-08);
     --ds-tracking-label: var(--ds-ls-16);          /* footer column headings    */
     --ds-tracking-wordmark: var(--ds-ls-n005);     /* CSS wordmark              */
-    --ds-tracking-eyebrow: var(--ds-ls-20);        /* hero kicker               */
-    --ds-tracking-eyebrow-wide: var(--ds-ls-22);   /* section kicker, crumb     */
+    --ds-tracking-eyebrow: 0.14em;                 /* every kicker (24 Nov 2026) */
+    --ds-tracking-eyebrow-wide: var(--ds-ls-22);   /* legacy                     */
 
     /* ---- Typography: leading by role ---- */
-    --ds-leading-wordmark: var(--ds-lh-090);       /* reference: lines nearly touch */
-    --ds-leading-hero: var(--ds-lh-095);
+    --ds-leading-wordmark: var(--ds-lh-100);       /* 24 Nov 2026: every display line is 1 */
+    --ds-leading-hero: var(--ds-lh-095);           /* hero and page-hero titles */
     --ds-leading-display: var(--ds-lh-100);
-    --ds-leading-prose-title: var(--ds-lh-105);
-    --ds-leading-heading: var(--ds-lh-115);
-    --ds-leading-tagline: var(--ds-lh-140);
+    --ds-leading-prose-title: var(--ds-lh-100);
+    --ds-leading-heading: 1.1;                     /* card titles               */
+    --ds-leading-lead: var(--ds-lh-115);           /* italic lead line          */
+    --ds-leading-tagline: 1.2;                     /* pull quote                */
     --ds-leading-body: var(--ds-lh-160);
 
     /* ---- Typography: measure (max line length) ---- */
@@ -332,21 +396,28 @@
     --ds-space-5xl: var(--ds-scale-100);
 
     /* ---- Layout rhythm ---- */
-    --ds-gutter: var(--ds-scale-24);
-    --ds-container-max: var(--ds-width-1400);
+    /* 24 Nov 2026: the design's `.wrap` is 1240px with 32px gutters (20px at
+       ≤720px), so the content column is 1176px. */
+    --ds-gutter: var(--ds-scale-32);
+    --ds-gutter-narrow: 20px;
+    --ds-wrap-max: 1240px;
+    --ds-container-max: 1176px;
     --ds-container-narrow: var(--ds-width-860);
+    --ds-container-prose: 760px;
+    --ds-header-height: 92px;
     --ds-grid-min-card: var(--ds-width-280);   /* feature + audience cards     */
     --ds-grid-min-step: var(--ds-width-220);   /* process steps                */
 
-    --ds-section-padding-block: var(--ds-space-5xl);           /* 100px       */
-    --ds-section-padding-block-compact: var(--ds-space-3xl);   /*  64px @900  */
-    --ds-callout-padding-block: var(--ds-space-3xl);
+    --ds-section-padding-block: 110px;                         /* 110px       */
+    --ds-section-padding-block-compact: var(--ds-scale-72);    /*  72px @720  */
+    --ds-callout-padding-block: var(--ds-scale-72);
     --ds-hero-padding-block: var(--ds-space-4xl);              /*  80px       */
-    --ds-hero-padding-block-compact: var(--ds-scale-60);       /*  60px @900  */
-    --ds-hero-min-height: 72vh;
-    --ds-hero-min-height-compact: 70vh;
-    --ds-page-head-padding-top: var(--ds-scale-96);
+    --ds-hero-padding-block-compact: var(--ds-scale-60);       /*  legacy     */
+    --ds-hero-min-height: 620px;
+    --ds-hero-min-height-compact: auto;                        /* @720        */
+    --ds-page-head-padding-top: var(--ds-scale-72);            /* page hero copy */
     --ds-page-head-padding-bottom: var(--ds-scale-72);
+    --ds-page-hero-min-height: 520px;
 
     /* ---- Borders & radii ---- */
     --ds-border-width-hairline: var(--ds-border-1);

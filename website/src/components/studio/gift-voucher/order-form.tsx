@@ -167,7 +167,7 @@ export function GiftVoucherForm({
 
   if (sent) {
     return (
-      <div className="studio-booking studio-voucher" ref={rootRef}>
+      <div className="studio-booking studio-form studio-voucher" ref={rootRef}>
         <div className="studio-booking__confirm" role="status">
           <Heading className="studio-booking__confirm-title" tabIndex={-1} data-sent-heading>
             {sentTitle || 'Je bestelling is verstuurd'}
@@ -216,7 +216,7 @@ export function GiftVoucherForm({
   }
 
   return (
-    <div className="studio-booking studio-voucher" ref={rootRef}>
+    <div className="studio-booking studio-form studio-voucher" ref={rootRef}>
       {formTitle ? <Heading className="studio-booking__enquiry-title">{formTitle}</Heading> : null}
       {/* POST: a submit before hydration (or without JavaScript) must never put
           the visitor's name, e-mail and message in the URL and the access logs. */}

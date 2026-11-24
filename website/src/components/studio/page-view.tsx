@@ -1,5 +1,5 @@
-import { Fragment } from 'react';
-import Link from 'next/link';
+import type { BlockInstance } from '@/lib/cms/blocks';
+import { visibleBlocks } from '@/lib/studio/blocks';
 import {
   breadcrumbJsonLd,
   faqJsonLd,
@@ -12,6 +12,7 @@ import { resolveCopy } from '@/lib/studio/copy-token-lookup';
 import { absoluteUrl, type StudioPage } from '@/lib/studio/site';
 import { BlockRenderer } from './blocks';
 import { JsonLd } from './json-ld';
+import { StudioBreadcrumb, type PageHeroCrumb } from './page-hero';
 
 /**
  * Renders one published page: its structured data, its breadcrumb and its
@@ -22,7 +23,10 @@ import { JsonLd } from './json-ld';
  * same array with the published ancestors in between, so the two can never
  * disagree (an offering's page, `/aanbod/<slug>`, is rendered by
  * `offer-detail.tsx` and does the same). On a top-level page "Home / Aanbod" only repeats the header
- * navigation, so it is left out there (Toshoni's review, 13 Oct 2026).
+ * navigation, so it is left out there (Toshoni's review, 13 Oct 2026). Since
+ * the 24 Nov 2026 redesign the trail sits inside the page hero, above its
+ * eyebrow, when the page opens on a `hero` page head (`page.crumbs`); a nested
+ * page that opens on anything else keeps it on its own bar.
  *
  * `requestedService` is the validated `?dienst=` value and `requestedExtra`
  * the validated `?extra=` value; only the booking block reads them.
@@ -57,6 +61,18 @@ export async function StudioPageView({
         { name: page.title, url: canonical },
       ];
 
+  // The visible trail: nested pages only, the page head prints it when the
+  // page opens on one (design `.crumbs`), otherwise it gets its own bar.
+  const crumbs: PageHeroCrumb[] | null =
+    parents.length > 0
+      ? [
+          { label: 'Home', href: '/' },
+          ...parents.map((parent) => ({ label: parent.title, href: parent.path })),
+          { label: page.title },
+        ]
+      : null;
+  const crumbsInHead = opensOnPageHead(blocks);
+
   const description = await resolveCopy(
     page.snapshot.seo.metaDescription?.trim() ||
       settings.seo.defaultMetaDescription.trim() ||
@@ -85,31 +101,26 @@ export async function StudioPageView({
     <>
       <JsonLd data={graph} />
 
-      {parents.length > 0 ? (
-        <nav className="studio-breadcrumb-bar" aria-label="Kruimelpad">
-          <ol className="studio-breadcrumb">
-            <li>
-              <Link href="/">Home</Link>
-            </li>
-            {parents.map((parent) => (
-              <Fragment key={parent.path}>
-                <li aria-hidden="true">/</li>
-                <li>
-                  <Link href={parent.path}>{parent.title}</Link>
-                </li>
-              </Fragment>
-            ))}
-            <li aria-hidden="true">/</li>
-            <li aria-current="page">{page.title}</li>
-          </ol>
-        </nav>
+      {crumbs && !crumbsInHead ? (
+        <StudioBreadcrumb crumbs={crumbs} className="studio-breadcrumb-bar" />
       ) : null}
 
       <BlockRenderer
         blocks={blocks}
         locale={locale}
-        page={{ slug: page.slug, requestedService, requestedExtra }}
+        page={{
+          slug: page.slug,
+          requestedService,
+          requestedExtra,
+          ...(crumbs && crumbsInHead ? { crumbs } : {}),
+        }}
       />
     </>
   );
+}
+
+/** True when the first block a visitor sees is a `hero` page head. */
+function opensOnPageHead(blocks: readonly BlockInstance[]): boolean {
+  const first = visibleBlocks(blocks)[0];
+  return first?.type === 'hero' && first.data.variant === 'pageHead';
 }

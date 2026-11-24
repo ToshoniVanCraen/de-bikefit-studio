@@ -9,27 +9,27 @@ import manifest from './team-portraits.json';
 
 describe('portraitCropWindow', () => {
   it('cuts height from a tall picture and keeps the focus inside the edges', () => {
-    // 1070×1600 (a phone photo in portrait): the 4:5 window is 1070×1338.
+    // 1070×1600 (a phone photo in portrait): the 3:4 window is 1070×1427.
     expect(portraitCropWindow(1070, 1600, { x: 0.5, y: 0.5 })).toEqual({
       left: 0,
-      top: 131,
+      top: 87,
       width: 1070,
-      height: 1338,
+      height: 1427,
     });
     // A focus low in the picture slides the window down, never past the bottom.
     expect(portraitCropWindow(1070, 1600, { x: 0.5, y: 0.9 })).toEqual({
       left: 0,
-      top: 262,
+      top: 173,
       width: 1070,
-      height: 1338,
+      height: 1427,
     });
   });
 
   it('cuts width from a wide picture', () => {
     expect(portraitCropWindow(1536, 1024, { x: 0.5, y: 0.5 })).toEqual({
-      left: 359,
+      left: 384,
       top: 0,
-      width: 819,
+      width: 768,
       height: 1024,
     });
     expect(portraitCropWindow(1536, 1024, { x: 0, y: 0.5 }).left).toBe(0);

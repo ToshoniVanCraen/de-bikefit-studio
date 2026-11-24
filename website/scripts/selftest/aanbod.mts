@@ -238,9 +238,10 @@ export async function aanbodSection(ctx: {
   // --- 3. the published result ----------------------------------------------------
   const homePage = await getPublishedPage(locale, '');
   const homeTypes = homePage?.snapshot.blocks.map((block) => block.type) ?? [];
+  // Since the redesign of 24 Nov 2026 the welcome band and the keuzehulp come before the catalogue.
   check(
-    'home: hero, then the offer catalogue first',
-    homeTypes[0] === 'hero' && homeTypes[1] === 'offerCatalogue',
+    'home: hero, then the welcome band, the keuzehulp and the offer catalogue',
+    homeTypes.slice(0, 4).join() === 'hero,welcome,chooser,offerCatalogue',
     homeTypes.join(' → '),
   );
   const mainMenu = await getNavigation(locale, 'main');

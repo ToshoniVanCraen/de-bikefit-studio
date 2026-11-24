@@ -2,7 +2,9 @@ import type { SectionVariant } from '@/lib/cms/blocks';
 
 /**
  * The shared section shell: background variant, container, eyebrow, heading and
- * lede, exactly as `prototype/design-system/components.css` defines them.
+ * lede (design `.section` + `.section-head`, 24 Nov 2026). Variants: `default`
+ * on the page colour, `gray` = the design's cream (`.studio-section--gray`,
+ * also reachable as `--cream`), `dark` = wine with sand text.
  *
  * `headingLevel` is passed down from the page so a document has exactly one
  * `<h1>`: the first hero (or, if a page has no hero, the first section) owns

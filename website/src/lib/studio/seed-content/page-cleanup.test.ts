@@ -2,14 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { sanitizeRichTextHtml } from '@/lib/cms/actions/sanitize';
 import { validateBlocks } from '@/lib/cms/blocks';
 import { editorialImage } from '@/lib/studio/editorial-images';
-import {
-  AANBOD_PAGES,
-  FOOTER_MENU,
-  MAIN_MENU,
-  OFFER_GROUPS,
-  OTHER_OFFER_GROUP,
-  TEAM_MEMBERS,
-} from './aanbod';
+import { PRE_REDESIGN } from './corrections-test-kit';
+import { FOOTER_MENU, MAIN_MENU, OFFER_GROUPS, OTHER_OFFER_GROUP, TEAM_MEMBERS } from './aanbod';
 import { AFSPRAAK_PAGE, OTHER_QUESTION_HTML } from './appointment';
 import { CADEAUBON_CARD } from './cadeaubon';
 import { CORRECTION_PAGE_SPECS, phoneSpec } from './corrections-2026-10-27';
@@ -33,7 +27,11 @@ import { CONTACT_EMAIL, PHONE_LABEL } from './shared';
  * everything else.
  */
 
-const TARGETS = [...AANBOD_PAGES, AFSPRAAK_PAGE];
+/**
+ * The seeds this patch was written towards, as they stood before the redesign of 24 Nov 2026
+ * (the frozen definition; `site-redesign.test.ts` takes it from there to today's seeds).
+ */
+const TARGETS = PRE_REDESIGN.pages;
 
 /**
  * The review of 19 Oct 2026 changed only the phone label on the pages this

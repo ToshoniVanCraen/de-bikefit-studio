@@ -1,0 +1,229 @@
+/* Sections of the site redesign, part 2 (split out of studio-sections.css): the
+   audience tiles, the founder rows and the breakpoints of every section in both parts. */
+@layer components {
+  /* ---- audience: tiles and photo tiles ------------------------------------ */
+  .studio-tiles {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--ds-space-md);
+  }
+  .studio-tiles--cols-1 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .studio-tiles--cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .studio-tiles--cols-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .studio-tile {
+    border-top: 2px solid var(--ds-color-accent);
+    padding-top: 18px;
+  }
+  .studio-section--dark .studio-tile {
+    border-top-color: var(--ds-color-fg-inverse);
+  }
+  .studio-tile__num {
+    display: block;
+    font-family: var(--ds-font-display);
+    font-size: var(--ds-text-micro);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ds-color-fg-muted);
+    margin-bottom: 6px;
+  }
+  .studio-section--dark .studio-tile__num {
+    color: var(--ds-color-fg-inverse-soft);
+  }
+  .studio-tile__title {
+    font-family: var(--ds-font-display);
+    font-size: 26px;
+    font-weight: 800;
+    line-height: 1;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .studio-tile--featured .studio-tile__title {
+    color: var(--ds-color-accent);
+  }
+  .studio-section--dark .studio-tile__title {
+    color: var(--ds-color-fg-inverse);
+  }
+  .studio-tile__body {
+    font-size: 15px;
+  }
+  .studio-photo-tile {
+    display: flex;
+    flex-direction: column;
+    background: var(--ds-color-surface-raised);
+    border: 1px solid var(--ds-color-border);
+    color: var(--ds-color-fg);
+    transition:
+      border-color var(--ds-transition-fast),
+      transform var(--ds-transition-fast);
+  }
+  .studio-photo-tile__media {
+    position: relative;
+    overflow: hidden;
+    height: 220px;
+    background: var(--ds-color-border);
+  }
+  .studio-photo-tile__media img {
+    object-fit: cover;
+  }
+  .studio-photo-tile__body {
+    padding: 22px;
+  }
+  .studio-photo-tile__num {
+    display: block;
+    font-family: var(--ds-font-display);
+    font-size: var(--ds-text-micro);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ds-color-accent);
+    margin-bottom: 6px;
+  }
+  .studio-photo-tile__title {
+    font-family: var(--ds-font-display);
+    font-size: 24px;
+    font-weight: 800;
+    line-height: 1;
+    text-transform: uppercase;
+    margin-bottom: var(--ds-space-2xs);
+  }
+  .studio-photo-tile__text {
+    font-size: 15px;
+    color: var(--ds-color-fg-muted);
+  }
+
+  /* ---- team: the founder rows ---------------------------------------------- */
+  .studio-founders {
+    display: grid;
+    gap: var(--ds-space-4xl);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .studio-founder {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+    gap: var(--ds-space-3xl);
+    align-items: center;
+  }
+  .studio-founder__portrait {
+    position: relative;
+    overflow: hidden;
+    aspect-ratio: 3 / 4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--ds-color-border);
+  }
+  .studio-founder__portrait img {
+    object-fit: cover;
+  }
+  /* Initials only: a calmer, shorter panel than a real portrait. */
+  .studio-founder__portrait:not(:has(img)) {
+    aspect-ratio: 4 / 3;
+    background: linear-gradient(
+      180deg,
+      var(--ds-color-surface-inverse-raised),
+      var(--ds-color-surface-footer)
+    );
+  }
+  .studio-founder__initials {
+    font-family: var(--ds-font-display);
+    font-weight: 800;
+    font-size: var(--ds-text-hero);
+    line-height: 1;
+    letter-spacing: 0.02em;
+    color: var(--ds-color-fg-inverse);
+  }
+  .studio-founder__name {
+    font-family: var(--ds-font-display);
+    font-weight: 800;
+    font-size: clamp(40px, 5vw, 52px);
+    line-height: 1;
+    text-transform: uppercase;
+    margin-bottom: var(--ds-space-3xs);
+  }
+  .studio-founder__role {
+    font-family: var(--ds-font-display);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ds-color-accent);
+    margin-bottom: var(--ds-space-md);
+  }
+  .studio-founder__bio {
+    font-size: 17px;
+    margin-bottom: 18px;
+    max-width: 60ch;
+  }
+  .studio-founder__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ds-space-xs);
+    margin-top: 28px;
+  }
+  .studio-founders__actions {
+    margin-top: var(--ds-space-2xl);
+  }
+  @media (min-width: 721px) {
+    .studio-founder--flip {
+      grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    }
+    .studio-founder--flip .studio-founder__portrait {
+      order: 2;
+    }
+  }
+
+  /* ---- breakpoints --------------------------------------------------------- */
+  @media (max-width: 1080px) {
+    .studio-welcome__grid {
+      grid-template-columns: minmax(0, 1fr);
+      gap: var(--ds-space-lg);
+    }
+    .studio-chooser__grid,
+    .studio-chooser__grid--3 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .studio-tiles--cols-4 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @media (max-width: 720px) {
+    .studio-section.studio-welcome,
+    .studio-section.studio-chooser {
+      padding-block: var(--ds-space-3xl);
+    }
+    .studio-chooser__grid,
+    .studio-chooser__grid--2,
+    .studio-chooser__grid--3,
+    .studio-tiles,
+    .studio-tiles--cols-2,
+    .studio-tiles--cols-4,
+    .studio-founder {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .studio-founder {
+      gap: var(--ds-space-lg);
+    }
+    .studio-photos--strip .studio-photos__grid,
+    .studio-photos--strip .studio-photos__grid:is([data-count]) {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .studio-photos--strip .studio-photos__figure:first-child {
+      grid-column: 1 / -1;
+    }
+    .studio-photos--strip .studio-photos__figure,
+    .studio-photos--gallery .studio-photos__figure {
+      height: 260px;
+    }
+    .studio-photos--gallery .studio-photos__grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .studio-photos--wide .studio-photos__figure {
+      height: 280px;
+    }
+  }
+}

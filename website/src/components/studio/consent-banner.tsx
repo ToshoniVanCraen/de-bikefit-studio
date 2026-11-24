@@ -86,9 +86,9 @@ export function ConsentBanner({
         // Escape only dismisses when a choice already exists.
         if (event.key === 'Escape' && hasChoice) close();
       }}
-      className="fixed inset-x-0 bottom-0 z-[150] border-t border-[color:var(--ds-color-border-inverse-strong)] bg-[color:var(--ds-color-surface-inverse)] text-[color:var(--ds-color-fg-inverse-soft)] shadow-[0_-8px_24px_rgb(0_0_0/0.18)] outline-none"
+      className="fixed inset-x-0 bottom-0 z-[150] border-t border-[color:var(--ds-color-border-inverse-strong)] bg-[color:var(--ds-color-surface-inverse)] text-[color:var(--ds-color-fg-inverse-soft)] shadow-[var(--ds-shadow-banner)] outline-none"
     >
-      <div className="mx-auto flex max-w-[var(--ds-container-max)] flex-col gap-4 px-[var(--ds-gutter)] pt-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] md:flex-row md:items-center md:justify-between md:gap-8">
+      <div className="mx-auto flex max-w-[var(--ds-wrap-max)] flex-col gap-4 px-[var(--ds-gutter)] pt-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] md:flex-row md:items-center md:justify-between md:gap-8">
         <div className="max-w-[72ch]">
           <h2
             id="cms-consent-title"
@@ -127,14 +127,14 @@ export function ConsentBanner({
           <button
             type="button"
             onClick={() => choose('granted')}
-            className="studio-btn studio-btn--dark px-5 py-2.5 text-[length:var(--ds-text-small)] focus-visible:outline-[color:var(--ds-color-fg-inverse)]"
+            className="studio-btn studio-btn--light px-5 py-2.5 text-[length:var(--ds-text-small)] focus-visible:outline-[color:var(--ds-color-fg-inverse)]"
           >
             Accepteren
           </button>
           <button
             type="button"
             onClick={() => choose('denied')}
-            className="studio-btn studio-btn--ghost-on-dark px-5 py-2.5 text-[length:var(--ds-text-small)] focus-visible:outline-[color:var(--ds-color-fg-inverse)]"
+            className="studio-btn studio-btn--outline-light px-5 py-2.5 text-[length:var(--ds-text-small)] focus-visible:outline-[color:var(--ds-color-fg-inverse)]"
           >
             Weigeren
           </button>

@@ -1,0 +1,446 @@
+/* Primitives, header, buttons, hero, page hero (split out of globals.css).
+   Same `@layer components` as the other studio files; rules keep the order they had. */
+@layer components {
+  /* ---- primitives ------------------------------------------------------ */
+  .studio-container {
+    max-width: var(--ds-container-max);
+    margin-inline: auto;
+  }
+
+  /* Display type: Barlow Condensed, upper case, line-height 1. Zero
+     specificity, so any component class still sets its own heading. */
+  :where(.studio-root) :where(h1, h2, h3) {
+    font-family: var(--ds-font-display);
+    text-transform: uppercase;
+    line-height: var(--ds-leading-display);
+  }
+
+  /* The eyebrow: a short label under a rule in its own colour. */
+  .studio-eyebrow {
+    display: inline-block;
+    font-family: var(--ds-font-display);
+    font-size: var(--ds-text-eyebrow);
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: var(--ds-tracking-eyebrow);
+    color: var(--ds-color-fg-muted);
+    padding-top: 14px;
+    margin-bottom: 22px;
+    border-top: 1px solid currentColor;
+  }
+
+  /* "Meer info →": a text link in the button voice. */
+  .studio-link-arrow {
+    font-family: var(--ds-font-display);
+    font-weight: 600;
+    font-size: var(--ds-text-small);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .studio-wordmark {
+    display: block;
+    font-family: var(--ds-font-display);
+    font-weight: 800;
+    font-size: var(--ds-text-wordmark);
+    line-height: var(--ds-leading-wordmark);
+    letter-spacing: -0.005em;
+    text-transform: uppercase;
+    color: var(--ds-color-fg-inverse);
+  }
+
+  .studio-stack {
+    margin-top: var(--ds-space-lg);
+  }
+
+  /* Visible focus everywhere; cream on burgundy surfaces. */
+  .studio-root :is(a, button, summary, [tabindex]):focus-visible {
+    outline: 2px solid var(--ds-color-accent);
+    outline-offset: 2px;
+    border-radius: 0;
+  }
+  /* Same specificity as the rule above and later, so it wins (without the
+     root it lost, and the wine ring vanished on wine); `:where` keeps it low
+     enough for a light panel inside a dark band to set the wine ring again.
+     The cream callout keeps the wine ring. */
+  .studio-root
+    :where(.studio-section--dark, .studio-callout:not(.studio-callout--gray), .studio-footer)
+    :is(a, button, summary, [tabindex]):focus-visible {
+    outline-color: var(--ds-color-fg-inverse);
+  }
+
+  /* Skip link — visible the moment it takes focus. */
+  .studio-skip {
+    position: absolute;
+    left: -9999px;
+    top: 0;
+    z-index: 200;
+    padding: var(--ds-space-xs) var(--ds-space-md);
+    background: var(--ds-color-surface-inverse);
+    color: var(--ds-color-fg-inverse);
+    font-family: var(--ds-font-display);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .studio-skip:focus {
+    left: 0;
+  }
+
+  /* ---- header / nav ---------------------------------------------------- */
+  /* Sticky, 92px, on the page colour with a hairline underneath. The header
+     is the containing block of the narrow-screen menu panel. */
+  .studio-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--ds-color-bg);
+    border-bottom: 1px solid var(--ds-color-border-hairline);
+  }
+  /* An anchored band (`/#keuzehulp`, `/aanbod#keuzehulp`, `#boeken`) starts
+     under the sticky header instead of behind it. */
+  .studio-root section[id] {
+    scroll-margin-top: var(--ds-header-height);
+  }
+  .studio-nav {
+    max-width: var(--ds-wrap-max);
+    height: var(--ds-header-height);
+    margin-inline: auto;
+    padding-inline: var(--ds-gutter);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--ds-space-md);
+  }
+  .studio-nav__logo {
+    display: flex;
+    align-items: center;
+  }
+
+  /* The brand lockup (`components/studio/logo.tsx`): the 40px stamp from
+     public/brand/ next to the two-line wordmark in the display face.
+     `--light` on the page colour, `--dark` on wine (footer, admin). */
+  .studio-logo {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ds-space-xs);
+    text-decoration: none;
+  }
+  .studio-logo__mark {
+    display: block;
+    width: 40px;
+    height: 40px;
+    flex: none;
+  }
+  .studio-logo__text {
+    display: flex;
+    flex-direction: column;
+    font-family: var(--ds-font-display);
+    text-transform: uppercase;
+    line-height: 1;
+  }
+  .studio-logo__name {
+    font-weight: 800;
+    font-size: var(--ds-text-logo);
+    color: var(--ds-color-fg);
+  }
+  .studio-logo__kind {
+    font-family: var(--ds-font-display-italic);
+    font-weight: 800;
+    font-style: italic;
+    font-size: var(--ds-text-logo-kind);
+    line-height: var(--ds-leading-body);
+    letter-spacing: 0.3em;
+    color: var(--ds-color-fg-muted);
+  }
+  .studio-logo--dark .studio-logo__name {
+    color: var(--ds-color-fg-inverse);
+  }
+  .studio-logo--dark .studio-logo__kind {
+    color: var(--ds-color-fg-inverse-muted);
+  }
+  /* Wide screens: the panel is just the row of links between logo and CTA. */
+  .studio-nav__panel {
+    display: flex;
+    align-items: center;
+  }
+  .studio-nav__menu {
+    display: flex;
+    gap: 28px;
+    font-family: var(--ds-font-display);
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: var(--ds-tracking-button);
+    font-size: var(--ds-text-nav);
+  }
+  .studio-nav__menu a {
+    white-space: nowrap;
+  }
+  .studio-nav__menu a:hover,
+  .studio-nav__menu a[aria-current='page'] {
+    color: var(--ds-color-accent);
+    text-decoration: underline;
+    text-underline-offset: 6px;
+  }
+  /* The CTA is in the DOM twice: beside the menu on wide screens and inside
+     the menu panel on narrow ones; one of the two is always display: none. */
+  .studio-nav__panel .studio-nav__cta {
+    display: none;
+  }
+  .studio-nav__toggle {
+    display: none;
+    background: none;
+    border: 1px solid var(--ds-color-border);
+    padding: 10px 14px;
+    font-family: var(--ds-font-display);
+    font-weight: 600;
+    font-size: var(--ds-text-body);
+    letter-spacing: var(--ds-tracking-button);
+    text-transform: uppercase;
+    color: var(--ds-color-fg);
+    cursor: pointer;
+  }
+  .studio-nav__toggle[aria-expanded='true'] {
+    border-color: var(--ds-color-accent);
+    color: var(--ds-color-accent);
+  }
+
+  /* ---- buttons --------------------------------------------------------- */
+  /* Square, 1px border, condensed caps. Modifiers:
+       --primary                  wine on the page (design `.btn`)
+       --ghost                    transparent, hairline border (`.btn--ghost`);
+                                  on a dark section or wine callout it turns
+                                  into --outline-light automatically
+       --outline                  transparent, wine text and border (cards)
+       --light  (= --dark)        sand on wine (`.btn--light`)
+       --outline-light (= --ghost-on-dark)
+                                  transparent, sand text (`.btn--outline-light`) */
+  .studio-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 28px;
+    font-family: var(--ds-font-display);
+    font-size: var(--ds-text-body);
+    font-weight: 600;
+    line-height: var(--ds-leading-body);
+    text-transform: uppercase;
+    letter-spacing: var(--ds-tracking-button);
+    white-space: nowrap;
+    border: 1px solid transparent;
+    border-radius: 0;
+    cursor: pointer;
+  }
+  .studio-btn--primary {
+    background: var(--ds-color-interactive);
+    color: var(--ds-color-interactive-fg);
+    border-color: var(--ds-color-interactive);
+  }
+  .studio-btn--primary:hover {
+    background: var(--ds-color-interactive-hover);
+  }
+  .studio-btn--ghost {
+    background: transparent;
+    color: var(--ds-color-fg);
+    border-color: var(--ds-color-border);
+  }
+  .studio-btn--ghost:hover {
+    background: var(--ds-color-surface);
+  }
+  .studio-btn--outline {
+    background: transparent;
+    color: var(--ds-color-accent);
+    border-color: var(--ds-color-accent);
+  }
+  .studio-btn--outline:hover {
+    background: var(--ds-color-surface);
+  }
+  .studio-btn--dark,
+  .studio-btn--light {
+    background: var(--ds-color-interactive-inverse);
+    color: var(--ds-color-interactive-inverse-fg);
+    border-color: var(--ds-color-interactive-inverse);
+  }
+  .studio-btn--dark:hover,
+  .studio-btn--light:hover {
+    background: var(--ds-color-interactive-inverse-hover);
+  }
+  .studio-btn--ghost-on-dark,
+  .studio-btn--outline-light,
+  :is(.studio-section--dark, .studio-callout:not(.studio-callout--gray)) .studio-btn--ghost {
+    background: transparent;
+    color: var(--ds-color-fg-inverse);
+    border-color: var(--ds-color-border-inverse);
+  }
+  .studio-btn--ghost-on-dark:hover,
+  .studio-btn--outline-light:hover,
+  :is(.studio-section--dark, .studio-callout:not(.studio-callout--gray)) .studio-btn--ghost:hover {
+    background: var(--ds-color-ghost-on-dark-hover);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .studio-btn {
+      transition:
+        background var(--ds-transition-fast),
+        color var(--ds-transition-fast),
+        border-color var(--ds-transition-fast);
+    }
+    .studio-btn__arrow {
+      transition: transform var(--ds-transition-fast);
+    }
+    .studio-btn:hover .studio-btn__arrow {
+      transform: translateX(4px);
+    }
+  }
+
+  /* ---- hero ------------------------------------------------------------ */
+  /* The landing hero: cream, the block's photo as a cover at 70% 45%, a cream
+     veil from the left so the copy (max 600px) stays legible. */
+  .studio-hero {
+    position: relative;
+    min-height: 620px;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    color: var(--ds-color-fg);
+    background: var(--ds-color-surface);
+  }
+  .studio-hero__photo {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+  }
+  .studio-hero__photo img {
+    object-fit: cover;
+    object-position: 70% 45%;
+  }
+  .studio-hero__photo::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--ds-overlay-hero);
+    pointer-events: none;
+  }
+  .studio-hero__content {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: var(--ds-wrap-max);
+    margin-inline: auto;
+    padding-inline: var(--ds-gutter);
+  }
+  .studio-hero__copy {
+    max-width: 600px;
+    padding-block: var(--ds-hero-padding-block);
+  }
+  .studio-hero__eyebrow {
+    display: inline-block;
+    font-family: var(--ds-font-display);
+    font-size: var(--ds-text-eyebrow);
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: var(--ds-tracking-eyebrow);
+    color: var(--ds-color-fg-muted);
+    padding-top: 14px;
+    margin-bottom: 22px;
+    border-top: 1px solid currentColor;
+  }
+  .studio-hero__title {
+    font-family: var(--ds-font-display);
+    font-weight: 800;
+    text-transform: uppercase;
+    line-height: var(--ds-leading-hero);
+    font-size: var(--ds-text-hero);
+    letter-spacing: -0.01em;
+    margin-bottom: 28px;
+  }
+  /* The emphasis line: its own line, italic 800, in wine. */
+  :is(.studio-hero__title, .studio-pagehero__title, .studio-pagehead__title) em {
+    display: block;
+    font-family: var(--ds-font-display-italic);
+    font-style: italic;
+    color: var(--ds-color-accent);
+  }
+  .studio-hero__sub {
+    font-size: var(--ds-text-lede);
+    max-width: 520px;
+    margin-bottom: 36px;
+  }
+  .studio-hero__actions {
+    display: flex;
+    gap: var(--ds-space-xs);
+    flex-wrap: wrap;
+  }
+
+  /* ---- page hero (`page-hero.tsx`) -------------------------------------- */
+  /* The design's `.page-hero`: a cream band, copy left (1.1fr), the photo
+     filling the right column (1fr) edge to edge in height. Without a photo
+     the copy stands alone on the cream. */
+  .studio-pagehero {
+    background: var(--ds-color-surface);
+    color: var(--ds-color-fg);
+    overflow: hidden;
+  }
+  .studio-pagehero__inner {
+    max-width: var(--ds-wrap-max);
+    margin-inline: auto;
+    padding-inline: var(--ds-gutter);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: center;
+  }
+  .studio-pagehero--image .studio-pagehero__inner {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    gap: 56px;
+    min-height: 520px;
+  }
+  .studio-pagehero__copy {
+    padding-block: 72px;
+    max-width: 760px;
+  }
+  .studio-pagehero__crumbs {
+    margin-bottom: 18px;
+  }
+  .studio-pagehero__title {
+    font-family: var(--ds-font-display);
+    font-weight: 800;
+    text-transform: uppercase;
+    font-size: var(--ds-text-page-title);
+    line-height: var(--ds-leading-hero);
+    letter-spacing: -0.01em;
+    margin-bottom: 24px;
+  }
+  .studio-pagehero__intro {
+    font-size: var(--ds-text-lede);
+    max-width: 540px;
+    margin-bottom: 28px;
+  }
+  .studio-pagehero__intro:last-child {
+    margin-bottom: 0;
+  }
+  .studio-pagehero__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ds-space-xs);
+  }
+  .studio-pagehero__media {
+    position: relative;
+    align-self: stretch;
+    min-height: 420px;
+    background: var(--ds-color-surface-alt);
+  }
+  .studio-pagehero__media img {
+    object-fit: cover;
+  }
+
+  /* ---- page head (legacy markup) ---------------------------------------- */
+  /* Only the title is left: the error pages (`.studio-notfound`) use it for
+     their h1, in the same type as the page hero. */
+  .studio-pagehead__title {
+    font-family: var(--ds-font-display);
+    font-weight: 800;
+    text-transform: uppercase;
+    line-height: var(--ds-leading-hero);
+    font-size: var(--ds-text-page-title);
+    letter-spacing: -0.01em;
+  }
+}

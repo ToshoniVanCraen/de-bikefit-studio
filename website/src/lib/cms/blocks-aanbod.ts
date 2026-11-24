@@ -104,9 +104,11 @@ export const giftVoucherSchema = z.object({
 });
 
 /**
- * `team` — one profile per person. `bio` holds only verified text; with no
+ * `team` — one profile per person, laid out as the design's founder rows
+ * (portrait left, name, role, bio). `bio` holds only verified text; with no
  * portrait the site draws the person's initials. `internalNote` is for editors
- * (e.g. "bio nog op te vragen") and is never rendered.
+ * (e.g. "bio nog op te vragen") and is never rendered. `cta` (24 Nov 2026) is an
+ * optional button under the profile.
  */
 export const teamSchema = z.object({
   variant: sectionVariantSchema,
@@ -124,6 +126,8 @@ export const teamSchema = z.object({
       }),
     )
     .default([]),
+  /** Optional button under the profile (the one profile, or below the list when there are several). */
+  cta: optionalLinkSchema,
 });
 
 export const aanbodBlockRegistry = {
@@ -182,6 +186,7 @@ export const aanbodBlockRegistry = {
       title: 'Ons team',
       lede: '',
       members: [],
+      cta: null,
     },
   },
 } as const;

@@ -43,11 +43,11 @@ datum).
 | D | Duur | 9 | 2 | 0 | 0 | 7 |
 | E | Inhoud, extra's, pakketten | 10 | 1 | 8 | 0 | 1 |
 | T | Team | 5 | 1 | 2 | 1 | 1 |
-| B | AI-beelden en lege beeldvakken | 6 | 5 | 0 | 0 | 1 |
+| B | AI-beelden, lege beeldvakken en echte foto's | 14 | 0 | 0 | 0 | 14 |
 | K | Online boeken per dienst | 6 | 2 | 1 | 0 | 3 |
 | G | Bestaande hiaten in aangeraakte inhoud | 7 | 0 | 1 | 3 | 3 |
 | C | Cadeaubon (bestelformulier) | 4 | 3 | 1 | 0 | 0 |
-| | **Totaal** | **56** | **14** | **14** | **4** | **24** |
+| | **Totaal** | **64** | **9** | **14** | **4** | **37** |
 
 ## 1. Prijzen (P)
 
@@ -163,17 +163,24 @@ verwijzing in het blok.
 | T-01 | Rutger Roelandts — Bio | twee alinea's, ingekorte eigen tekst uit `content/about.html` §1 (eerder op `/over-ons`), o.a. "Negentien jaar competitie" | akkoord van Rutger op de korte versie | te bevestigen |
 | T-02 | Rutger Roelandts — Rol | "Oprichter" (volgt uit zijn eigen tekst) | bevestigen | te bevestigen |
 | T-03 | Rutger Roelandts — Kwalificaties | niets vermeld | diploma's of opleidingen, enkel met bron | open |
-| T-04 | Rutger Roelandts — Afbeelding | eigen foto, `public/images/team/rutger-roelandts-v1.webp` (4:5, aangeleverd door Toshoni op 20 okt 2026 via de mediabibliotheek, `npm run images:portrait`) | — | afgerond 2026-10-20 |
-| T-13 | Algemene claim: `/aanbod` → blok *Hero* → **Ondertitel** ("uitsluitend met ervaren professionals"); `/ons-team` → *Hero* → **Ondertitel** en home → blok *Oproep* → **Tekst** ("ervaring en mensenkennis", Toshoni, 27 okt 2026; voorheen "de nodige diploma's" en op `/aanbod` "gediplomeerde") | aangeleverd door Toshoni | blijft algemeen; geen individuele diploma's noemen zonder bron | bevestigd |
+| T-04 | Rutger Roelandts — Afbeelding | eigen foto, `public/images/team/rutger-roelandts-v1.webp` (4:5, aangeleverd door Toshoni op 20 okt 2026 via de mediabibliotheek, `npm run images:portrait`); sinds de redesign van 24 nov 2026 toont `/ons-team` zoals het ontwerp de foto rutger-klim (B-13), het portret blijft beschikbaar | — | afgerond 2026-10-20 |
+| T-13 | Algemene claim: `/aanbod` → blok *Hero* → **Ondertitel** ("uitsluitend met ervaren professionals"); `/ons-team` → *Hero* → **Ondertitel** en home → blok *Beeld + tekst* "Goede begeleiding begint bij de juiste mensen." (tot 24 nov 2026 een *Oproep*) → **Alinea's** ("ervaring en mensenkennis", Toshoni, 27 okt 2026; voorheen "de nodige diploma's" en op `/aanbod` "gediplomeerde") | aangeleverd door Toshoni | blijft algemeen; geen individuele diploma's noemen zonder bron | bevestigd |
 
 ## 5. Beelden: AI-gegenereerd, tijdelijk of leeg (B)
 
 Drie gegenereerde sfeerbeelden van fictieve, algemene personen (herkomst en prompts:
 [`editorial-images.md`](./editorial-images.md), manifest `src/lib/studio/editorial-images.json`).
 Ze zijn **nooit** een portret van Rutger, Robin of Goran. Daarnaast laat de rollout twee
-beeldvakken op `/bikefit` bewust leeg (B-04, B-05): daar toont de site het decoratieve vlak met
-verloop en ring, zonder foto. De compacte paginakoppen (*Hero*, variant paginakop) tonen nooit
-een beeld en staan hier daarom niet.
+beeldvakken op `/bikefit` bewust leeg (B-04, B-05). Sinds de herwerking van 24 nov 2026 toont een
+*Beeld + tekst* zonder foto geen decoratief vlak meer maar enkel de tekst, en kan de paginakop
+(*Hero*, variant paginakop) rechts een foto tonen; een paginakop zonder foto staat hier niet.
+
+B-07 tot B-14 zijn de acht echte foto's die Toshoni op 24 nov 2026 met het nieuwe ontwerp
+aanleverde (herkomst: [`editorial-images.md`](./editorial-images.md)). Sinds de redesign van die
+dag staan ze op elke pagina waar het ontwerp ze toont (de seeds; op een bestaande databank
+`cms:patch-site-redesign`, `staging-runbook.md` §27) en zijn de drie gegenereerde beelden (B-01 tot
+B-03) en de twee lege vakken (B-04, B-05) van de site. De kolom "Gebruikt op" volgt de seed (de
+test `placeholders.test.ts` eist dat).
 
 Vervangen kan op twee manieren:
 
@@ -185,12 +192,20 @@ Vervangen kan op twee manieren:
 
 | ID | Slot → bestand | Gebruikt op (pagina → blok → veld **Afbeelding**) | Nodig | Status |
 | --- | --- | --- | --- | --- |
-| B-01 | `flemish-cyclists` → `public/images/editorial/flemish-cyclists-v1.webp` | home → *Hero* ("Meer plezier."); `/bikefit` → *Beeld + tekst* "Waarom is een bikefit belangrijk?"; `/aanbod/lactaattest` → *Dienst (aanbod)* | echte foto van fietsers, beeldrechten en toestemming geregeld | open |
-| B-02 | `bikefit-studio` → `public/images/editorial/bikefit-studio-v1.webp` | home → *Beeld + tekst* "Jij blijft het vertrekpunt"; `/bikefit` → *Beeld + tekst* "Meten om beter te kijken"; *Dienst (aanbod)* op `/aanbod/bikefit-nieuwe-fiets`, `/aanbod/bikefit-huidige-fiets`, `/aanbod/voetanalyse`, `/aanbod/zadelanalyse`, `/aanbod/afstellen-schoenplaatjes` | echte foto van een bikefit in de studio | open |
-| B-03 | `junior-coaching` → `public/images/editorial/junior-coaching-v1.webp` | home → *Beeld + tekst* "Voor elke fietser"; `/aanbod/coaching` → *Dienst (aanbod)* (tot 20 okt 2026 ook `/voor-wie`, nu B-06) | echte foto, schriftelijke toestemming van ouders bij minderjarigen | open |
-| B-04 | geen (leeg) | `/bikefit` → *Beeld + tekst* "Kan een bikefit ook bij mij thuis?" (donker, beeld links) | echte foto van een fit op locatie, of bewust leeg laten; hangt af van K-04 en G-07 | open |
-| B-05 | geen (leeg) | `/bikefit` → *Beeld + tekst* "Kinderen groeien. De pasvorm groeit niet mee." (beeld rechts) | echte foto van een jonge fietser, schriftelijke toestemming van ouders; of B-03 hergebruiken | open |
-| B-06 | `rutger-jeugd` → `public/images/editorial/rutger-jeugd-v1.webp` (echte foto, Toshoni, 20 okt 2026) | `/voor-wie` → *Beeld + tekst* "Jonge fietsers groeien" | — | afgerond 2026-10-20 |
+| B-01 | `flemish-cyclists` → `public/images/editorial/flemish-cyclists-v1.webp` | nergens meer sinds de redesign van 24 nov 2026 (was: home → *Hero* "Meer plezier.", nu B-14; `/bikefit` → *Beeld + tekst* "Waarom is een bikefit belangrijk?", nu de paginakop met B-12; `/aanbod/lactaattest` → *Dienst (aanbod)*, nu B-07). Een aanbod waarvan een redacteur dit beeld zelf koos, houdt het (`cms:patch-site-redesign` laat het staan) | — | afgerond 2026-11-24 |
+| B-02 | `bikefit-studio` → `public/images/editorial/bikefit-studio-v1.webp` | nergens meer sinds de redesign van 24 nov 2026 (was: home → *Beeld + tekst* "Jij blijft het vertrekpunt", nu B-12; `/bikefit` → *Beeld + tekst* "Meten om beter te kijken", nu B-13; *Dienst (aanbod)* van vijf aanbiedingen, nu B-07, B-12, B-13) | — | afgerond 2026-11-24 |
+| B-03 | `junior-coaching` → `public/images/editorial/junior-coaching-v1.webp` | nergens meer sinds de redesign van 24 nov 2026 (was: home → *Beeld + tekst* "Voor elke fietser", nu B-11; `/aanbod/coaching` → *Dienst (aanbod)*, nu B-14) | — | afgerond 2026-11-24 |
+| B-04 | geen (leeg) tot 24 nov 2026 | `/bikefit` → *Beeld + tekst* "Kan een bikefit ook bij mij thuis?": sinds de redesign van 24 nov 2026 de foto muur-ronse-duo (B-08), beeld rechts | — | afgerond 2026-11-24 |
+| B-05 | geen (leeg) tot 24 nov 2026 | `/bikefit` → *Beeld + tekst* "Kinderen groeien. De pasvorm groeit niet mee.": sinds de redesign van 24 nov 2026 de foto jonge-fietser (B-11), beeld links | — | afgerond 2026-11-24 |
+| B-06 | `rutger-jeugd` → `public/images/editorial/rutger-jeugd-v1.webp` (echte foto, Toshoni, 20 okt 2026) | nergens meer sinds de redesign van 24 nov 2026: `/voor-wie` → *Beeld + tekst* "Jonge fietsers groeien" toont nu, zoals het ontwerp, renner-rug (B-12); het bestand blijft in het manifest | — | afgerond 2026-10-20 |
+| B-07 | `samen-bergop` → `public/images/editorial/samen-bergop-v1.webp` (echte foto, Toshoni, 24 nov 2026) | home → *Foto's* (strook) "Samen bergop"; `/aanbod` → *Hero* "Ons aanbod"; `/voor-wie` → *Voor wie*, tegel 03; `/ons-team` → *Hero* "Ons team"; `/veelgestelde-vragen` → *Foto's* (breed); *Dienst (aanbod)* op `/aanbod/bikefit-nieuwe-fiets` en `/aanbod/lactaattest` | — | afgerond 2026-11-24 |
+| B-08 | `muur-ronse-duo` → `public/images/editorial/muur-ronse-duo-v1.webp` (echte foto, Toshoni, 24 nov 2026) | home → *Foto's* (strook) "Pauze in Ronse"; `/voor-wie` → *Voor wie*, tegel 02; `/bikefit` → *Beeld + tekst* "Kan een bikefit ook bij mij thuis?"; `/cadeaubon` → de paginakop van *Cadeaubon (bestelformulier)* (vast in de code) | — | afgerond 2026-11-24 |
+| B-09 | `muur-ronse-bank` → `public/images/editorial/muur-ronse-bank-v1.webp` (echte foto van Rutger, Toshoni, 24 nov 2026) | home → *Oproep* "Geef fietsplezier cadeau"; `/aanbod` → *Foto's* (breed); `/ons-team` → *Foto's* (galerij) "Zolang ik me kan herinneren"; `/veelgestelde-vragen` → *Hero* "Veelgestelde vragen"; *Dienst (aanbod)* op `/aanbod/bikefit-tweede-bezoek` | — | afgerond 2026-11-24 |
+| B-10 | `band-wisselen` → `public/images/editorial/band-wisselen-v1.webp` (echte foto van Rutger, Toshoni, 24 nov 2026) | home → *Foto's* (strook) "Even sleutelen"; `/voor-wie` → *Voor wie*, tegel 05; `/ons-team` → *Foto's* (galerij); `/afspraak` → de paginakop van *Online boeken* (vast in de code); *Dienst (aanbod)* op `/aanbod/bikefit-tweede-fiets` | — | afgerond 2026-11-24 |
+| B-11 | `jonge-fietser` → `public/images/editorial/jonge-fietser-v1.webp` (echte foto, Toshoni, 24 nov 2026) | home → *Beeld + tekst* "Voor elke fietser"; `/voor-wie` → *Hero* "Voor elke fietser" en *Voor wie*, tegel 01; `/bikefit` → *Beeld + tekst* "Kinderen groeien. De pasvorm groeit niet mee."; `/cadeaubon` → het zijpaneel van *Cadeaubon (bestelformulier)* (vast in de code) | — | afgerond 2026-11-24 |
+| B-12 | `renner-rug` → `public/images/editorial/renner-rug-v1.webp` (echte foto van Rutger, Toshoni, 24 nov 2026) | home → *Beeld + tekst* "Jij blijft het vertrekpunt"; `/voor-wie` → *Beeld + tekst* "Jonge fietsers groeien"; `/bikefit` → *Hero* "Waarom is een bikefit belangrijk?"; `/ons-team` → *Foto's* (galerij); `/afspraak` → *Beeld + tekst* "Voor je komt"; *Dienst (aanbod)* op `/aanbod/voetanalyse` en `/aanbod/afstellen-schoenplaatjes` | — | afgerond 2026-11-24 |
+| B-13 | `rutger-klim` → `public/images/editorial/rutger-klim-v1.webp` (echte foto van Rutger, Toshoni, 24 nov 2026) | home → *Beeld + tekst* "Goede begeleiding begint bij de juiste mensen."; `/voor-wie` → *Voor wie*, tegel 04; `/bikefit` → *Beeld + tekst* "Meten om beter te kijken"; `/ons-team` → *Team*, Rutger Roelandts (in plaats van het portret van T-04); *Dienst (aanbod)* op `/aanbod/bikefit-huidige-fiets` en `/aanbod/zadelanalyse` | — | afgerond 2026-11-24 |
+| B-14 | `zonsondergang-weg` → `public/images/editorial/zonsondergang-weg-v1.webp` (echte foto, Toshoni, 24 nov 2026) | home → *Hero* "Meer plezier."; `/voor-wie` → *Voor wie*, tegel 06; *Oproep* "Comfort is een keuze. Maak ze." op home, `/aanbod`, `/bikefit`, `/ons-team`, `/veelgestelde-vragen`, `/cadeaubon` en `/afspraak`; *Dienst (aanbod)* op `/aanbod/coaching` | — | afgerond 2026-11-24 |
 
 ## 6. Online boeken per dienst (K)
 

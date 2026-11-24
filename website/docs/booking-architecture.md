@@ -1114,6 +1114,15 @@ in "Bij wie?". The booking stores the slot's location (`cms_bookings.location_id
 confirmation and the Google event show it, and a slot at a `customer`-kind location asks for
 an address, as a pinned "bij de klant" service did.
 
+**Look of the widget** (redesign of 24 Nov 2026): the booking block opens with a `PageHero` when it
+owns the page's h1 (eyebrow, title, lede, a ghost button with the phone number, a photograph) and
+the widget sits straight on the page below it. Each step is the eyebrow "Stap n" plus a large
+heading while open (a quiet line once done or still to come), the fits and providers are white
+service tiles with a wine hover edge and a wine fill when chosen, the details form and the
+confirmation are white hairline panels. Fields keep a 3:1 edge (mixed from ink and page) where
+the design's hairline would not meet WCAG 1.4.11. The CSS is the booking block of `globals.css`
+plus `studio-booking-choice.css`, `studio-forms.css` and `studio-location.css`.
+
 **The widget** (`booking-widget.tsx`, provider first): step 1 "Bij wie?" when the setting
 `showProviderChoice` is on and more than one provider can take the chosen service (every
 provider while none is chosen): "Iedereen" or a provider, shown with their name and the places

@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import type { SiteSettings } from '@/lib/cms/blocks';
 import { OFFER_ENQUIRY_ANCHOR, OFFER_ENQUIRY_CTA_LABEL } from '@/lib/offer-enquiry/input';
 import { formatDuration } from '@/lib/booking/format';
@@ -26,17 +25,21 @@ import {
 } from '@/lib/studio/jsonld';
 import type { StudioLocale } from '@/lib/studio/locale';
 import { absoluteUrl } from '@/lib/studio/site';
-import { SectionHeading } from './blocks/section';
 import { JsonLd } from './json-ld';
 import { StudioButtonLink, StudioLink } from './link';
 import { OfferEnquiryForm } from './offer-enquiry-form';
+import { PageHero } from './page-hero';
 import { StudioImage, hasImage } from './studio-image';
 
 /**
  * `/aanbod/<slug>` — one offering, rendered from Beheer → Aanbod (there is no
- * CMS page behind it since 17 Oct 2026): the breadcrumb, its structured data,
- * then the same template for every offering: title, intro, the call to
- * action, then Doel, Inhoud, Duur, Kostprijs and Mogelijke extra's.
+ * CMS page behind it since 17 Oct 2026): its structured data, then the same
+ * template for every offering (redesign of 24 Nov 2026): a page hero with the
+ * breadcrumb line, title, intro, the call to action and the photograph, then
+ * two columns. Left: the Duur / Kostprijs / Boeken bar, the notes, Doel,
+ * Inhoud, Mogelijke extra's and, when asked for, the enquiry form. Right: the
+ * sticky side panel with the photograph, the same three facts, the action and
+ * the way back.
  *
  * Duur, Kostprijs and the call to action follow the offering's settings,
  * resolved on the server (`src/lib/offers/offer-catalogue.ts`):
@@ -102,23 +105,11 @@ export function OfferPageView({
   return (
     <>
       <JsonLd data={graph} />
-      <nav className="studio-breadcrumb-bar" aria-label="Kruimelpad">
-        <ol className="studio-breadcrumb">
-          <li>
-            <Link href="/">Home</Link>
-          </li>
-          <li aria-hidden="true">/</li>
-          <li>
-            <Link href={OFFER_INDEX_PATH}>{parentTitle}</Link>
-          </li>
-          <li aria-hidden="true">/</li>
-          <li aria-current="page">{content.title}</li>
-        </ol>
-      </nav>
       <OfferDetail
         entry={entry}
         locale={locale}
         status={status}
+        parentTitle={parentTitle}
         phoneLabel={phoneLabel}
         phoneHref={phoneHref}
       />
@@ -130,12 +121,14 @@ function OfferDetail({
   entry,
   locale,
   status,
+  parentTitle,
   phoneLabel,
   phoneHref,
 }: {
   entry: CatalogueOfferEntry;
   locale: StudioLocale;
   status: OfferingStatus;
+  parentTitle: string;
   phoneLabel: string;
   phoneHref: string;
 }) {
@@ -153,6 +146,8 @@ function OfferDetail({
     status === 'bookable' && variants.length > 1 && variants.some((variant) => !variant.bookable);
   const withImage = hasImage(content.image);
   const eyebrow = `Aanbod · ${OFFER_CATEGORY_LABELS[content.category]}`;
+  // Under the goal there is a second heading level; without a goal the lists follow the h1 directly.
+  const SubHeading = content.goal ? 'h3' : 'h2';
 
   const action =
     status === 'bookable' ? (
@@ -209,119 +204,120 @@ function OfferDetail({
 
   return (
     <>
-      <section
-        className={`studio-pagehead studio-offer-head${
-          status === 'unavailable' ? ' studio-offer-head--unavailable' : ''
-        }`}
-        id="dienst"
-      >
-        <div
-          className={`studio-pagehead__inner studio-offer-head__inner${
-            withImage ? ' studio-offer-head__inner--media' : ''
-          }`}
-        >
-          <div>
-            <p className="studio-eyebrow">{eyebrow}</p>
-            <SectionHeading level={1} className="studio-pagehead__title">
-              {content.title}
-            </SectionHeading>
-            {content.intro ? <p className="studio-pagehead__lede">{content.intro}</p> : null}
-            <dl className="studio-offer-head__facts">
-              <div>
-                <dt>Duur</dt>
-                <dd>{offer.durationLabel}</dd>
-              </div>
-              <div>
-                <dt>Kostprijs</dt>
-                <dd>{offer.priceLabel}</dd>
-              </div>
-              <div>
-                <dt>Boeken</dt>
-                <dd data-offer-status={status}>{OFFERING_STATUS_LABELS[status]}</dd>
-              </div>
-            </dl>
-            <div className="studio-hero__actions studio-stack">{action}</div>
-            {unavailableNote}
-            {addonNote}
-            {partlyUnavailable ? <PartlyUnavailable variants={variants} /> : null}
-          </div>
-          {withImage ? (
-            <div className="studio-offer-head__visual">
-              <StudioImage
-                image={content.image}
-                locale={locale}
-                sizes="(max-width: 900px) 100vw, 40vw"
-                priority
-              />
-            </div>
-          ) : null}
-        </div>
-      </section>
+      <PageHero
+        anchor="dienst"
+        eyebrow={eyebrow}
+        title={content.title}
+        headingLevel={1}
+        intro={content.intro}
+        crumbs={[
+          { label: 'Home', href: '/' },
+          { label: parentTitle, href: OFFER_INDEX_PATH },
+          { label: content.title },
+        ]}
+        actions={action}
+        image={content.image}
+        locale={locale}
+      />
 
       <section className="studio-section">
         <div className="studio-section__inner">
-          <div className="studio-offer">
-            {content.goal ? (
-              <div className="studio-offer__item studio-offer__item--goal">
-                <h2 className="studio-offer__label">Doel</h2>
-                <p className="studio-offer__goal">{content.goal}</p>
-              </div>
-            ) : null}
+          <div
+            className={`studio-offer-detail${
+              status === 'unavailable' ? ' studio-offer-detail--unavailable' : ''
+            }`}
+          >
+            <div>
+              <dl className="studio-offer-facts">
+                <div>
+                  <dt>Duur</dt>
+                  <dd>{offer.durationLabel}</dd>
+                </div>
+                <div>
+                  <dt>Kostprijs</dt>
+                  <dd>{offer.priceLabel}</dd>
+                </div>
+                <div>
+                  <dt>Boeken</dt>
+                  <dd data-offer-status={status}>{OFFERING_STATUS_LABELS[status]}</dd>
+                </div>
+              </dl>
+              {unavailableNote}
+              {addonNote}
+              {partlyUnavailable ? <PartlyUnavailable variants={variants} /> : null}
 
-            {content.contents.length > 0 ? (
-              <div className="studio-offer__item">
-                <h2 className="studio-offer__label">Inhoud</h2>
-                <ul className="studio-offer__list">
-                  {content.contents.map((line, index) => (
-                    <li key={index}>{line}</li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
+              {content.goal ? (
+                <>
+                  <p className="studio-eyebrow">Doel</p>
+                  <h2 className="studio-offer-detail__goal">{content.goal}</h2>
+                </>
+              ) : null}
 
-            <div className="studio-offer__item">
-              <h2 className="studio-offer__label">Duur</h2>
-              <p>{offer.durationLabel}</p>
+              {content.contents.length > 0 ? (
+                <>
+                  <SubHeading className="studio-offer-detail__heading">Inhoud</SubHeading>
+                  <ul className="studio-offer__list">
+                    {content.contents.map((line, index) => (
+                      <li key={index}>{line}</li>
+                    ))}
+                  </ul>
+                </>
+              ) : null}
+
+              {content.extras.length > 0 ? (
+                <>
+                  <SubHeading className="studio-offer-detail__heading">
+                    Mogelijke extra’s
+                  </SubHeading>
+                  <ul className="studio-offer__list">
+                    {content.extras.map((line, index) => (
+                      <li key={index}>{line}</li>
+                    ))}
+                  </ul>
+                  {content.extrasNote ? (
+                    <p className="studio-offer__note">{content.extrasNote}</p>
+                  ) : null}
+                </>
+              ) : null}
+
+              {showEnquiry ? (
+                <div className="studio-offer__enquiry" id={OFFER_ENQUIRY_ANCHOR}>
+                  <OfferEnquiryForm
+                    offerSlug={content.slug}
+                    offerTitle={content.title}
+                    audiences={variants.map((variant) => variant.audience).filter(isSplitAudience)}
+                    headingTag="h2"
+                    phoneLabel={phoneLabel}
+                    phoneHref={phoneHref}
+                  />
+                </div>
+              ) : null}
             </div>
 
-            <div className="studio-offer__item">
-              <h2 className="studio-offer__label">Kostprijs</h2>
-              <p>{offer.priceLabel}</p>
-            </div>
-
-            {content.extras.length > 0 ? (
-              <div className="studio-offer__item">
-                <h2 className="studio-offer__label">Mogelijke extra’s</h2>
-                <ul className="studio-offer__list">
-                  {content.extras.map((line, index) => (
-                    <li key={index}>{line}</li>
-                  ))}
-                </ul>
-                {content.extrasNote ? (
-                  <p className="studio-offer__note">{content.extrasNote}</p>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
-
-          {showEnquiry ? (
-            <div className="studio-offer__enquiry" id={OFFER_ENQUIRY_ANCHOR}>
-              <OfferEnquiryForm
-                offerSlug={content.slug}
-                offerTitle={content.title}
-                audiences={variants.map((variant) => variant.audience).filter(isSplitAudience)}
-                headingTag="h2"
-                phoneLabel={phoneLabel}
-                phoneHref={phoneHref}
-              />
-            </div>
-          ) : null}
-
-          <div className="studio-offer__actions">
-            {showEnquiry ? null : action}
-            <StudioLink href={OFFER_INDEX_PATH} className="studio-offer__back">
-              Terug naar het aanbod
-            </StudioLink>
+            <aside className="studio-offer-side" aria-label="In het kort">
+              {withImage ? (
+                <div className="studio-offer-side__image">
+                  {/* The hero shows the same photograph with its description. */}
+                  <StudioImage
+                    image={{ ...content.image, decorative: true }}
+                    locale={locale}
+                    sizes="(max-width: 1080px) 100vw, 33vw"
+                  />
+                </div>
+              ) : null}
+              <dl>
+                <dt>Duur</dt>
+                <dd>{offer.durationLabel}</dd>
+                <dt>Kostprijs</dt>
+                <dd>{offer.priceLabel}</dd>
+                <dt>Boeken</dt>
+                <dd>{OFFERING_STATUS_LABELS[status]}</dd>
+              </dl>
+              {action}
+              <p className="studio-offer__note">
+                <StudioLink href={OFFER_INDEX_PATH}>&larr; Terug naar het aanbod</StudioLink>
+              </p>
+            </aside>
           </div>
         </div>
       </section>

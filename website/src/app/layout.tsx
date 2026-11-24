@@ -40,6 +40,16 @@ const barlow = Barlow_Condensed({
   display: 'swap',
 });
 
+// The studio's emphasis voice (hero line, lead, quotes): one italic face only,
+// so the other weights do not ship an italic file nobody uses.
+const barlowItalic = Barlow_Condensed({
+  subsets: ['latin'],
+  weight: '800',
+  style: 'italic',
+  variable: '--font-barlow-italic',
+  display: 'swap',
+});
+
 // Auth UI is only mounted once Clerk is configured, so the app runs key-free.
 const hasClerk = features.clerkUi;
 
@@ -63,14 +73,15 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  themeColor: '#3e1420',
+  // The studio's wine (`--color-ds-wine-700`, 24 Nov 2026 redesign).
+  themeColor: '#8a2337',
 };
 
 function RootShell({ children }: { children: React.ReactNode }) {
   return (
     <html
       lang="nl"
-      className={`${inter.variable} ${barlow.variable} h-full antialiased`}
+      className={`${inter.variable} ${barlow.variable} ${barlowItalic.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">

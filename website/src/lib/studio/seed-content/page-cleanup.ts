@@ -195,6 +195,18 @@ function same(a: unknown, b: unknown): boolean {
   return canonical(a) === canonical(b);
 }
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+
+/**
+ * A list entry against the value a `replaceItem` names: equal on the value's own keys. A field the
+ * schema added to every entry since (24 Nov 2026: `group` on the FAQ items) is no edit of the text.
+ */
+function sameEntry(entry: unknown, value: unknown): boolean {
+  if (!isRecord(entry) || !isRecord(value)) return same(entry, value);
+  return same(Object.fromEntries(Object.keys(value).map((key) => [key, entry[key]])), value);
+}
+
 function show(value: unknown): string {
   const text = typeof value === 'string' ? value : JSON.stringify(value);
   return JSON.stringify(text.length > 60 ? `${text.slice(0, 57)}...` : text);
@@ -350,18 +362,23 @@ export function cleanupBlocks<T extends CleanupBlock>(
         continue;
       }
       const matches = current.flatMap((entry, position) =>
-        same(entry, edit.from) ? [position] : [],
+        sameEntry(entry, edit.from) ? [position] : [],
       );
       if (matches.length === 1) {
+        // An entry keeps the fields the edit does not name.
         target[edit.field] = current.map((entry, position) =>
-          position === matches[0] ? structuredClone(edit.to) : entry,
+          position !== matches[0]
+            ? entry
+            : isRecord(entry) && isRecord(edit.to)
+              ? { ...entry, ...structuredClone(edit.to) }
+              : structuredClone(edit.to),
         );
         changes.push(`${label}.${edit.field}: ${describe(edit.from, edit.to)}`);
       } else if (matches.length > 1) {
         conflicts.push(
           `${label}.${edit.field}: ${matches.length} entries equal ${show(edit.from)}`,
         );
-      } else if (!current.some((entry) => same(entry, edit.to))) {
+      } else if (!current.some((entry) => sameEntry(entry, edit.to))) {
         conflicts.push(
           `${label}.${edit.field}: no entry equals ${show(edit.from)} (edited since the rollout?)`,
         );

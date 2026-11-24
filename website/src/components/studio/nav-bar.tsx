@@ -8,15 +8,19 @@ import { StudioLink, splitArrow } from './link';
 import { StudioLogo } from './logo';
 
 /**
- * Primary navigation.
+ * Primary navigation (24 Nov 2026 redesign, design `.header`).
  *
- * Desktop: a horizontal list with the active item underlined.
- * ≤900px: the same list collapses behind a hamburger disclosure — one button
- * that owns `aria-expanded` and `aria-controls`, 48px tap targets, closes on
- * Escape, on outside navigation and whenever the route changes.
+ * Wide screens: logo, the row of links (the active one wine and underlined,
+ * `aria-current="page"`) and the "Afspraak maken" button.
+ * ≤1080px: the links and the button give way to a bordered "Menu" button, a
+ * disclosure that owns `aria-expanded` and `aria-controls` and opens the links
+ * as a panel under the header, with the button at the bottom of the panel so
+ * it stays reachable. The panel closes on Escape and on following any link
+ * in it (an in-page anchor included).
  *
- * The menu is in the DOM at every width (CSS hides it), so it is always
- * crawlable and it degrades to a plain list if hydration never happens.
+ * The links are in the DOM at every width (CSS hides them), so they are always
+ * crawlable and degrade to a plain list if hydration never happens. The CTA
+ * is rendered twice (beside the menu, inside the panel); CSS shows exactly one.
  */
 export function StudioNavBar({
   items,
@@ -27,7 +31,7 @@ export function StudioNavBar({
   cta: { label: string; href: string };
   siteName: string;
 }) {
-  const menuId = useId();
+  const panelId = useId();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
@@ -46,54 +50,60 @@ export function StudioNavBar({
     return pathname === href || pathname.startsWith(`${href}/`);
   }
 
+  const ctaLink = (
+    <StudioLink href={cta.href} className="studio-btn studio-btn--primary studio-nav__cta">
+      {splitArrow(cta.label)}
+      <span className="studio-btn__arrow" aria-hidden="true">
+        &rarr;
+      </span>
+    </StudioLink>
+  );
+
   return (
     <nav className="studio-nav" aria-label="Hoofdnavigatie">
       <Link href="/" className="studio-nav__logo" aria-label={`${siteName}: naar de homepagina`}>
         <StudioLogo siteName={siteName} tone="light" priority />
       </Link>
 
-      <button
-        type="button"
-        className="studio-nav__toggle"
-        aria-controls={menuId}
-        aria-expanded={open}
-        aria-label={open ? 'Menu sluiten' : 'Menu openen'}
-        onClick={() => setOpen((value) => !value)}
-      >
-        <span className="studio-nav__bars" aria-hidden="true" />
-      </button>
-
       {/* Following a link — including an in-page anchor, which does not change
           the route — has done what the panel was opened for, so it closes.
-          The handler sits on the list rather than on every item so it also
+          The handler sits on the panel rather than on every item so it also
           covers links an editor adds later. */}
-      <ul
-        className="studio-nav__menu"
-        id={menuId}
+      <div
+        className="studio-nav__panel"
+        id={panelId}
         data-open={open ? 'true' : 'false'}
         onClick={(event) => {
           if ((event.target as HTMLElement).closest('a')) setOpen(false);
         }}
       >
-        {items.map((item) => (
-          <li key={`${item.href}-${item.label}`}>
-            <StudioLink
-              href={item.href}
-              external={item.external}
-              {...(isActive(item.href) ? { 'aria-current': 'page' as const } : {})}
-            >
-              {item.label}
-            </StudioLink>
-          </li>
-        ))}
-      </ul>
+        <ul className="studio-nav__menu">
+          {items.map((item) => (
+            <li key={`${item.href}-${item.label}`}>
+              <StudioLink
+                href={item.href}
+                external={item.external}
+                {...(isActive(item.href) ? { 'aria-current': 'page' as const } : {})}
+              >
+                {item.label}
+              </StudioLink>
+            </li>
+          ))}
+        </ul>
+        {ctaLink}
+      </div>
 
-      <StudioLink href={cta.href} className="studio-btn studio-btn--primary studio-nav__cta">
-        {splitArrow(cta.label)}
-        <span className="studio-btn__arrow" aria-hidden="true">
-          &rarr;
-        </span>
-      </StudioLink>
+      {ctaLink}
+
+      <button
+        type="button"
+        className="studio-nav__toggle"
+        aria-controls={panelId}
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+      >
+        Menu
+      </button>
     </nav>
   );
 }

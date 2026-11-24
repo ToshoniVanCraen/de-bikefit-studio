@@ -1,59 +1,69 @@
 /* ============================================================================
-   LOCATION (`location` block, /afspraak), 27 Oct 2026. Additive, studio-location* only
+   LOCATION (`location` block, /afspraak), 27 Oct 2026, re-skinned 24 Nov 2026
    ----------------------------------------------------------------------------
    Imported by `globals.css` (kept apart: that file is past the size limit).
-   The exact address, a line under it (parking) and a route link sit next to the
-   map. The map is a two-click embed (`location-map.tsx`): the idle box holds the
-   Google notice and the button, the frame replaces it after the click.
-   Mobile first: one column below 720px (address first, then the map), two columns
-   from 720px. Only `--ds-*` / `--color-ds-*` tokens, every class prefixed
-   `studio-location`, square corners and hairlines like the rest of the design
-   system (`--ds-radius-control` is 0). The semantic tokens only exist under
-   `.studio-root`, so nothing here can reach the webshop.
+   The design's contact grid: Adres, Parking (the block's note) and Route in
+   three columns under a 1px ink rule, the map underneath. The map is a
+   two-click embed (`location-map.tsx`): the idle box holds the Google notice
+   and the button, the frame replaces it after the click. One column below
+   720px. Only `--ds-*` / `--color-ds-*` tokens, every class prefixed
+   `studio-location`, square corners and hairlines. The semantic tokens only
+   exist under `.studio-root`, so nothing here can reach the webshop.
    ========================================================================== */
 @layer components {
   .studio-location {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    gap: var(--ds-space-md);
-    align-items: start;
-    max-width: var(--ds-container-narrow);
+    gap: var(--ds-space-xl);
   }
-  /* With the map the block is as wide as the booking widget above it. */
-  .studio-location--with-map {
-    max-width: 1080px;
+  .studio-location__grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    border-top: 1px solid var(--ds-color-fg);
   }
-  .studio-location__details {
+  .studio-section--dark .studio-location__grid {
+    border-top-color: var(--ds-color-border-inverse);
+  }
+  .studio-location__cell {
     min-width: 0;
+    padding: 28px 0;
   }
   .studio-location__label {
+    display: block;
+    margin-bottom: 6px;
     font-family: var(--ds-font-display);
-    font-size: var(--ds-text-micro);
+    font-size: 13px;
     text-transform: uppercase;
-    letter-spacing: 0.16em;
-    color: var(--ds-color-fg-subtle);
-    margin-bottom: var(--ds-space-3xs);
+    letter-spacing: 0.14em;
+    color: var(--ds-color-fg-muted);
   }
   .studio-section--dark .studio-location__label {
-    color: var(--ds-color-fg-inverse-subtle);
+    color: var(--ds-color-fg-inverse-muted);
   }
   /* <address> is italic by default. */
-  .studio-location__address {
+  .studio-location__address,
+  .studio-location__value {
+    font-family: var(--ds-font-display);
     font-style: normal;
-    font-size: var(--ds-text-lede);
+    font-weight: 700;
+    font-size: 28px;
+    line-height: 1.15;
   }
   .studio-location__line {
     display: block;
   }
-  .studio-location__note {
-    margin-top: var(--ds-space-xs);
-    color: var(--ds-color-fg-muted);
-  }
-  .studio-section--dark .studio-location__note {
-    color: var(--ds-color-fg-inverse-muted);
-  }
   .studio-location__route {
-    margin-top: var(--ds-space-md);
+    text-decoration: underline;
+    text-decoration-color: transparent;
+    text-underline-offset: 6px;
+    transition: text-decoration-color var(--ds-transition-fast);
+  }
+  .studio-location__route:hover {
+    color: var(--ds-color-accent);
+    text-decoration-color: currentColor;
+  }
+  .studio-section--dark .studio-location__route:hover {
+    color: var(--ds-color-fg-inverse);
   }
 
   /* ---- the map ---------------------------------------------------------- */
@@ -99,12 +109,19 @@
   }
 
   @media (min-width: 720px) {
-    .studio-location--with-map {
-      grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-      gap: var(--ds-space-xl);
-    }
     .studio-location__map--idle {
       padding: var(--ds-space-lg);
+    }
+  }
+  @media (max-width: 720px) {
+    .studio-location__grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .studio-location__cell {
+      padding: var(--ds-space-md) 0;
+    }
+    .studio-location__cell + .studio-location__cell {
+      border-top: 1px solid var(--ds-color-border);
     }
   }
 }

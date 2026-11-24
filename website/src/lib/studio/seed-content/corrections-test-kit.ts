@@ -1,12 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { sanitizeRichTextHtml } from '@/lib/cms/actions/sanitize';
-import { AANBOD_PAGES } from './aanbod';
-import { AFSPRAAK_PAGE } from './appointment';
 import { CORRECTION_PAGE_SPECS } from './corrections-2026-10-27';
 import { FAQ_ITEMS } from './faq';
 import { PRIVACY_HTML, TERMS_HTML } from './legal';
 import type { CleanupBlock, PageCleanupSpec } from './page-cleanup';
+import preRedesign from './site-redesign-before.fixture.json';
 
 /**
  * Helpers the tests of the corrections of 27 Oct 2026 share
@@ -62,9 +61,19 @@ export function stored(blocks: readonly CleanupBlock[]): CleanupBlock[] {
   );
 }
 
-/** The blocks of a page as today's seeds define them, stored. */
+/** The frozen seed definition of the eight public pages before the redesign of 24 Nov 2026. */
+export const PRE_REDESIGN = preRedesign as unknown as {
+  pages: Array<{ slug: string; metaDescription: string; blocks: CleanupBlock[] }>;
+};
+
+/**
+ * The blocks of a page as the seeds defined them when the corrections of 27 Oct 2026 were the
+ * latest change, stored: since the redesign of 24 Nov 2026 the eight public pages come from the
+ * frozen `site-redesign-before.fixture.json` (what staging and production hold before
+ * `cms:patch-site-redesign`), so these tests keep describing the patches of October and the
+ * redesign is proven against the same state (`site-redesign.test.ts`).
+ */
 export function seedBlocks(slug: string): CleanupBlock[] {
-  if (slug === 'afspraak') return stored(AFSPRAAK_PAGE.blocks);
   if (slug === 'veelgestelde-vragen') {
     return [{ type: 'faq', data: { variant: 'default', collapsible: false, items: FAQ_ITEMS } }];
   }
@@ -80,7 +89,7 @@ export function seedBlocks(slug: string): CleanupBlock[] {
       { type: 'richText', data: { variant: 'default', title: '', html: PRIVACY_HTML } },
     ]);
   }
-  const page = AANBOD_PAGES.find((entry) => entry.slug === slug);
+  const page = PRE_REDESIGN.pages.find((entry) => entry.slug === slug);
   if (!page) throw new Error(`no seed page "${slug}"`);
   return stored(page.blocks);
 }

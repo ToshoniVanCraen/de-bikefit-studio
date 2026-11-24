@@ -1,4 +1,5 @@
-import { CALLOUT_BLOCK, type SeedPage } from './shared';
+import { photo, widePhoto } from './redesign-sections';
+import { CLOSING_CTA, PHONE_TOKEN, type SeedPage } from './shared';
 
 /**
  * The FAQ (`/veelgestelde-vragen`): the eight questions of content/about.html §2 (identical
@@ -67,6 +68,52 @@ export const FAQ_ITEMS: FaqItem[] = [
   },
 ];
 
+/**
+ * "Nieuw op de fiets?": the five questions for beginners of the redesign (Toshoni's design export,
+ * 24 Nov 2026), word for word; the welcome band links to them (`/veelgestelde-vragen#beginners`).
+ */
+export const FAQ_BEGINNER_ITEMS: FaqItem[] = [
+  {
+    question: 'Ik fiets amper. Is een bikefit iets voor mij?',
+    answer:
+      'Zeker. Juist als je weinig fietst of opnieuw begint, maakt een fiets die goed past een groot verschil. Je hoeft geen ervaring, conditie of sportieve doelen te hebben. We vertrekken van waar jij nu staat.',
+  },
+  {
+    question: 'Is mijn fiets wel goed genoeg?',
+    answer:
+      'Elke fiets is welkom: stadsfiets, e-bike, toerfiets, mountainbike of je oude koersfiets. Het gaat om hoe jij erop zit, niet om hoe duur hij is.',
+  },
+  {
+    question: 'Heb ik fietsschoenen of klikpedalen nodig?',
+    answer:
+      'Nee. Fiets je met gewone schoenen en platte pedalen, dan kijken we gewoon daarnaar. Schoenplaatjes stellen we enkel af als je die al gebruikt.',
+  },
+  {
+    question: 'Mag ik in gewone kleren komen?',
+    answer:
+      'Ja. Kom in de kleren en schoenen waarin je normaal fietst. Een sportoutfit is niet nodig.',
+  },
+  {
+    question: 'Ik weet niet welke dienst ik moet kiezen.',
+    answer:
+      'Geen probleem. Bel of mail ons en vertel kort waarom je wil komen. We zeggen je eerlijk wat je nodig hebt, en wat niet. Je kan ook de keuzehulp op de pagina Aanbod gebruiken.',
+  },
+];
+
+export const FAQ_BEGINNERS_GROUP = 'Nieuw op de fiets?';
+export const FAQ_BEGINNERS_ANCHOR = 'beginners';
+export const FAQ_BIKEFIT_GROUP = 'Over de bikefit';
+
+/** The FAQ block's list since the redesign: the beginners first (anchor `#beginners`), then the eight. */
+export const FAQ_GROUPED_ITEMS = [
+  ...FAQ_BEGINNER_ITEMS.map((item, index) => ({
+    ...item,
+    group: FAQ_BEGINNERS_GROUP,
+    groupAnchor: index === 0 ? FAQ_BEGINNERS_ANCHOR : '',
+  })),
+  ...FAQ_ITEMS.map((item) => ({ ...item, group: FAQ_BIKEFIT_GROUP, groupAnchor: '' })),
+];
+
 export const FAQ_PAGE: SeedPage = {
   slug: 'veelgestelde-vragen',
   title: 'Veelgestelde vragen',
@@ -84,9 +131,11 @@ export const FAQ_PAGE: SeedPage = {
         eyebrow: 'Goed om te weten · Ninove',
         title: 'Veelgestelde vragen',
         titleEmphasis: '',
-        subtitle: '',
+        // The design's intro line (24 Nov 2026); the number is the token.
+        subtitle: `Alles wat je wil weten voor je eerste bikefit. Staat je vraag er niet tussen? Bel ons gerust op ${PHONE_TOKEN}.`,
         primaryCta: null,
         secondaryCta: null,
+        image: photo('muur-ronse-bank', 'Fietser op een bank voor de koersmuur in Ronse'),
       },
     },
     {
@@ -96,11 +145,14 @@ export const FAQ_PAGE: SeedPage = {
         eyebrow: '',
         title: '',
         lede: '',
-        collapsible: false,
+        // The design's open-and-close list, the first question open.
+        collapsible: true,
+        openFirst: true,
         emitStructuredData: true,
-        items: FAQ_ITEMS,
+        items: FAQ_GROUPED_ITEMS,
       },
     },
-    CALLOUT_BLOCK,
+    widePhoto(photo('samen-bergop', 'Twee fietsers bergop'), '50% 55%'),
+    CLOSING_CTA,
   ],
 };

@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { isInternalPath, splitArrow } from './link';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { StudioButtonLink, isInternalPath, splitArrow } from './link';
+
+/** The children go in as createElement's third argument (react/no-children-prop). */
+type ButtonProps = Parameters<typeof StudioButtonLink>[0];
 
 describe('isInternalPath', () => {
   it('accepts site-relative paths, with or without query and hash', () => {
@@ -49,5 +54,31 @@ describe('splitArrow', () => {
     expect(splitArrow('Bel ons')).toBe('Bel ons');
     expect(splitArrow('→ Start')).toBe('→ Start');
     expect(splitArrow('→')).toBe('→');
+  });
+});
+
+describe('StudioButtonLink', () => {
+  it('maps every variant, old and new names, to its button class', () => {
+    for (const variant of [
+      'primary',
+      'outline',
+      'ghost',
+      'ghost-on-dark',
+      'dark',
+      'light',
+      'outline-light',
+    ] as const) {
+      const html = renderToStaticMarkup(
+        createElement(StudioButtonLink, { href: '#vragen', variant } as ButtonProps, 'Label'),
+      );
+      expect(html, variant).toContain(`studio-btn studio-btn--${variant}`);
+    }
+  });
+
+  it('defaults to the primary variant and adds an extra class last', () => {
+    const html = renderToStaticMarkup(
+      createElement(StudioButtonLink, { href: '#x', className: 'extra' } as ButtonProps, 'Label'),
+    );
+    expect(html).toContain('class="studio-btn studio-btn--primary extra"');
   });
 });
